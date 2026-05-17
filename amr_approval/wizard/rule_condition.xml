@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="rule_condition_wizard" model="ir.ui.view">
+        <field name="name">rule.condition.wizard</field>
+        <field name="model">rule.condition.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Condition Editor">
+                <group>
+                    <field name="condition_select"/>
+                </group>
+
+                <group attrs="{'invisible': [('condition_select', '!=', 'range')]}">
+                    <field name="condition_range"/>
+                    <field name="condition_range_min"/>
+                    <field name="condition_range_max"/>
+                </group>
+
+                <group attrs="{'invisible': [('condition_select', '!=', 'python')]}">
+                    <field name="condition_python" nolabel="1" colspan="4"/>
+                </group>
+
+                <separator string="Test"/>
+
+                <group>
+                    <field name="test_value"/>
+                    <field name="test_result" readonly="1"/>
+                </group>
+
+                <footer>
+                    <button name="action_test" type="object" string="Test" class="btn-secondary"/>
+                    <button name="action_apply" type="object" string="Apply" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+
+            </form>
+        </field>
+    </record>
+</odoo>

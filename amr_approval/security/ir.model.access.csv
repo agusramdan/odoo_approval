@@ -1,0 +1,27 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_user_delegation_user,user.delegation User,model_user_delegation,base.group_user,1,0,0,0
+access_user_delegation_user_create,user.delegation User Create,model_user_delegation,amr_approval.group_doa_internal_user_create,1,1,1,0
+access_user_delegation_admin,user.delegation Admin,model_user_delegation,base.group_erp_manager,1,1,1,1
+
+access_notification_template_user,access_notification_template user,model_notification_template,base.group_user,1,0,0,0
+access_notification_template_group_system,access_notification_template group_system,model_notification_template,base.group_system,1,1,1,1
+
+access_notification_log_user,access_notification_log user,model_notification_log,base.group_user,1,1,1,0
+access_notification_log_group_system,access_notification_log group_system,model_notification_log,base.group_system,1,1,1,1
+
+access_approval_approval_task_user,approval.task user,model_approval_task,base.group_user,1,1,1,0
+access_approval_approval_task_admin,approval.task admin,model_approval_task,base.group_system,1,1,1,1
+
+access_approval_audit_log_user,approval.task.audit.log user,model_approval_audit_log,base.group_user,1,1,1,0
+access_approval_audit_log_admin,approval.task.audit.log admin,model_approval_audit_log,base.group_system,1,1,1,1
+
+access_approval_template_read_user,Read Approval Template,model_approval_template,base.group_user,1,0,0,0
+access_approval_template_system_user,CRUD Approval Template,model_approval_template,base.group_system,1,1,1,1
+
+access_approval_instance_user,Approval Instance,model_approval_instance,base.group_user,1,1,1,1
+access_approval_task_line_user,Approval Task Line,model_approval_task_line,base.group_user,1,1,1,1
+
+access_approval_matrix_rule_user,approval.matrix.rule.user,model_approval_matrix_rule,base.group_user,1,0,0,0
+access_approval_matrix_rule_manager,approval.matrix.rule.manager,model_approval_matrix_rule,base.group_system,1,1,1,1
+access_approval_matrix_rule_line_user,approval.matrix.rule.user,model_approval_matrix_rule_line,base.group_user,1,0,0,0
+access_approval_matrix_rule_line_manager,approval.matrix.rule.manager,model_approval_matrix_rule_line,base.group_system,1,1,1,1

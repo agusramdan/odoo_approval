@@ -1,0 +1,75 @@
+<odoo>
+    <data>
+
+        <record id="notification_log_filter" model="ir.ui.view">
+            <field name="name">notification.log.search</field>
+            <field name="model">notification.log</field>
+            <field name="arch" type="xml">
+                <search string="External Data">
+                    <field name="user_id"/>
+                    <field name="notification_template_id"/>
+                    <field name="receiver_id"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="notification_log_tree" model="ir.ui.view">
+            <field name="name">notification.log.tree</field>
+            <field name="model">notification.log</field>
+            <field name="priority" eval="99" />
+            <field name="arch" type="xml">
+                <tree >
+                    <field name="user_id"/>
+                    <field name="notification_template_id"/>
+                    <field name="receiver_id"/>
+                    <field name="mail_id" optional="hide"/>
+                    <field name="chat_id" optional="hide"/>
+                    <button name="send" string="Send Notification" type="object" />
+                    <button name="action_show_mail" string="Show Mail" type="object" class="oe_highlight" attrs="{'invisible':[('mail_id','=',0)]}"/>
+                    <button name="action_show_chat_message" string="Show Chat" type="object" class="oe_highlight" attrs="{'invisible':[('chat_id','=',0)]}"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="notification_log_from" model="ir.ui.view">
+            <field name="name">notification.log.form</field>
+            <field name="model">notification.log</field>
+            <field name="arch" type="xml">
+                <form string="sync">
+                    <header>
+                        <button name="send" string="Send Now" type="object" icon="fa-paper-plane text-success"/>
+                        <button name="send_mail" string="Send email" type="object" icon="fa-paper-plane text-success"/>
+                        <button name="send_chat" string="Send Odoo Chat" type="object" icon="fa-paper-plane text-success"/>
+                        <button name="action_show_mail" string="Show Mail" type="object" class="oe_highlight" attrs="{'invisible':[('mail_id','=',0)]}"/>
+                        <button name="action_show_chat" string="Show Chat" type="object" class="oe_highlight" attrs="{'invisible':[('chat_id','=',0)]}"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="user_id"/>
+                                <field name="receiver_id"/>
+                                <field name="notification_template_id"/>
+                            </group>
+                            <group>
+                                <field name="mail_id" optional="hide"/>
+                                <field name="chat_id" optional="hide"/>
+                            </group>
+                        </group>
+                        <notebook/>
+                    </sheet>
+                    <footer/>
+                </form>
+            </field>
+        </record>
+
+        <record model="ir.actions.act_window" id="notification_log_action">
+            <field name="name">Notification Log</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">notification.log</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[]</field>
+        </record>
+
+
+    </data>
+</odoo>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<odoo>
+    <record id="view_approval_task_line_assignment_wizard_form" model="ir.ui.view">
+        <field name="name">approval.task.line.assignment.wizard.form</field>
+        <field name="model">approval.task.line.assignment.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Reassign Approval Task">
+                <sheet>
+                    <group>
+                        <field name="display_name" readonly="1"/>
+                        <field name="from_user_ids" readonly="1" widget="many2many_tags"/>
+                        <field name="new_user_id" options="{'no_create': True}"/>
+                        <field name="reason" placeholder="Reason for reassignment..."/>
+                    </group>
+                    <footer>
+                        <button name="action_confirm"
+                                string="Confirm"
+                                type="object"
+                                class="btn-primary"
+                        />
+                        <button string="Cancel"
+                                special="cancel"
+                                class="btn-secondary"
+                        />
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>

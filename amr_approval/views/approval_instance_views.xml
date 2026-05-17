@@ -1,0 +1,101 @@
+<odoo>
+    <!-- Tree View -->
+<!--    <record id="view_approval_instance_search" model="ir.ui.view">-->
+<!--        <field name="name">approval.instance</field>-->
+<!--        <field name="model">approval.instance</field>-->
+<!--        <field name="arch" type="xml">-->
+<!--            <search>-->
+<!--                <field name="name"/>-->
+<!--                <field name="next_approval_task_id"/>-->
+<!--                <filter string="My Approvals" name="filter_can_approve"-->
+<!--                        domain="[('access_approval', '=', True)]"/>-->
+
+<!--            </search>-->
+<!--        </field>-->
+<!--    </record>-->
+
+    <record id="view_approval_instance_tree" model="ir.ui.view">
+        <field name="name">approval.instance.tree</field>
+        <field name="model">approval.instance</field>
+        <field name="arch" type="xml">
+            <tree string="Approval instances">
+                <field name="display_name" string="Name"/>
+                <field name="model_id" optional="hide"/>
+                <field name="model" optional="hide"/>
+                <field name="transaction_status"/>
+                <button name="action_approval_transaction" string="Show Detail" type="object" class="oe_highlight"/>
+                <button name="check_approval_task_status" string="Check Approval Task" type="object" icon="fa-solid fa-list-check text-success" groups="base.group_no_one"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_approval_instance_form" model="ir.ui.view">
+        <field name="name">approval.instance.form</field>
+        <field name="model">approval.instance</field>
+        <field name="arch" type="xml">
+            <form string="Approval Instance">
+                <header>
+                    <field name="approval_task_line_model" invisible="1"/>
+                    <field name="access_approval" invisible="1"/>
+                    <button name="action_request_approval" type="object" string="Request Approval"
+                            class="oe_highlight" groups="base.group_system" />
+                    <button name="action_clear_approval" type="object" string="Clear Approval"
+                            class="oe_highlight" groups="base.group_system" />
+                    <button name="action_register_approval_task_line" type="object" string="Register Approval"
+                            class="oe_highlight" groups="base.group_no_one" />
+                    <button name="action_approve" type="object" string="Approve" class="oe_highlight"
+                                attrs="{'invisible': [('access_approval','=',False)]}"/>
+                    <button name="action_reject" type="object" string="Reject"
+                                attrs="{'invisible': [('access_approval','=',False)]}"/>
+                    <button name="action_approval_transaction" string="Transaction" type="object" class="oe_highlight"/>
+                    <button name="check_approval_task_status" string="Check Approval Task" type="object" class="oe_highlight" icon="fa-solid fa-list-check text-success" groups="base.group_no_one"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="display_name" placeholder="Name . . ." readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="model_id" readonly="1"/>
+                            <field name="requester_id" readonly="1"/>
+                            <field name="company_id" readonly="1"/>
+                            <field name="user_ids" readonly="1" widget="many2many_tags"/>
+                            <field name="group_ids" readonly="1" widget="many2many_tags"/>
+                        </group>
+                        <group>
+                            <field name="transaction_status" readonly="1"/>
+                            <field name="transaction_ref" readonly="1"/>
+                            <field name="approval_template_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Approval" id="default_approval_task_line"
+                              attrs="{'invisible':[('approval_task_line_model','!=','approval.task.line')]}">
+                            <field name="approval_task_line" readonly="1" />
+                        </page>
+                        <page string="Audit Log" id="default_approval_audit_log_ids">
+                            <field name="approval_audit_log_ids" readonly="1" />
+                        </page>
+                    </notebook>
+                    <footer/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_approval_instance" model="ir.actions.act_window">
+        <field name="name">Approval Instance</field>
+        <field name="res_model">approval.instance</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'create':0,'edit':0}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                approval transactions here.
+            </p>
+        </field>
+    </record>
+
+</odoo>

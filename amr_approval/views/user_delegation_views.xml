@@ -1,0 +1,79 @@
+<odoo>
+    <record id="view_user_delegation_form" model="ir.ui.view">
+        <field name="name">user.delegation.form</field>
+        <field name="model">user.delegation</field>
+        <field name="arch" type="xml">
+            <form string="User Delegation">
+                <header>
+                    <field name="active" invisible="1"/>
+                    <field name="is_edit_able_delegator_id" invisible="1" />
+                    <field name="is_able_button_revoke" invisible="1" />
+                    <field name="is_prepared_condition" invisible="1" />
+                    <button name="action_button_revoke" string="Revoke" type="object" class="oe_highlight"
+                        attrs="{'invisible': [('is_able_button_revoke', '=', False)]}"
+                    />
+                    <button name="action_button_submit" string="Submit" type="object" class="oe_highlight" states="draft"/>
+                    <button name="action_button_cancel" string="Cancel" type="object" class="oe_highlight"
+                            attrs="{'invisible': [('is_prepared_condition', '=', False)]}"/>
+
+                    <field name="state" widget="statusbar" statusbar_visible="draft,active"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Name . . ." readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="delegator_id" attrs="{'readonly': [('is_edit_able_delegator_id', '=', False)]}" force_save="true"/>
+                            <field name="delegatee_id" attrs="{'readonly': [('state', '!=', 'draft')],'required': [('state', '=', 'draft')]}" />
+                            <field name="company_id" attrs="{'readonly': [('state', '!=', 'draft')]}" groups="base.group_multi_company"/>
+                        </group>
+                        <group>
+                            <field name="notification_option" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                            <field name="start_date" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                            <field name="end_date" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                        </group>
+
+                    </group>
+                    <notebook>
+                        <page string="Notes" name="page_notes">
+                            <field name="note" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="o_attachment_preview" />
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers" />
+                    <field name="message_ids" widget="mail_thread" />
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_user_delegation_tree" model="ir.ui.view">
+        <field name="name">user.delegation.tree</field>
+        <field name="model">user.delegation</field>
+        <field name="arch" type="xml">
+            <tree string="Delegations">
+                <field name="name"/>
+                <field name="delegator_id"/>
+                <field name="delegatee_id"/>
+                <field name="start_date"/>
+                <field name="end_date"/>
+                <field name="state"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_user_delegation" model="ir.actions.act_window">
+        <field name="name">User Delegations</field>
+        <field name="res_model">user.delegation</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('filter_user_delegation', '=', True)]</field>
+    </record>
+
+
+</odoo>

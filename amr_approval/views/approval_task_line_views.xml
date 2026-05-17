@@ -1,0 +1,68 @@
+<odoo>
+
+    <record id="view_approval_task_line_tree" model="ir.ui.view">
+        <field name="name">approval.task.line.tree</field>
+        <field name="model">approval.task.line</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="display_name" readonly="1"/>
+                <field name="sign_title" readonly="1" optional="hide" />
+                <field name="user_id" readonly="1" optional="hide" groups="base.group_no_one"/>
+                <field name="group_id" readonly="1" optional="hide" groups="base.group_no_one"/>
+                <field name="user_ids" widget="many2many_tags" optional="hide" groups="base.group_no_one"/>
+                <field name="group_ids" widget="many2many_tags" optional="hide" groups="base.group_no_one"/>
+                <field name="status_approval" readonly="1"/>
+                <field name="responsible_user_id" readonly="1" optional="hide"/>
+                <field name="user_execution_id" readonly="1" optional="hide"/>
+                <field name="user_delegation_id" readonly="1" optional="hide"/>
+                <field name="reject_to_method" readonly="1" optional="hide" groups="base.group_no_one"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_approval_instance_form" model="ir.ui.view">
+        <field name="name">approval.task.line.form</field>
+        <field name="model">approval.task.line</field>
+        <field name="arch" type="xml">
+            <form string="Approval Instance">
+                <header>
+                    <button name="action_assignment" type="object" string="Assignment"
+                            class="oe_highlight" groups="base.group_system"
+                    />
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="display_name" placeholder="Name . . ." readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="type_approval" readonly="1"/>
+                            <field name="user_id" readonly="1"/>
+                            <field name="user_ids" readonly="1" widget="many2many_tags"/>
+                            <field name="group_id" readonly="1"/>
+                            <field name="group_ids" readonly="1" widget="many2many_tags"/>
+                            <field name="requester_id" readonly="1"/>
+                            <field name="company_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="reject_to_method" readonly="1"/>
+                            <field name="requester_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Action" >
+                            <field name="responsible_user_id" readonly="1"/>
+                            <field name="user_execution_id" readonly="1"/>
+                            <field name="user_delegation_id" readonly="1"/>
+                        </page>
+                    </notebook>
+                    <footer/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+
+</odoo>

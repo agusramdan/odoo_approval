@@ -1,0 +1,109 @@
+<odoo>
+    <data>
+
+        <record id="notification_template_filter" model="ir.ui.view">
+            <field name="name">notification.template.search</field>
+            <field name="model">notification.template</field>
+            <field name="arch" type="xml">
+                <search string="External Data">
+                    <field name="name"/>
+                    <field name="model"/>
+                    <separator/>
+                    <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                    <group expand="0" string="Group By">
+                        <filter name="group_model" string="Model" domain="[]" context="{'group_by': 'model'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="notification_template_form" model="ir.ui.view">
+            <field name="name">notification.template.form</field>
+            <field name="model">notification.template</field>
+            <field name="priority" eval="99" />
+            <field name="arch" type="xml">
+                <form string="sync">
+                    <header>
+                        <field name="active" invisible="1" />
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name" />
+                                <field name="model"/>
+                            </group>
+                            <group>
+                                <field name="send_email" />
+                                <field name="template_email" />
+                                <field name="send_chat" />
+                                <field name="send_firebase" />
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Notification">
+                                <group>
+                                    <field name="title" />
+                                    <field name="body" />
+                                    <field name="image" />
+                                </group>
+                            </page>
+                            <page string="Html">
+                                <field name="body_html" />
+                            </page>
+                            <page string="Python Code" name="code" autofocus="autofocus" >
+                                <field name="code" widget="ace" options="{'mode': 'python'}"
+                                       placeholder="Enter Python code here. Help about Python expression is available in the help tab of this document."
+                                />
+                            </page>
+
+                            <page string="Help" name="help_info" autofocus="autofocus" >
+                                <div style="margin-top: 4px;">
+                                    <h3>Help with Python expressions</h3>
+                                    <p>Various fields may use Python code or Python expressions. The following variables can be used:</p>
+                                    <ul>
+                                        <li><code>env</code>: Odoo Environment on which the action is triggered</li>
+                                        <li><code>transaction_object</code>: TODO </li>
+                                        <li><code>time</code>, <code>datetime</code>, <code>dateutil</code>, <code>timezone</code>: useful Python libraries</li>
+                                        <li><code>log(message, level='info')</code>:logging function to record debug information in <code>ir.logging</code> table</li>
+                                        <li><code>UserError</code>: Warning Exception to use with <code>raise</code></li>
+                                        <li>To return an response, assign: <code> = {...}</code></li>
+                                        <li>Bila ingin custom approval line bisa memasukan data ke response['approval_line']</li>
+                                    </ul>
+                                    <div >
+                                        <p>Example of Python code</p>
+<code style="white-space: pre-wrap">
+
+</code>
+                                    </div>
+                                </div>
+                            </page>
+
+                        </notebook>
+                    </sheet>
+                    <footer/>
+                </form>
+            </field>
+        </record>
+
+        <record id="notification_template_tree" model="ir.ui.view">
+            <field name="name">notification.template.tree</field>
+            <field name="model">notification.template</field>
+            <field name="priority" eval="99" />
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="active" invisible="1" />
+                    <field name="name" />
+                    <field name="model"/>
+                    <field name="template_email" />
+                </tree>
+            </field>
+        </record>
+        <record model="ir.actions.act_window" id="notification_template_action">
+            <field name="name">Notification Template</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">notification.template</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[]</field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,81 @@
+<odoo>
+    <record id="approval_task_search" model="ir.ui.view">
+        <field name="model">approval.task</field>
+        <field name="arch" type="xml">
+            <search string="Filters">
+                <field name="name" string="Filter Name"/>
+                <filter string="To Approve" domain="[('user_have_access_to_approval','!=',False)]" name="to_approve"
+                        help="Filters Approval"/>
+                <filter string="My filters" domain="[('requester_id','=',uid)]" name="my_filters"
+                        help="Filters created by myself"/>
+                <separator/>
+                <group expand="0" string="Group By">
+                    <filter string="Requester" name="requester" domain="[]" context="{'group_by':'requester_id'}"/>
+                    <filter string="Company" name="company" domain="[]" context="{'group_by':'company_id'}"/>
+                    <filter string="Document Type" name="document_type" domain="[]" context="{'group_by':'document'}"/>
+                </group>
+                <field name="requester_id"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_approval_task_tree" model="ir.ui.view">
+        <field name="name">approval.task.tree</field>
+        <field name="model">approval.task</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="document" string="Type"/>
+                <field name="name" string="Name"/>
+                <!--                <field name="transaction_ref" />-->
+                <field name="description" string="Description"/>
+                <field name="date" optional="hide"/>
+                <field name="requester_id"/>
+                <field name="company_id" optional="hide"/>
+                <field name="url" widget="url" optional="hide"/>
+                <field name="request_approval_task_date" optional="hide"/>
+                <field name="user_ids" widget="many2many_tags" optional="hide" groups="base.group_no_one"/>
+                <field name="group_ids" widget="many2many_tags" optional="hide" groups="base.group_no_one"/>
+                <field name="responsible_user_id" optional="hide" groups="base.group_no_one"/>
+                <field name="approval_res_id" optional="hide" groups="base.group_no_one"/>
+                <field name="approval_model" optional="hide" groups="base.group_no_one"/>
+                <field name="approval_instance_id" optional="hide" groups="base.group_no_one"/>
+                <field name="approval_user_ids" string="Approvers" widget="many2many_tags" optional="hide" groups="base.group_no_one"/>
+                <field name="notification_approval_id"  optional="hide" groups="base.group_no_one"/>
+                <button name="action_assign" string="Assignment User" type="object" class="oe_highlight"
+                        icon="fa-solid fa-user-plus text-success" groups="base.group_no_one" help="Assign Responsible User"/>
+                <button name="action_reassign" string="Assignment User" type="object" class="oe_highlight"
+                        icon="fa-solid fa-exchange-alt text-success" groups="base.group_no_one" help="reassign Responsible User"/>
+                <button name="action_approval_transaction" string="Show Detail" type="object" class="oe_highlight"/>
+                <button name="send_notification" string="Send Notification" type="object"
+                        icon="fa-solid fa-envelope text-success" groups="base.group_no_one"/>
+                <button name="check_approval_task_status" string="Check Approval Task" type="object"
+                        icon="fa-solid fa-dropbox text-success" groups="base.group_no_one"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_approval_task_action" model="ir.actions.act_window">
+        <field name="name">Approval Task</field>
+        <field name="res_model">approval.task</field>
+        <field name="view_mode">tree</field>
+        <field name="context">{'create': 0,'edit': 0,'delete': 0}</field>
+    </record>
+
+    <record model="ir.actions.act_window" id="current_user_waiting_approval_action">
+        <field name="name">Waiting Approval</field>
+        <field name="res_model">approval.task</field>
+        <field name="view_mode">tree</field>
+        <field name="domain">[('user_have_access_to_approval', '=', True)]</field>
+        <field name="context">{'create': 0,'edit': 0,'delete': 0,'__transaction_data_check_access_rights_and_rule':
+            True}
+        </field>
+    </record>
+
+    <record model="ir.actions.act_window" id="current_user_request_approval_action">
+        <field name="name">My Request Approval</field>
+        <field name="res_model">approval.task</field>
+        <field name="view_mode">tree</field>
+        <field name="domain">[('requester_id', '=', uid)]</field>
+        <field name="context">{'create': 0,'edit': 0,'delete': 0}</field>
+    </record>
+</odoo>

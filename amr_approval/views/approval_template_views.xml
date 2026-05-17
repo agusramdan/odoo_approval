@@ -1,0 +1,146 @@
+<odoo>
+    <!-- TREE VIEW -->
+    <record id="view_approval_template_tree" model="ir.ui.view">
+        <field name="name">approval.template.tree</field>
+        <field name="model">approval.template</field>
+        <field name="arch" type="xml">
+            <tree string="Approval Template" default_order="model_id">
+                <field name="model_id" />
+<!--                <field name="approval_matrix_reference"/>-->
+            </tree>
+        </field>
+    </record>
+
+    <!-- FORM VIEW -->
+    <record id="view_approval_template_form" model="ir.ui.view">
+        <field name="name">approval.template.form</field>
+        <field name="model">approval.template</field>
+        <field name="arch" type="xml">
+            <form string="Approval Template">
+                <header>
+                    <field name="model" invisible="1"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="model_id" options="{'no_create': True}"/>
+                            <field name="document"/>
+                            <field name="description"/>
+                        </group>
+                        <group>
+                            <field name="view_id" />
+                            <field name="action_id"/>
+                            <field name="menu_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Python Code" name="code" autofocus="autofocus" >
+                            <field name="code" widget="ace" options="{'mode': 'python'}"
+                                   placeholder="Enter Python code here. Help about Python expression is available in the help tab of this document."
+                            />
+                        </page>
+
+                        <page string="Help" name="help_info" autofocus="autofocus" >
+                                <div style="margin-top: 4px;">
+                                    <h3>Help with Python expressions</h3>
+                                    <p>Various fields may use Python code or Python expressions. The following variables can be used:</p>
+                                    <ul>
+                                        <li><code>env</code>: Odoo Environment on which the action is triggered</li>
+                                        <li><code>transaction_object</code>: TODO </li>
+                                        <li><code>time</code>, <code>datetime</code>, <code>dateutil</code>, <code>timezone</code>: useful Python libraries</li>
+                                        <li><code>log(message, level='info')</code>:logging function to record debug information in <code>ir.logging</code> table</li>
+                                        <li><code>UserError</code>: Warning Exception to use with <code>raise</code></li>
+                                        <li>To return an response, assign: <code> = {...}</code></li>
+                                        <li>Bila ingin custom approval line bisa memasukan data ke response['approval_line']</li>
+                                    </ul>
+                                    <div >
+                                        <p>Example of Python code</p>
+<code style="white-space: pre-wrap">
+
+</code>
+                                    </div>
+                                </div>
+                        </page>
+                        <page string="Approval">
+                            <group>
+                                <group string="Approval Matrix/Line">
+                                    <field name="approval_matrix_id" string="Approval Matrix"/>
+                                    <field name="approval_task_line_model_id" string="Approval Line" />
+                                </group>
+                                <group string="Approval Default">
+                                    <field name="type_approval_default"/>
+                                    <field name="groups_approval_default_ids" attrs="{'invisible':[('type_approval_default','!=','multi_group')]}"/>
+                                    <field name="users_approval_default_ids" attrs="{'invisible':[('type_approval_default','!=','multi_user')]}"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="State Config">
+                            <group>
+                                <group>
+                                    <field name="state_field"/>
+                                    <field name="state_waiting_approvals"/>
+                                    <field name="state_reject"/>
+                                    <field name="state_approved"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Event">
+                            <group>
+                                <group string="Request Approval">
+                                    <field name="invoke_validate_request_approval" string="Validate"/>
+                                </group>
+                                <group string="Approval">
+                                    <field name="invoke_approval_start" string="Start"/>
+                                    <field name="invoke_approval_done" string="Done"/>
+                                </group>
+                                <group string="Approve">
+                                    <field name="invoke_before_approve" string="Before"/>
+                                    <field name="invoke_after_approve" string="After"/>
+                                    <field name="notes_chatter_approved" string="Note Chatter"/>
+                                </group>
+                                <group string="Reject">
+                                    <field name="invoke_before_reject" string="Before"/>
+                                    <field name="invoke_after_reject" string="After"/>
+                                    <field name="notes_chatter_rejected" string="Note Chatter"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Template Notification">
+                            <group>
+                                <group>
+                                    <field name="notification_approval_id"/>
+                                </group>
+                                <group>
+                                    <field name="notification_rejection_id"/>
+                                    <field name="notification_approved_id"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="approval_template_migrate_action" model="ir.actions.server" >
+        <field name="name">Migrate Approval Template</field>
+        <field name="model_id" ref="model_approval_template" />
+        <field name="binding_model_id" ref="model_approval_template" />
+        <field name="state">code</field>
+        <field name="code">
+records.migrate_approval_task()
+        </field>
+    </record>
+
+    <!-- ACTION -->
+    <record id="action_approval_template" model="ir.actions.act_window">
+        <field name="name">Approval Template</field>
+        <field name="res_model">approval.template</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your Approval Template
+            </p>
+        </field>
+    </record>
+</odoo>
