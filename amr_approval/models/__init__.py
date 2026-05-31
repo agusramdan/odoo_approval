@@ -22,6 +22,7 @@ from . import approval_instance_able
 from . import approval_task_line
 from . import notification_log
 
+from . import res_partner
 from . import res_users
 from . import res_groups
 

@@ -64,7 +64,8 @@
                         <page string="Approval">
                             <group>
                                 <group string="Approval Matrix/Line">
-                                    <field name="approval_matrix_id" string="Approval Matrix"/>
+                                    <field name="approval_matrix_id" string="Matrix Id"/>
+                                    <field name="approval_matrix_model" string="Model"/>
                                     <field name="approval_task_line_model_id" string="Approval Line" />
                                 </group>
                                 <group string="Approval Default">

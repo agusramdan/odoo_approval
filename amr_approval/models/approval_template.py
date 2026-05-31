@@ -11,6 +11,8 @@ from pytz import timezone
 
 from ..tools.utils import safe_call_method
 
+from ..tools.utils import have_method, safe_call_method
+
 _logger = logging.getLogger(__name__)
 
 
@@ -55,10 +57,15 @@ class ApprovalTemplateMixin(models.AbstractModel):
         'Menu Transaction',
     )
     # approval.matrix.mixin
+    approval_mode = fields.Selection([
+        ('matrix', 'Approval Matrix'),
+        ('model', 'By Model'),
+    ], required=True, default='matrix')
     approval_matrix_id = fields.Many2one(
         "approval.matrix.rule.mixin", string="Approval Matrix"
     )
     approval_matrix_model = fields.Char()
+    approval_matrix_model_id = fields.Many2one('ir.model', string="Target Model")
     # # approval.task.line.mixin
     approval_task_line_model_id = fields.Many2one('ir.model')
     approval_task_line_model = fields.Char(
@@ -200,9 +207,27 @@ class ApprovalTemplateMixin(models.AbstractModel):
         return self.search([('model_id.model', '=', transaction_model_name)], limit=1)
 
     def get_approval_matrix_model(self, default='approval.matrix.rule'):
-        if self.approval_matrix_id:
-            return self.approval_matrix_id._name
-        return default
+        return self.approval_matrix_model or default
+
+    def get_approval_matrix(self, **kwargs):
+        if self.approval_mode == 'matrix':
+            return self.approval_matrix_id
+        approval_matrix_model = self.get_approval_matrix_model()
+        if approval_matrix_model and approval_matrix_model in self.env:
+            matrix_model = self.env[approval_matrix_model]
+            return safe_call_method(
+                    matrix_model, 'get_approval_matrix_rule', kwargs=kwargs
+                )
+
+    def get_approval_line_from_matrix(self, **kwargs):
+        self.ensure_one()
+        approval_matrix_rule = kwargs.get('approval_matrix_rule') or self.get_approval_matrix(**kwargs)
+        if have_method(approval_matrix_rule, 'prepare_list_approval_task_line'):
+            return safe_call_method(
+                approval_matrix_rule, 'prepare_list_approval_task_line', kwargs=kwargs
+            )
+        elif have_method(approval_matrix_rule, 'get_approval_task_line'):
+            return safe_call_method(approval_matrix_rule, 'get_approval_task_line', kwargs=kwargs)
 
 
 class ApprovalTemplate(models.Model):
@@ -231,7 +256,8 @@ class ApprovalTemplate(models.Model):
                         transaction_id=rec.transaction_id
                     )
                     if approval_instance.is_status_waiting_approval():
-                        approval_instance.register_approval_transaction_task(skip_send_notification=skip_send_notification)
+                        approval_instance.register_approval_transaction_task(
+                            skip_send_notification=skip_send_notification)
                         transaction_ids.append(rec.transaction_id)
                     else:
                         approval_instance.unregister_approval_transaction_task()

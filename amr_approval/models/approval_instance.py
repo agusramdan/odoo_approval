@@ -297,26 +297,7 @@ class ApprovalInstanceMixin(models.AbstractModel):
         ctx['default_approval_instance_id'] = self.id
         ctx['default_transaction_id'] = transaction_object.id
         ctx['default_transaction_model_name'] = transaction_object._name
-
-        # bila skip create maka saat panggil config instance sudah melakukan crate approval
-        approval_line = kwargs.get('approval_line')
-
-        if not approval_line:
-            approval_matrix_rule = kwargs.get('approval_matrix_rule') or approval_template.approval_matrix_id
-            if not approval_matrix_rule:
-                approval_matrix_model = approval_template.get_approval_matrix_model()
-                if approval_matrix_model and approval_matrix_model in self.env:
-                    matrix_model = self.env[approval_matrix_model]
-                    approval_matrix_rule = safe_call_method(
-                        matrix_model, 'get_approval_matrix_rule', kwargs=kwargs
-                    )
-            if approval_matrix_rule:
-                if have_method(approval_matrix_rule, 'prepare_list_approval_task_line'):
-                    approval_line = safe_call_method(
-                        approval_matrix_rule, 'prepare_list_approval_task_line', kwargs=kwargs
-                    )
-                elif have_method(approval_matrix_rule, 'get_approval_task_line'):
-                    approval_line = safe_call_method(approval_matrix_rule, 'get_approval_task_line', kwargs=kwargs)
+        approval_line = kwargs.get('approval_line') or approval_template.get_approval_line_from_matrix(**kwargs)
 
         if not approval_line:
             creator = kwargs.get('creator_approval_task_line')
