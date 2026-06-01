@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_notification_partner_tree" model="ir.ui.view">
+        <field name="name">notification.partner.tree</field>
+        <field name="model">notification.partner</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="partner_id"/>
+                <field name="email"/>
+                <field name="title"/>
+                <field name="source"/>
+                <field name="state"/>
+                <field name="retry_count"/>
+                <field name="processed_at"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_notification_partner_form" model="ir.ui.view">
+        <field name="name">notification.partner.form</field>
+        <field name="model">notification.partner</field>
+        <field name="arch" type="xml">
+            <form>
+
+                <header>
+
+                    <button name="action_process"
+                            string="Process"
+                            type="object"
+                            class="oe_highlight"
+                            states="pending,failed"
+                            groups="base.group_erp_manager"/>
+
+                    <field name="state"
+                           widget="statusbar"
+                           statusbar_visible="pending,processing,sent,failed"/>
+
+                </header>
+
+                <sheet>
+
+                    <group>
+
+                        <group>
+                            <field name="partner_id"/>
+                            <field name="email"/>
+                            <field name="source"/>
+                        </group>
+
+                        <group>
+                            <field name="processed_at" readonly="1"/>
+                            <field name="retry_count" readonly="1"/>
+                        </group>
+
+                    </group>
+
+                    <group>
+                        <field name="title"/>
+                        <field name="body"/>
+                    </group>
+
+                    <notebook>
+
+                        <page string="Payload">
+                            <field name="data_json"
+                                   widget="text"/>
+                        </page>
+
+                        <page string="Raw Payload">
+                            <field name="raw_payload"
+                                   widget="text"/>
+                        </page>
+
+                        <page string="Error">
+                            <field name="error_message"
+                                   readonly="1"
+                                   widget="text"/>
+                        </page>
+
+                        <page string="Delivery">
+                            <field name="delivery_ids" readonly="1">
+                                <tree>
+                                    <field name="device_id" />
+                                    <field name="state" />
+                                    <field name="firebase_message_id" />
+                                    <field name="error_message" />
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+
+            </form>
+        </field>
+    </record>
+
+    <record id="view_notification_partner_search" model="ir.ui.view">
+        <field name="name">notification.partner.search</field>
+        <field name="model">notification.partner</field>
+        <field name="arch" type="xml">
+            <search>
+
+                <field name="partner_id"/>
+                <field name="email"/>
+                <field name="title"/>
+                <field name="source"/>
+
+                <separator/>
+
+                <filter name="pending"
+                        string="Pending"
+                        domain="[('state','=','pending')]"/>
+
+                <filter name="processing"
+                        string="Processing"
+                        domain="[('state','=','processing')]"/>
+
+                <filter name="sent"
+                        string="Sent"
+                        domain="[('state','=','sent')]"/>
+
+                <filter name="failed"
+                        string="Failed"
+                        domain="[('state','=','failed')]"/>
+
+            </search>
+        </field>
+    </record>
+
+    <record id="action_notification_partner" model="ir.actions.act_window">
+        <field name="name">Notifications</field>
+        <field name="res_model">notification.partner</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="menu_notification_partner"
+              name="Partner Notifications"
+              parent="amr_mobile.menu_mobile_root"
+              action="action_notification_partner"
+    />
+
+</odoo>

@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_notification_partner_user,notification.partner.user,model_notification_partner,base.group_user,1,0,0,0
+access_notification_partner_manager,notification.partner.manager,model_notification_partner,base.group_erp_manager,1,1,1,1
+access_notification_delivery_user,notification.delivery.user,model_notification_delivery,base.group_user,1,0,0,0
+access_notification_delivery_manager,notification.delivery.manager,model_notification_delivery,base.group_erp_manager,1,1,1,1
