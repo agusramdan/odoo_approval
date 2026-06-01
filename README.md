@@ -1,8 +1,8 @@
-# Approval & DOA Addons
+# Approval , Notification  Addons
 
 ## Overview
 
-This repository contains custom Odoo addons for Approval Management and Delegation of Authority (DOA).
+This repository contains custom Odoo addons for Approval Management Notification and Delegation of Authority (DOA).
 
 Modules included:
 
@@ -12,3 +12,4 @@ Modules included:
 4. `approval_task`
 5. `approval_doa`
 6. `approval_matrix`
+7. `notification`
