@@ -2,14 +2,13 @@
 # models/message_mixin.py
 import json
 
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class NotificationMessageMixin(models.AbstractModel):
     _name = "notification.mixin"
     _description = "Notification Message Mixin"
 
-    source = fields.Char(required=True, index=True,)
     title = fields.Char(required=True,)
     body = fields.Text()
     data_json = fields.Text()
@@ -66,3 +65,19 @@ class NotificationMessageMixin(models.AbstractModel):
 
     def dispatch_notification(self):
         self.process_notification()
+
+    @api.model
+    def prepare_notification(self, payload):
+        raw_payload = json.dumps(payload)
+        payload = dict(payload)
+        notification = payload.pop("notification", {})
+        data = payload.pop("data", {})
+        title = payload.pop("title", "") or notification.get("title", "")
+        body = payload.pop("body", "") or notification.get("body", "")
+        payload.update(data)
+        return {
+            "title": title,
+            "body": body,
+            'data_json': json.dumps(payload),
+            'raw_payload': raw_payload,
+        }

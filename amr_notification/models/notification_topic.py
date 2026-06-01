@@ -1,9 +1,32 @@
 # -*- coding: utf-8 -*-
 # models/topic.py
-from odoo import fields, models
+from odoo import api, fields, models
 from ..exceptions.api_exception import ValidationException
 
+class NotificationMessageMixin(models.AbstractModel):
+    _name = "notification.mixin"
+    _description = "Notification Message Mixin"
 
+    title = fields.Char(required=True,)
+    body = fields.Text()
+    data_json = fields.Text()
+    raw_payload = fields.Text(required=True,)
+    state = fields.Selection(
+        [
+            ("pending", "Pending"),
+            ("processing", "Processing"),
+            ("sent", "Sent"),
+            ("failed", "Failed"),
+        ],
+        default="pending",
+        required=True,
+        index=True,
+    )
+    processed_at = fields.Datetime()
+    error_message = fields.Text()
+    retry_count = fields.Integer(
+        default=0,
+    )
 class NotificationTopic(models.Model):
     _name = "notification.topic"
     _description = "Topic Notification"
@@ -39,3 +62,17 @@ class NotificationTopic(models.Model):
             body=self.body,
             data=self._get_data_payload(),
         )
+
+    @api.model
+    def prepare_topic(self, payload):
+        payload = dict(payload)
+        notification = payload.pop("notification", {})
+        data = payload.pop("data", {})
+        title = payload.pop("title", "") or notification.get("title", "")
+        body = payload.pop("body", "") or notification.get("body", "")
+        payload.update(data)
+        return {
+            "title": title,
+            "body": body,
+            'data_json': json.dumps(payload),
+        }

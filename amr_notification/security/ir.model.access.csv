@@ -3,3 +3,5 @@ access_notification_partner_user,notification.partner.user,model_notification_pa
 access_notification_partner_manager,notification.partner.manager,model_notification_partner,base.group_erp_manager,1,1,1,1
 access_notification_delivery_user,notification.delivery.user,model_notification_delivery,base.group_user,1,0,0,0
 access_notification_delivery_manager,notification.delivery.manager,model_notification_delivery,base.group_erp_manager,1,1,1,1
+notification_topic_user,notification.topic.user,model_notification_topic,base.group_user,1,0,0,0
+notification_topic_manager,notification.topic.manager,model_notification_topic,base.group_erp_manager,1,1,1,1

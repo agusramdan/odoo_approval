@@ -9,7 +9,7 @@ from ..exceptions.api_exception import (
 
 
 class NotificationService(models.AbstractModel):
-    _name = "amr.notification.service"
+    _name = "notification.service"
 
     @classmethod
     def _required(cls, data, field_name, ):
@@ -49,12 +49,27 @@ class NotificationService(models.AbstractModel):
         return partner
 
     @api.model
+    def create_notification(self, partner, payload, ):
+        notification = self.env["notification.partner"]
+        prepare_dict = notification.prepare_notification(payload)
+        prepare_dict["partner_id"] = partner.id
+        notification = notification.create(prepare_dict)
+        return notification
+
+    @api.model
+    def create_topic(self, topic, payload, ):
+        notification = self.env["notification.topic"]
+        prepare_dict = notification.prepare_notification(payload)
+        prepare_dict["topic"] = topic
+        return notification.create(prepare_dict)
+
+    @api.model
     def send_notification(self, payload, ):
         self.env['ir.http'].check_scope("notification.send")
         partner = self._find_partner_by_email(
             self._get_email(payload)
         )
-        message = self._create_partner_notification(partner, payload, )
+        message = self.create_notification(partner, payload, )
         message.dispatch_notification()
 
         return {
@@ -66,7 +81,7 @@ class NotificationService(models.AbstractModel):
     def send_topic_notification(self, payload, ):
         self.env['ir.http'].check_scope("notification.topic.send", )
         topic = self._get_topic(payload, )
-        notification = self._create_topic_notification(topic, payload, )
+        notification = self.create_topic(topic, payload, )
         notification.dispatch_notification()
         return {
             "notification_id": notification.id,

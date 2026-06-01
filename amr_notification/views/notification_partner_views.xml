@@ -7,9 +7,7 @@
         <field name="arch" type="xml">
             <tree>
                 <field name="partner_id"/>
-                <field name="email"/>
                 <field name="title"/>
-                <field name="source"/>
                 <field name="state"/>
                 <field name="retry_count"/>
                 <field name="processed_at"/>
@@ -44,8 +42,6 @@
 
                         <group>
                             <field name="partner_id"/>
-                            <field name="email"/>
-                            <field name="source"/>
                         </group>
 
                         <group>
@@ -102,7 +98,6 @@
             <search>
 
                 <field name="partner_id"/>
-                <field name="email"/>
                 <field name="title"/>
                 <field name="source"/>
 

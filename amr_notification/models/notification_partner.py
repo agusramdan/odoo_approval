@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 # models/partner.py
 
+import json
+
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
@@ -22,11 +24,6 @@ class NotificationPartner(models.Model):
         required=True,
         index=True,
         ondelete="restrict",
-    )
-
-    email = fields.Char(
-        required=True,
-        index=True,
     )
 
     delivery_ids = fields.One2many(
