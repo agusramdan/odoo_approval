@@ -1,0 +1,30 @@
+<odoo>
+    <data>
+
+        <record id="notification_log_tree" model="ir.ui.view">
+            <field name="name">notification.log.tree</field>
+            <field name="model">notification.log</field>
+            <field name="inherit_id" ref="amr_approval.notification_log_tree" />
+            <field name="priority" eval="99" />
+            <field name="arch" type="xml">
+
+                    <field name="chat_id" positions="after">
+                        <field name="mail_id" optional="hide"/>
+                    </field>
+
+            </field>
+        </record>
+
+        <record id="notification_log_from" model="ir.ui.view">
+            <field name="name">notification.log.form</field>
+            <field name="model">notification.log</field>
+            <field name="inherit_id" ref="amr_approval.notification_log_from" />
+            <field name="arch" type="xml">
+                <field name="chat_id" positions="after">
+                    <field name="mail_id" optional="hide"/>
+                </field>
+            </field>
+        </record>
+
+    </data>
+</odoo>
