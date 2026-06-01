@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Tree View -->
+    <record id="view_mobile_device_tree" model="ir.ui.view">
+        <field name="name">mobile.device.tree</field>
+        <field name="model">mobile.device</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="partner_id"/>
+                <field name="user_id"/>
+                <field name="device_name"/>
+                <field name="device_id"/>
+                <field name="platform"/>
+                <field name="status"/>
+                <field name="last_seen"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_mobile_device_form" model="ir.ui.view">
+        <field name="name">mobile.device.form</field>
+        <field name="model">mobile.device</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <field name="active" invisible="1"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="device_name"
+                                   placeholder="Device Name"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group>
+                            <field name="partner_id"/>
+                            <field name="user_id"/>
+                            <field name="registered_at" readonly="1"/>
+                            <field name="last_seen"/>
+                        </group>
+                        <group>
+                            <field name="status"/>
+                            <field name="device_id"/>
+                            <field name="platform"/>
+                            <field name="fcm_token" widget="text"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_mobile_device_search" model="ir.ui.view">
+        <field name="name">mobile.device.search</field>
+        <field name="model">mobile.device</field>
+        <field name="arch" type="xml">
+            <search>
+
+                <field name="partner_id"/>
+                <field name="device_name"/>
+                <field name="device_id"/>
+
+                <filter name="filter_active"
+                        string="Active"
+                        domain="[('status','=','active')]"/>
+
+                <filter name="filter_logout"
+                        string="Logout"
+                        domain="[('status','=','logout')]"/>
+
+                <filter name="filter_revoked"
+                        string="Revoked"
+                        domain="[('status','=','revoked')]"/>
+                <filter name="active"
+                        string="Active Record"
+                        domain="[('active','=',True)]"/>
+
+                <filter name="inactive"
+                        string="Archived"
+                        domain="[('active','=',False)]"/>
+
+                <group expand="0" string="Group By">
+                    <filter string="Partner" name="group_partner" domain="[]" context="{'group_by':'partner_id'}"/>
+                    <filter string="Platform" name="group_platform" context="{'group_by':'platform'}"/>
+                    <filter string="Status" name="group_status" context="{'group_by':'status'}"/>
+                </group>
+
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mobile_device" model="ir.actions.act_window">
+        <field name="name">Mobile Devices</field>
+        <field name="res_model">mobile.device</field>
+        <field name="view_mode">tree,form</field>
+<!--        <field name="search_view_id" ref="view_mobile_device_search"/>-->
+    </record>
+
+    <!-- Menu -->
+    <menuitem id="menu_mobile_root" name="Mobile" parent="base.menu_users" groups="base.group_no_one" />
+
+    <menuitem id="menu_mobile_device" name="Devices" sequence="10" parent="menu_mobile_root"
+              action="action_mobile_device"
+    />
+
+</odoo>
