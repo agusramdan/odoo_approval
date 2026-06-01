@@ -145,7 +145,23 @@ class FirebaseService(models.AbstractModel):
     def send_to_tokens(self, tokens, title, body, data=None):
         if not tokens:
             return []
-        multicast = self._prepare_tokens_multicast(tokens, title, body, data=data)
+        android = messaging.AndroidConfig(
+            priority='high',
+            ttl=3600,
+            collapse_key="update",
+        )
+        apns = messaging.APNSConfig(
+            headers={
+                "apns-priority": "10",
+            },
+            payload=messaging.APNSPayload(
+                aps=messaging.Aps(
+                    sound="default",
+                    content_available=True,
+                ),
+            ),
+        )
+        multicast = self._prepare_tokens_multicast(tokens, title, body, data=data, android=android, apns=apns, )
         response = messaging.send_each_for_multicast(multicast, app=self._get_firebase_app(), )
         return self._parse_multicast_response(tokens, response, )
 
