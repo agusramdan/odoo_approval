@@ -145,6 +145,9 @@ class ResourceAccessToken(models.AbstractModel):
         email = validation.get('email')
         if email:
             return self.sudo().env['res.users'].search([('email', '=', email)], limit=1)
+        sub = validation.get('sub')
+        if sub:
+            return self.sudo().env['res.users'].search([('login', '=', sub)], limit=1)
         return None
 
     @api.model
