@@ -35,11 +35,11 @@ class NotificationPartner(models.Model):
 
     delivery_ids = fields.One2many(
         "notification.delivery",
-        'notification_partner_id',
+        'notification_id',
     )
 
     @api.model
-    def prepare_notification(self, payload ):
+    def prepare_notification(self, payload):
         data_prepare = super(NotificationPartner, self).prepare_notification(payload)
         data = payload.get('data') or {}
         notification_to_user = payload.get('email') or data.get('notification_to_user')
@@ -98,26 +98,26 @@ class NotificationPartner(models.Model):
     def send_to_tokens(self, tokens):
         return [{} for t in tokens]
 
-    def _process_firebase_response(self, devices, response,):
+    def _process_firebase_response(self, devices, response, ):
 
         success_count = 0
         failed_count = 0
 
-        for device, result in zip(devices, response,):
-            self._create_delivery(device, result,)
+        for device, result in zip(devices, response, ):
+            self._create_delivery(device, result, )
             if result["success"]:
                 success_count += 1
             else:
                 failed_count += 1
-                self._handle_invalid_token(device,result,)
+                self.handle_invalid_token(device, result, )
         return {
             "success_count": success_count,
             "failed_count": failed_count,
         }
 
-    def _create_delivery(self, device, result,):
+    def _create_delivery(self, device, result, ):
         self.env["notification.delivery"].create({
-            "notification_partner_id": self.id,
+            "notification_id": self.id,
             "device_id": device.id,
             "state": "sent" if result["success"] else "failed",
             "firebase_message_id": result.get("message_id"),
@@ -125,7 +125,7 @@ class NotificationPartner(models.Model):
         })
 
     @api.model
-    def _handle_invalid_token(self, device, result,):
+    def handle_invalid_token(self, device, result, ):
         error = result.get("error")
         if error in INVALID_ERRORS:
             device.write({
@@ -146,7 +146,7 @@ class NotificationPartner(models.Model):
         except Exception as ex:
             self._mark_failed(ex)
             raise
-    
+
     def action_process(self):
         try:
             self.process_notification()

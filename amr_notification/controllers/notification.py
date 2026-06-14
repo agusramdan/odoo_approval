@@ -8,7 +8,7 @@ from .mixin import ApiControllerMixin
 
 class NotificationController(http.Controller, ApiControllerMixin):
 
-    @route("/api/v1/notification/send", type="http", auth="jwt_notification", methods=["POST"], csrf=False, )
+    @route("/api/v1/notification/send", type="http", auth="machine", methods=["POST"], csrf=False, )
     def send_notification(self, **kwargs):
         try:
             payload = self.get_json_payload()
@@ -18,7 +18,7 @@ class NotificationController(http.Controller, ApiControllerMixin):
             return self.handle_exception(ex)
 
     @route(
-        "/api/v1/notification/topic/send", type="http", auth="jwt_notification", methods=["POST"], csrf=False,
+        "/api/v1/notification/topic/send", type="http", auth="machine", methods=["POST"], csrf=False,
     )
     def send_topic_notification(self, **kwargs):
         try:

@@ -7,7 +7,7 @@ from ..exceptions.api_exception import ValidationException
 class NotificationDelivery(models.Model):
     _name = "notification.delivery"
 
-    notification_partner_id = fields.Many2one(
+    notification_id = fields.Many2one(
         "notification.partner",
         required=True,
         ondelete="cascade",
