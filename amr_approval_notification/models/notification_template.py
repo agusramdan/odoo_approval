@@ -14,8 +14,8 @@ class NotificationTemplate(models.Model):
     def send_notification_firebase(self, notification_to_user, payload, notif_log, **kwargs):
         if "notification.service" in self.env:
             notification = self.env["notification.service"].sudo().create_notification(
-                notification_to_user.partner_id, payload,
+                payload, user=notification_to_user
             )
             notification.dispatch_notification()
-            notif_log['firebase_id'] = notification.id
-            notif_log['firebase_model'] = notification._name
+            notif_log['notification_id'] = notification.id
+            notif_log['notification_model'] = notification._name

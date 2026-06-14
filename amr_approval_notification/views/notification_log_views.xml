@@ -7,11 +7,9 @@
             <field name="inherit_id" ref="amr_approval.notification_log_tree" />
             <field name="priority" eval="99" />
             <field name="arch" type="xml">
-
                     <field name="chat_id" positions="after">
-                        <field name="mail_id" optional="hide"/>
+                        <field name="notification_id" optional="hide"/>
                     </field>
-
             </field>
         </record>
 
@@ -21,7 +19,7 @@
             <field name="inherit_id" ref="amr_approval.notification_log_from" />
             <field name="arch" type="xml">
                 <field name="chat_id" positions="after">
-                    <field name="mail_id" optional="hide"/>
+                    <field name="notification_id"/>
                 </field>
             </field>
         </record>

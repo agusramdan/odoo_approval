@@ -9,5 +9,5 @@ _logger = logging.getLogger(__name__)
 class NotificationLog(models.Model):
     _inherit = "notification.log"
 
-    firebase_id = fields.Integer()
-    firebase_model = fields.Char()
+    notification_id = fields.Integer()
+    notification_model = fields.Char()
