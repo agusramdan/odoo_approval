@@ -6,6 +6,7 @@ import firebase_admin
 
 from odoo import api, models
 from firebase_admin import messaging, credentials
+from ..exceptions.firebase_exception import FirebaseConfigurationException, FirebaseDeliveryException
 
 INVALID_TOKEN_ERRORS = (
     "UNREGISTERED",
@@ -17,51 +18,26 @@ class FirebaseService(models.AbstractModel):
     _name = "amr.firebase.service"
 
     @api.model
-    def _load_credentials_from_file(self):
-
-        file_path = os.getenv("AMR_NOTIFICATION_FIREBASE_CREDENTIALS_FILE")
-
-        if not file_path:
-            return None
-
-        with open(file_path, "r") as fp:
-            return json.load(fp)
-
-    @api.model
-    def _load_credentials_from_env(self):
-
-        value = os.getenv("AMR_NOTIFICATION_FIREBASE_CREDENTIALS_JSON")
-
-        if not value:
-            return None
-
-        return json.loads(value)
-
-    @api.model
     def _load_credentials_from_config(self):
-
-        value = self.env["ir.config_parameter"].sudo().get_param(
-            "amr_notification.firebase_credentials_json"
-        )
-
-        if not value:
+        credentials_id = self.env["ir.config_parameter"].sudo().get_param("amr_notification_firebase.credentials_id")
+        if not credentials_id:
             return None
-
-        return json.loads(value)
+        credential = self.env["service.credential"].browse(int(credentials_id))
+        if not credential:
+            return None
+        loader = self.env["service.credential.loader"]
+        return loader.load_credential(credential)
 
     @api.model
     def _load_credentials(self):
-
         return (
-                self._load_credentials_from_file()
-                or self._load_credentials_from_env()
-                or self._load_credentials_from_config()
+                self._load_credentials_from_config()
                 or self._raise_missing_credentials()
         )
 
     @api.model
     def _raise_missing_credentials(self):
-        raise ValueError(
+        raise FirebaseConfigurationException(
             "Firebase credential not configured."
         )
 
@@ -77,7 +53,7 @@ class FirebaseService(models.AbstractModel):
         for field in required:
 
             if not credential_dict.get(field):
-                raise ValueError("%s missing" % field)
+                raise FirebaseConfigurationException("%s missing" % field)
 
     @api.model
     def _get_firebase_app(self):
@@ -111,41 +87,78 @@ class FirebaseService(models.AbstractModel):
         return result
 
     @api.model
-    def _prepare_topic_message(self, topic, title, body, data=None, **kwargs):
+    def _prepare_topic_message(self, topic, title, body, image=None, data=None, **kwargs):
+        android = messaging.AndroidConfig(
+            priority='high',
+            ttl=3600,
+            collapse_key="update",
+        )
+        apns = messaging.APNSConfig(
+            headers={
+                "apns-priority": "10",
+            },
+            payload=messaging.APNSPayload(
+                aps=messaging.Aps(
+                    sound="default",
+                    content_available=True,
+                ),
+            ),
+        )
+
         message = messaging.Message(
             topic=topic,
             notification=messaging.Notification(
-                title=title,
-                body=body,
+                title=title or None,
+                body=body or None,
+                image=image or None,
             ),
             data=self._normalize_data(data, **kwargs),
-            **kwargs
+            android=android, apns=apns
         )
         return message
 
     @api.model
-    def send_to_topic(self, topic, title, body, data=None):
-        message = self._prepare_topic_message(topic, title, body, data=data)
+    def send_to_topic(self, topic, title, body, image=None, data=None):
+        message = self._prepare_topic_message(topic, title, body, image=image, data=data)
         return messaging.send(message, app=self._get_firebase_app(), )
 
     @api.model
-    def _prepare_tokens_multicast(self, tokens, title, body, data=None, **kwargs):
+    def _prepare_tokens_multicast(self, tokens, title, body, image=None, data=None, android=None, apns=None, **kwargs):
         multicast = messaging.MulticastMessage(
             notification=messaging.Notification(
-                title=title,
-                body=body,
+                title=title or None,
+                body=body or None,
+                image=image or None,
             ),
             data=self._normalize_data(data, **kwargs),
             tokens=tokens,
-            **kwargs
+            android=android, apns=apns
         )
         return multicast
 
     @api.model
-    def send_to_tokens(self, tokens, title, body, data=None):
+    def send_to_tokens(self, tokens, title, body, image=None, data=None):
         if not tokens:
             return []
-        multicast = self._prepare_tokens_multicast(tokens, title, body, data=data)
+        android = messaging.AndroidConfig(
+            priority='high',
+            ttl=3600,
+            collapse_key="update",
+        )
+        apns = messaging.APNSConfig(
+            headers={
+                "apns-priority": "10",
+            },
+            payload=messaging.APNSPayload(
+                aps=messaging.Aps(
+                    sound="default",
+                    content_available=True,
+                ),
+            ),
+        )
+        multicast = self._prepare_tokens_multicast(
+            tokens, title, body, image=image, data=data, android=android, apns=apns,
+        )
         response = messaging.send_each_for_multicast(multicast, app=self._get_firebase_app(), )
         return self._parse_multicast_response(tokens, response, )
 
