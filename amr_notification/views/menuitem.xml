@@ -1,0 +1,12 @@
+<odoo>
+    <!-- technical -->
+    <menuitem id="base_notification_menu" name="Notification Service" sequence="10"
+              parent="base.menu_custom"
+    />
+    <menuitem id="menu_notification_partner" name="Notifications" parent="base_notification_menu"
+              action="action_notification_partner"
+    />
+    <menuitem id="menu_notification_topic" name="Topic" parent="base_notification_menu"
+              action="action_notification_topic"
+    />
+</odoo>

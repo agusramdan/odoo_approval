@@ -39,51 +39,43 @@ class NotificationService(models.AbstractModel):
 
         partner = self.env["res.partner"].sudo().search([("email", "=", email), ], limit=1, )
         if not partner:
-            raise PartnerNotFoundException(
-                (
-                    "Partner with email '%s' "
-                    "not found."
-                ) % email
-            )
+            raise PartnerNotFoundException("Partner with email '%s' not found." % email)
 
         return partner
 
     @api.model
-    def create_notification(self, partner, payload, ):
+    def create_notification(self, payload, ):
         notification = self.env["notification.partner"]
         prepare_dict = notification.prepare_notification(payload)
-        prepare_dict["partner_id"] = partner.id
         notification = notification.create(prepare_dict)
         return notification
 
     @api.model
-    def create_topic(self, topic, payload, ):
+    def create_topic(self, payload, ):
         notification = self.env["notification.topic"]
         prepare_dict = notification.prepare_notification(payload)
-        prepare_dict["topic"] = topic
         return notification.create(prepare_dict)
 
     @api.model
     def send_notification(self, payload, ):
-        self.env['ir.http'].check_scope("notification.send")
-        partner = self._find_partner_by_email(
-            self._get_email(payload)
-        )
-        message = self.create_notification(partner, payload, )
-        message.dispatch_notification()
-
+        # self.env['ir.http'].check_scope("notification.send")
+        # partner = self._find_partner_by_email(
+        #     self._get_email(payload)
+        # )
+        notification = self.create_notification(payload, )
+        notification.dispatch_notification()
         return {
-            "message_id": message.id,
+            "notification_id": notification.id,
             "status": "accepted",
         }
 
     @api.model
     def send_topic_notification(self, payload, ):
-        self.env['ir.http'].check_scope("notification.topic.send", )
-        topic = self._get_topic(payload, )
-        notification = self.create_topic(topic, payload, )
-        notification.dispatch_notification()
+        # self.env['ir.http'].check_scope("notification.topic.send", )
+        # topic = self._get_topic(payload, )
+        message = self.create_topic(payload, )
+        message.dispatch_notification()
         return {
-            "notification_id": notification.id,
+            "topic_id": message.id,
             "status": "accepted",
         }

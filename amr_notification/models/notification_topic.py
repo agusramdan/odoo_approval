@@ -1,32 +1,11 @@
 # -*- coding: utf-8 -*-
 # models/topic.py
+import json
+
 from odoo import api, fields, models
 from ..exceptions.api_exception import ValidationException
 
-class NotificationMessageMixin(models.AbstractModel):
-    _name = "notification.mixin"
-    _description = "Notification Message Mixin"
 
-    title = fields.Char(required=True,)
-    body = fields.Text()
-    data_json = fields.Text()
-    raw_payload = fields.Text(required=True,)
-    state = fields.Selection(
-        [
-            ("pending", "Pending"),
-            ("processing", "Processing"),
-            ("sent", "Sent"),
-            ("failed", "Failed"),
-        ],
-        default="pending",
-        required=True,
-        index=True,
-    )
-    processed_at = fields.Datetime()
-    error_message = fields.Text()
-    retry_count = fields.Integer(
-        default=0,
-    )
 class NotificationTopic(models.Model):
     _name = "notification.topic"
     _description = "Topic Notification"
@@ -34,10 +13,8 @@ class NotificationTopic(models.Model):
         "notification.mixin",
     ]
 
-    topic = fields.Char(
-        required=True,
-        index=True,
-    )
+    topic = fields.Char()
+    condition = fields.Char()
 
     def _validate_topic(self):
         if not self.topic:
@@ -49,19 +26,14 @@ class NotificationTopic(models.Model):
         self.ensure_one()
         try:
             self._mark_processing()
-            self._send_to_firebase_topic()
+            self.send_to_topic()
             self._mark_sent()
         except Exception as ex:
             self._mark_failed(ex)
             raise
 
-    def _send_to_firebase_topic(self):
-        self.env["amr.firebase.service"].send_to_topic(
-            topic=self.topic,
-            title=self.title,
-            body=self.body,
-            data=self._get_data_payload(),
-        )
+    def send_to_topic(self):
+        pass
 
     @api.model
     def prepare_topic(self, payload):

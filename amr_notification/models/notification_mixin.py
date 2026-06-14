@@ -11,6 +11,7 @@ class NotificationMessageMixin(models.AbstractModel):
 
     title = fields.Char(required=True,)
     body = fields.Text()
+    image = fields.Char()
     data_json = fields.Text()
     raw_payload = fields.Text(required=True,)
     state = fields.Selection(
@@ -74,10 +75,12 @@ class NotificationMessageMixin(models.AbstractModel):
         data = payload.pop("data", {})
         title = payload.pop("title", "") or notification.get("title", "")
         body = payload.pop("body", "") or notification.get("body", "")
+        image = payload.pop("image", "") or notification.get("image", "")
         payload.update(data)
         return {
             "title": title,
             "body": body,
+            "image": image,
             'data_json': json.dumps(payload),
             'raw_payload': raw_payload,
         }
