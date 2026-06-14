@@ -44,9 +44,9 @@ class NotificationService(models.AbstractModel):
         return partner
 
     @api.model
-    def create_notification(self, payload, ):
+    def create_notification(self, payload, user=None):
         notification = self.env["notification.partner"]
-        prepare_dict = notification.prepare_notification(payload)
+        prepare_dict = notification.prepare_notification(payload, user=user)
         notification = notification.create(prepare_dict)
         return notification
 

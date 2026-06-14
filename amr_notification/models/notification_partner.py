@@ -39,15 +39,15 @@ class NotificationPartner(models.Model):
     )
 
     @api.model
-    def prepare_notification(self, payload):
+    def prepare_notification(self, payload, user=None, **kwargs ):
         data_prepare = super(NotificationPartner, self).prepare_notification(payload)
         data = payload.get('data') or {}
         notification_to_user = payload.get('email') or data.get('notification_to_user')
         mobile_phone = payload.get('phone')
-        to_user = None
+        to_user = user
         to_partner = None
         phones = None
-        if notification_to_user:
+        if not to_user and notification_to_user:
             to_user = self.env['res.users'].search(
                 ['|', ('partner_id.email', '=', notification_to_user), ('login', '=', notification_to_user)], limit=1)
 

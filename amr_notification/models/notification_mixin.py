@@ -68,7 +68,7 @@ class NotificationMessageMixin(models.AbstractModel):
         self.process_notification()
 
     @api.model
-    def prepare_notification(self, payload):
+    def prepare_notification(self, payload, **kwargs):
         raw_payload = json.dumps(payload)
         payload = dict(payload)
         notification = payload.pop("notification", {})
