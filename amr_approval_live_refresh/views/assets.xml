@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <template id="assets_backend" name="Approval Live Refresh Assets" inherit_id="web.assets_backend">
+
+        <!-- JS utama bus listener -->
+        <xpath expr="." position="inside">
+            <script type="text/javascript" src="/amr_approval_live_refresh/static/src/js/approval_live_refresh.js"/>
+        </xpath>
+
+    </template>
+
+</odoo>
