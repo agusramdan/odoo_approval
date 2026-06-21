@@ -16,6 +16,9 @@ class ApprovalTask(models.Model):
         kwargs['users'] = users
         payload = {
             "event": "approval.task.changed",
+            "task_name": self.name,
+            "sender_name": self.responsible_user_id.name,
+            "message": self.document,
             "task_id": self.id,
         }
         bus = self.env["bus.bus"]

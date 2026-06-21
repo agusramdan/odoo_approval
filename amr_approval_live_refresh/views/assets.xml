@@ -2,12 +2,13 @@
 <odoo>
 
     <template id="assets_backend" name="Approval Live Refresh Assets" inherit_id="web.assets_backend">
-
-        <!-- JS utama bus listener -->
+        <!-- JS dan CSS utama bus listener -->
         <xpath expr="." position="inside">
+            <!-- Script JS yang sudah dibuat -->
             <script type="text/javascript" src="/amr_approval_live_refresh/static/src/js/approval_live_refresh.js"/>
+            <!-- Tambahkan file CSS efek kedipan di bawah ini -->
+            <link rel="stylesheet" type="text/css" href="/amr_approval_live_refresh/static/src/css/live_refresh.css"/>
         </xpath>
-
     </template>
 
 </odoo>

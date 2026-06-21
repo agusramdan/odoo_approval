@@ -1,0 +1,15 @@
+/* Definisikan efek animasi kedipan lembut */
+@keyframes flashGreen {
+    0% {
+        background-color: rgba(40, 167, 69, 0.3) !important; /* Hijau transparan */
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+
+/* Class yang akan ditempelkan via JavaScript */
+.o_list_view .o_data_row.row-animated-flash {
+    animation: flashGreen 2.0s ease-out-in;
+    transition: background-color 0.5s ease;
+}

@@ -40,10 +40,26 @@ WebClient.include({
     _handleEvent: function (payload) {
         console.log("Live refresh memproses payload:", payload);
 
-        // Tampilkan notifikasi toast ke user
+        // Ambil data dinamis dari payload agar pesan lebih informatif (jika ada)
+        var taskName = payload && payload.task_name ? payload.task_name : "New Task";
+        var sender = payload && payload.sender_name ? " dari " + payload.sender_name : "";
+        var message = payload && payload.message ? payload.message : "Change status approval.";
+
+        // Gabungkan pesan menggunakan HTML + FontAwesome Icon agar menarik
+        var notificationHTML =
+            '<div class="d-flex align-items-start">' +
+                '<i class="fa fa-bell fa-lg text-primary mr-3 mt-1"></i>' +
+                '<div>' +
+                    '<strong style="color: #00A09D;">' + taskName + '</strong>' + sender + '<br/>' +
+                    '<small class="text-muted">' + message + '</small>' +
+                '</div>' +
+            '</div>';
+
+        // Tampilkan notifikasi toast dengan hiasan HTML
         this.do_notify(
-            "Approval Update",
-            "Ada pembaruan pada data persetujuan (Approval Task)."
+            "Update Approval", // Judul Notifikasi
+            notificationHTML,  // Konten Notifikasi (HTML)
+            false              // Parameter ketiga false agar tidak dianggap teks mentah (sticky/opsi bisa ditambahkan)
         );
 
         // Cek apakah user saat ini sedang melihat list/form 'approval.task'
@@ -80,39 +96,103 @@ WebClient.include({
         return action.res_model === "approval.task" && (currentViewType === "list" || currentViewType === "tree");
     },
 
+    _isUserTyping: function () {
+        // Cari elemen input search box Odoo 13 di dalam DOM
+        var $searchInout = $('.o_searchview_input');
+
+        // Jika elemen ditemukan dan sedang dalam posisi fokus (user sedang mengetik)
+        if ($searchInout.length && $searchInout.is(':focus')) {
+            console.log("Reload ditunda: User sedang aktif mengetik di Search Box.");
+            return true;
+        }
+        return false;
+    },
+
+    _isModalOpen: function () {
+        // Memeriksa apakah ada elemen dengan class .modal yang sedang tampil (visible)
+        var $modal = $('.modal:visible');
+
+        if ($modal.length > 0) {
+            console.log("Reload ditunda: Jendela pop-up (Wizard Form) sedang terbuka.");
+            return true;
+        }
+        return false;
+    },
 
     _scheduleReload: function () {
         var self = this;
+
+        // Bersihkan timer lama jika ada
         clearTimeout(this.reloadTimer);
-        console.log("User tidak melihat approval.task");
+
+        // KONDISI PENUNDAAN:
+        // 1. User sedang mengetik di Search Box ATAU
+        // 2. Ada jendela pop-up/wizard yang sedang terbuka
+        if (this._isUserTyping() || this._isModalOpen()) {
+            console.log("Menjadwalkan ulang reload dalam 3 detik karena user sedang sibuk...");
+
+            this.reloadTimer = setTimeout(function () {
+                self._scheduleReload(); // Cek kembali secara berkala (rekursif)
+            }, 3000); // Cek ulang setiap 3 detik
+            return;
+        }
+
+        // Jika kondisi aman (tidak mengetik & tidak ada pop-up), jalankan reload
         this.reloadTimer = setTimeout(function () {
             self._reloadView();
         }, 500);
     },
 
     _reloadView: function () {
+        // Batalkan reload jika user sedang mengetik
+        if (this._isUserTyping() || this._isModalOpen()) {
+            console.log("User typing abort");
+            return;
+        }
         var actionManager = this.action_manager;
-        if (actionManager){
-            if (typeof actionManager.reload === 'function') {
-                console.log("Melakukan refresh view approval.task...");
-                actionManager.reload();
-                return
-            }
+        if (actionManager && typeof actionManager.getCurrentController === 'function') {
+            var controller = actionManager.getCurrentController();
 
-            if (typeof actionManager.getCurrentController === 'function') {
-                var controller = actionManager.getCurrentController();
-                // Cek apakah controller aktif memiliki widget view dan fungsi reload
-                if (controller && controller.widget && typeof controller.widget.reload === 'function') {
-                    console.log("Melakukan refresh data via Aktif Controller...");
-                    // Perintahkan widget (List Controller / Form Controller) untuk reload data database
-                    controller.widget.reload();
-                    return;
+            if (controller && controller.widget && typeof controller.widget.reload === 'function') {
+                console.log("Melakukan refresh data List View dengan mempertahankan filter asli Odoo 13...");
+
+                var listWidget = controller.widget;
+
+                // Mengambil state internal runtime database yang sedang aktif di layar saat ini
+                var currentDomain = [];
+                var currentContext = {};
+
+                if (listWidget.model && listWidget.handle) {
+                    var modelState = listWidget.model.get(listWidget.handle);
+                    if (modelState) {
+                        // Ambil domain dan context asli hasil kalkulasi search view + filter bawaan action
+                        currentDomain = modelState.domain || [];
+                        currentContext = modelState.context || {};
+                        console.log("Berhasil mengunci filter aktif:", currentDomain);
+                    }
                 }
+
+                // Jalankan reload menggunakan domain & context asli yang terdeteksi
+                listWidget.reload({
+                    domain: currentDomain,
+                    context: currentContext
+                }).then(function () {
+                    // EFEK VISUAL: Cari semua baris data di tabel aktif
+                    var $rows = $('.o_list_view .o_data_row');
+                    if ($rows.length > 0) {
+                        $rows.addClass('row-animated-flash');
+                        setTimeout(function () {
+                            $rows.removeClass('row-animated-flash');
+                        }, 2000);
+                    }
+                });
+                return;
             }
         }
         // Jika gagal, gunakan Fallback ke metode alternatif ke-2
         this._fallbackClientReload();
     },
+
     _fallbackClientReload: function () {
         console.log("Menjalankan fallback client action reload...");
         this.do_action({
@@ -120,7 +200,6 @@ WebClient.include({
             tag: 'reload',
         });
     }
-
 
 });
 
