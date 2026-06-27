@@ -48,6 +48,15 @@
     <menuitem id="base_notification_menu" name="Notification" sequence="14"
               parent="base_parent_menu"
     />
+    <menuitem id="notification_template_menu" sequence="1"
+        parent="base_notification_menu"
+        action="notification_template_action"
+    />
+    <menuitem id="antareja_notification_log_menu" sequence="10"
+        parent="base_notification_menu"
+        action="notification_log_action"
+    />
+
     <menuitem id="base_approval_menu" name="Approval" sequence="16"
               parent="base_parent_menu"
     />

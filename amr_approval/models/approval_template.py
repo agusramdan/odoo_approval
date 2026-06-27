@@ -256,13 +256,13 @@ class ApprovalTemplate(models.Model):
                         transaction_id=rec.transaction_id
                     )
                     if approval_instance.is_status_waiting_approval():
-                        approval_instance.register_approval_transaction_task(
+                        approval_instance.register_approval_task_line(
                             skip_send_notification=skip_send_notification)
                         transaction_ids.append(rec.transaction_id)
                     else:
-                        approval_instance.unregister_approval_transaction_task()
+                        approval_instance.unregister_approval_task_line()
                 except:
-                    _logger.exception("register_approval_transaction_task 1")
+                    _logger.exception("register_approval_task_line 1")
                     if raise_exception:
                         raise
 
@@ -274,9 +274,9 @@ class ApprovalTemplate(models.Model):
                         transaction_model_name=model,
                         transaction_id=rec.id
                     )
-                    approval_instance.register_approval_transaction_task()
+                    approval_instance.register_approval_task_line()
                     transaction_ids.append(rec.id)
                 except:
-                    _logger.exception("register_approval_transaction_task 2")
+                    _logger.exception("register_approval_task_line 2")
                     if raise_exception:
                         raise

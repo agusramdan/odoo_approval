@@ -1,22 +1,19 @@
 # -*- coding: utf-8 -*-
 
 {
-    'name': "Notification Approval Task and Assignment",
-    'summary': """Notification Approval Task""",
+    'name': "Approval Task and Assignment",
+    'summary': """Approval Task""",
     'description': """
         This addons contain 
         1. Notification for Approval Task
         2. Task Approval
         3. Assignment delegation or reassignment 
-        
     """,
     'author': "Agus Muhammad Ramdan",
     'website': "http://agus.ramdan.tech",
     'category': 'Tools',
-    'version': '13.0.0.1.0',
-    # any module necessary for this one to work correctly
+    'version': '13.0.0.1.1',
     'depends': ['base', 'base_setup', 'mail'],
-    # always loaded
     'data': [
         'security/base_groups.xml',
         'security/ir.model.access.csv',

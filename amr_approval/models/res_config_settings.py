@@ -12,3 +12,5 @@ class ResConfigSettings(models.TransientModel):
 
     module_amr_doa_approval = fields.Boolean(string="DOA Approval")
     module_amr_doa_activate = fields.Boolean(string="Activate DOA Approval")
+
+    module_amr_approval_mobile_client = fields.Boolean(string="Mobile Client")

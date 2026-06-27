@@ -26,7 +26,6 @@
             <tree>
                 <field name="document" string="Type"/>
                 <field name="name" string="Name"/>
-                <!--                <field name="transaction_ref" />-->
                 <field name="description" string="Description"/>
                 <field name="date" optional="hide"/>
                 <field name="requester_id"/>
@@ -36,20 +35,24 @@
                 <field name="user_ids" widget="many2many_tags" optional="hide" groups="base.group_no_one"/>
                 <field name="group_ids" widget="many2many_tags" optional="hide" groups="base.group_no_one"/>
                 <field name="responsible_user_id" optional="hide" groups="base.group_no_one"/>
-                <field name="approval_res_id" optional="hide" groups="base.group_no_one"/>
-                <field name="approval_model" optional="hide" groups="base.group_no_one"/>
+                <field name="approval_res_id" string="Res ID" optional="hide" groups="base.group_no_one"/>
+                <field name="approval_model" string="Model" optional="hide" groups="base.group_no_one"/>
                 <field name="approval_instance_id" optional="hide" groups="base.group_no_one"/>
                 <field name="approval_user_ids" string="Approvers" widget="many2many_tags" optional="hide" groups="base.group_no_one"/>
-                <field name="notification_approval_id"  optional="hide" groups="base.group_no_one"/>
-                <button name="action_assign" string="Assignment User" type="object" class="oe_highlight"
-                        icon="fa-solid fa-user-plus text-success" groups="base.group_no_one" help="Assign Responsible User"/>
-                <button name="action_reassign" string="Assignment User" type="object" class="oe_highlight"
-                        icon="fa-solid fa-exchange-alt text-success" groups="base.group_no_one" help="reassign Responsible User"/>
+                <field name="notification_approval_id" string="Notification" optional="hide" groups="base.group_no_one"/>
                 <button name="action_approval_transaction" string="Show Detail" type="object" class="oe_highlight"/>
+                <button name="action_assign" string="Assignment User" type="object"
+                        icon="fa-solid fa-user-plus text-success" groups="base.group_no_one"
+                />
                 <button name="send_notification" string="Send Notification" type="object"
-                        icon="fa-solid fa-envelope text-success" groups="base.group_no_one"/>
+                        icon="fa-solid fa-envelope text-success" groups="base.group_no_one"
+                />
+                <button name="send_to_mobile_approval" string="Send to Mobile" type="object"
+                        icon="fa-solid fa-paper-plane text-success" groups="base.group_no_one"
+                />
                 <button name="check_approval_task_status" string="Check Approval Task" type="object"
-                        icon="fa-solid fa-dropbox text-success" groups="base.group_no_one"/>
+                        icon="fa-solid fa-dropbox text-success" groups="base.group_no_one"
+                />
             </tree>
         </field>
     </record>

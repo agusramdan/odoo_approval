@@ -20,6 +20,8 @@ class NotificationLog(models.Model):
     mail_model = fields.Char()
     chat_id = fields.Integer()
     chat_model = fields.Char()
+    mobile_id = fields.Integer()
+    mobile_model = fields.Char()
     res_id = fields.Integer()
 
     def send(self):
@@ -48,4 +50,8 @@ class NotificationLog(models.Model):
 
     def action_show_chat(self):
         self.ensure_one()
-        self._show_message(self, self.chat_message_model and self.chat_message_id)
+        self._show_message(self, self.chat_model and self.chat_id)
+
+    def action_show_mobile(self):
+        self.ensure_one()
+        self._show_message(self, self.mobile_model and self.mobile_id)

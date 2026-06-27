@@ -23,6 +23,10 @@ class NotificationTemplate(models.Model):
     _name = "notification.template"
     _description = "Notification Template"
 
+    @property
+    def send_mobile(self):
+        return self.send_firebase or self.send_firebase or self.send_telegram
+
     active = fields.Boolean(default=True)
     name = fields.Char("Notification")
     model_id = fields.Many2one('ir.model')
@@ -31,11 +35,15 @@ class NotificationTemplate(models.Model):
     send_email = fields.Boolean("Send Email", default=False)
     send_chat = fields.Boolean("Send Chat", default=False)
     send_firebase = fields.Boolean("Send Firebase", default=False)
+    send_whatsapp = fields.Boolean("Send Whatsapp", default=False)
+    send_telegram = fields.Boolean("Send Telegram", default=False)
 
     template_email = fields.Many2one('mail.template')
     title = fields.Char()
     body = fields.Char()
     body_html = fields.Text()
+    body_whatsapp = fields.Text()
+    body_telegram = fields.Text()
     image = fields.Char()
     code = fields.Text(
         string='Python Code',
@@ -108,7 +116,7 @@ class NotificationTemplate(models.Model):
             notif_log['mail_id'] = result.id
             notif_log['mail_model'] = 'mail.mail'
         self.send_chat and self.send_notification_chat(notification_to_user, payload, notif_log, **kwargs)
-        self.send_firebase and self.send_notification_firebase(notification_to_user, payload, notif_log, **kwargs)
+        self.send_mobile and self.send_notification_mobile(notification_to_user, payload, notif_log, **kwargs)
 
         return notif_log
 
@@ -116,7 +124,7 @@ class NotificationTemplate(models.Model):
         self.ensure_one()
         Template = self.env['mail.template']
         template = self.ensure_one()
-        fields = ['title', 'body', 'image', 'body_html']
+        fields = ['title', 'body', 'image', 'body_html', 'body_whatsapp', 'body_telegram']
         notification = {}
         for field in fields:
             Template = Template.with_context(safe=field in {'title'})
@@ -126,6 +134,8 @@ class NotificationTemplate(models.Model):
         }
         body = notification.pop('body')
         body_html = notification.pop('body_html')
+        body_whatsapp = notification.pop('body_whatsapp')
+        body_telegram = notification.pop('body_telegram')
         if body_html:
             data['body_html'] = body_html
         approval_task_line = kwargs.get('approval_task_line')
@@ -146,9 +156,14 @@ class NotificationTemplate(models.Model):
             data['url'] = safe_call_method(transaction_object, 'get_internal_url') or None
         return {
             'notification': eval_context.get('notification'),
+            'send_firebase': self.send_firebase,
+            'send_whatsapp': self.send_whatsapp,
+            'send_telegram': self.send_telegram,
             'data': data,
             'body': body,
             'body_html': body_html,
+            'body_whatsapp': body_whatsapp,
+            'body_telegram': body_telegram,
             'url': url
         }
 
@@ -163,7 +178,7 @@ class NotificationTemplate(models.Model):
             notif_log['chat_model'] = chat._name
 
     @api.model
-    def send_notification_firebase(self, notification_to_user, payload, notif_log, **kwargs):
+    def send_notification_mobile(self, notification_to_user, payload, notif_log, **kwargs):
         pass
 
     @api.model
