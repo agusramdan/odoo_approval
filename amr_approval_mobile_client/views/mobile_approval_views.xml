@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <record id="view_mobile_approval_client_search" model="ir.ui.view">
+            <field name="name">mobile.approval.client.search</field>
+            <field name="model">mobile.approval.client</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="name"/>
+                </search>
+            </field>
+        </record>
+		<record id="view_mobile_approval_client_tree" model="ir.ui.view">
+            <field name="name">mobile.approval.client.tree</field>
+            <field name="model">mobile.approval.client</field>
+            <field name="arch" type="xml">
+                <tree string="Mobile Approval Log" create='false' edit='false' decoration-muted="state in ('done', 'cancel')" decoration-info="state=='outgoing'" decoration-danger="state in ('error', 'send_error')">
+                    <field name="name"/>
+                    <field name="request_type"/>
+                    <field name="transaction_model_name"/>
+                    <field name="transaction_id"/>
+                    <field name="state" />
+                    <button name="action_approval_transaction" string="Show Transaction" type="object" class="oe_highlight"/>
+                    <button name="send" string="Send Now" type="object" icon="fa-paper-plane text-success" states="outgoing"/>
+                    <button name="mark_outgoing" string="Retry" type="object" icon="fa-repeat text-success" states="error,send_error,cancel,done"/>
+                    <button name="cancel" string="Cancel" type="object" icon="fa-times-circle text-danger" states="outgoing"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_mobile_approval_client_form" model="ir.ui.view">
+            <field name="name">mobile.approval.client.form</field>
+            <field name="model">mobile.approval.client</field>
+            <field name="arch" type="xml">
+                <form string="Mobile Approval" create='false' delete='false'>
+                    <header>
+                        <button name="send" string="Send Now" type="object" icon="fa-paper-plane text-success" states="outgoing"/>
+                        <button name="mark_outgoing" string="Retry" type="object" icon="fa-repeat text-success" states="error,send_error,cancel,done"/>
+                        <button name="cancel" string="Cancel" type="object" icon="fa-times-circle text-danger" states="outgoing"/>
+                        <button name="action_approval_transaction" string="Show Transaction" type="object" class="oe_highlight"/>
+                        <field name="state" widget="statusbar" readonly="1" />
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="create_date" string="Request Date"/>
+                                <field name="user_ids" widget="many2many_tags"/>
+                                <field name="url" />
+                            </group>
+                            <group>
+                                <field name="request_type"/>
+                                <field name="transaction_model_name"/>
+                                <field name="transaction_id"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page name="payload" string="Payload">
+                                <field name="payload"/>
+                            </page>
+                            <page name="audit_log" string="Audit Log">
+                                <group>
+                                    <group>
+                                        <field name="errors_message"/>
+                                        <field name="last_error"/>
+                                    </group>
+                                    <group>
+                                        <field name="response"/>
+                                    </group>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="mobile_approval_client_action" model="ir.actions.act_window">
+            <field name="name">Mobile Approval Client</field>
+            <field name="res_model">mobile.approval.client</field>
+            <field name="view_mode">tree,form</field>
+            <field name="search_view_id" ref="view_mobile_approval_client_search"/>
+            <!-- <field name="domain">[('api_type', '=', 'normal_api')]</field> -->
+            <field name="context">{ }</field>
+        </record>
+    </data>
+</odoo>

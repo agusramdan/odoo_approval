@@ -1,0 +1,14 @@
+<odoo>
+    <menuitem id="mobile_approval_client_menu"
+              parent="amr_approval.base_approval_menu"
+              action="mobile_approval_client_action"
+              sequence="40"
+    />
+
+    <menuitem id="mobile_notification_client_menu"
+              parent="amr_approval.base_notification_menu"
+              action="mobile_notification_client_action"
+              sequence="40"
+    />
+
+</odoo>

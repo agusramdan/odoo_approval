@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+		<record id="view_mobile_notification_client_tree" model="ir.ui.view">
+            <field name="name">mobile.notification.client.tree</field>
+            <field name="model">mobile.notification.client</field>
+            <field name="arch" type="xml">
+                <tree string="Mobile Notification Log" create='false' edit='false' decoration-muted="state in ('done', 'cancel')" decoration-info="state=='outgoing'" decoration-danger="state in ('error', 'send_error')">
+                    <field name="title"/>
+                    <field name="notification_type"/>
+                    <field name="to_user_id"/>
+<!--                    <field name="source_application"/>-->
+                    <field name="source_model"/>
+                    <field name="source_res_id"/>
+                    <field name="state" />
+                    <button name="send" string="Send Now" type="object" icon="fa-paper-plane text-success" states="outgoing"/>
+                    <button name="mark_outgoing" string="Retry" type="object" icon="fa-repeat text-success" states="error,send_error,cancel,done"/>
+                    <button name="cancel" string="Cancel" type="object" icon="fa-times-circle text-danger" states="outgoing"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_mobile_notification_client_form" model="ir.ui.view">
+            <field name="name">mobile.notification.client.form</field>
+            <field name="model">mobile.notification.client</field>
+            <field name="arch" type="xml">
+                <form string="Mobile Notification Log" create='false' delete='false'>
+                    <header>
+                        <button name="send" string="Send Now" type="object" icon="fa-paper-plane text-success" states="outgoing"/>
+                        <button name="mark_outgoing" string="Retry" type="object" icon="fa-repeat text-success" states="error,send_error,cancel,done"/>
+                        <button name="cancel" string="Cancel" type="object" icon="fa-times-circle text-danger" states="outgoing"/>
+                        <button name="process" string="Process" type="object" />
+                        <field name="state" widget="statusbar" readonly="1" />
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="to_user_id"/>
+                                <field name="title"/>
+                                <field name="image"/>
+                            </group>
+                            <group>
+                                <field name="notification_type"/>
+<!--                                <field name="source_application"/>-->
+                                <field name="source_model"/>
+                                <field name="source_res_id"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page name="body" string="Body">
+                                <field name="body"/>
+                            </page>
+                            <page name="raw_data" string="Raw Data">
+                                <field name="accept_data"/>
+                            </page>
+                            <page name="payload" string="Payload">
+                                <field name="payload"/>
+                            </page>
+                            <page name="audit_log" string="Audit Log">
+                                <group>
+                                    <group>
+                                        <field name="errors_message"/>
+                                        <field name="last_error"/>
+                                    </group>
+                                    <group>
+                                        <field name="response"/>
+                                    </group>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="mobile_notification_client_action" model="ir.actions.act_window">
+            <field name="name">Mobile Notification Client</field>
+            <field name="res_model">mobile.notification.client</field>
+            <field name="view_mode">tree,form</field>
+            <!-- <field name="domain">[('api_type', '=', 'normal_api')]</field> -->
+            <field name="context">{ }</field>
+        </record>
+    </data>
+</odoo>

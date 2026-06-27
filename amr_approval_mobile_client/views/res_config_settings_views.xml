@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Inherit res.config.settings view -->
+    <record id="res_config_settings_view_form_inherit" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.cni.api</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="amr_approval.view_config_settings_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@id='amr_approval_mobile_client_content_group']" position="inside">
+                <div class="mt16 row">
+                     <label for="mobile_approval_server_auth_id" string="Approval Server" class="col-3 col-lg-3 o_light_label"/>
+                    <field name="mobile_approval_server_auth_id" nolabel="1"/>
+                </div>
+                <div class="mt16 row">
+                     <label for="mobile_notification_server_auth_id" string="Notification Server" class="col-3 col-lg-3 o_light_label"/>
+                    <field name="mobile_notification_server_auth_id" nolabel="1"/>
+                </div>
+
+
+
+
+<!--                <div class="col-12 col-lg-6 o_setting_box" id="mobile_approval_remote">-->
+<!--                    <div class="o_setting_right_pane">-->
+<!--                        <div class="content-group">-->
+<!--                            <div class="text-muted">-->
+<!--                                Approval Mobile Server-->
+<!--                            </div>-->
+<!--                            <div class="mt16 row">-->
+<!--                                -->
+<!--                            </div>-->
+<!--                        </div>-->
+<!--                    </div>-->
+<!--                </div>-->
+            </xpath>
+        </field>
+    </record>
+</odoo>
