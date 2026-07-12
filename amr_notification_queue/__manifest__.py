@@ -2,11 +2,9 @@
 
 {
     "name": "AMR Notification Queue",
-
-    "depends": [
-        "amr_notification",
-        "queue_job",
+    "depends": ["queue_job","amr_notification",],
+    'data': [
+        'data/queue_job_channe.xml',
     ],
-
-    "auto_install": True,
+    "auto_install": False,
 }
