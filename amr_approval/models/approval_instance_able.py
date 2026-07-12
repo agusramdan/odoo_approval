@@ -177,19 +177,31 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
         Register to approval task system
         """
         self.ensure_one()
-
-        if 'transaction_object' not in kwargs:
-            kwargs['transaction_object'] = self
-        if 'transaction_id' in kwargs:
-            kwargs.pop('transaction_id')
-        if 'transaction_model_name' in kwargs:
-            kwargs.pop('transaction_model_name')
-        transaction_id = self.id
-        transaction_model_name = self._name
-
-        return self.env['approval.task'].approval_setup(
-            transaction_id, transaction_model_name, **kwargs
+        approval_task_line = (kwargs.get('approval_task_line_next') or kwargs.get('next_approval_task_line')
+                              or kwargs.get('next_approval_transaction') or kwargs.get('approval_transaction')
+                              or kwargs.get('approval_task_line') or self.get_next_approval_task_line())
+        if self.env.context.get('__call_transaction_object_register_to_approval_task'):
+            return approval_task_line
+        transaction_object = kwargs.get('transaction_object') or self
+        if transaction_object.env.context.get('__call_transaction_object_register_to_approval_task'):
+            return approval_task_line
+        kwargs['transaction_object'] = transaction_object.with_context(
+            __call_transaction_object_register_to_approval_task=True
         )
+
+        # if 'transaction_id' in kwargs:
+        #     kwargs.pop('transaction_id')
+        # if 'transaction_model_name' in kwargs:
+        #     kwargs.pop('transaction_model_name')
+        kwargs['transaction_id'] = transaction_id = transaction_object.id
+        kwargs['transaction_id'] = transaction_model_name = self._name
+        approval_instance = kwargs.get('approval_instance')
+        if not approval_instance:
+            approval_instance = transaction_object.approval_instance_id.create_or_get(transaction_object)
+        approval_instance.with_context(
+            __call_transaction_object_register_to_approval_task=True
+        ).register_approval_task_line(**kwargs)
+        return self.env['approval.task'].get_approval_task(transaction_id, transaction_model_name)
 
     def get_approval_transaction_task(self):
         return self.env['approval.task'].search([

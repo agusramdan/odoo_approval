@@ -169,7 +169,7 @@ class ApprovalTaskLineMixin(models.AbstractModel):
         else:
             kw = dict(kwargs)
 
-        transaction_object = kw.get('transaction_object') or safe_call_method(self, 'get_transaction_object', )
+        transaction_object = kw.get('transaction_object') or safe_call_method(self, 'get_transaction_object', kwargs=kwargs )
         if transaction_object:
             if have_method(transaction_object, 'prepare_approval_task_dict'):
                 update = safe_call_method(transaction_object, 'prepare_approval_task_dict', kwargs=kw)

@@ -30,6 +30,7 @@ class ApprovalInstanceMixin(models.AbstractModel):
     )
     pdf_deep_link = fields.Char()
     approval_template_id = fields.Many2one('approval.template.mixin', ondelete='set null', )
+    approval_task_id = fields.Many2one('approval.task', ondelete='set null', )
     model_id = fields.Many2one('ir.model', readonly=True, ondelete='set null', )
     model = fields.Char(related='model_id.model', store=True, readonly=True)
     view_id = fields.Many2one(
@@ -255,10 +256,13 @@ class ApprovalInstanceMixin(models.AbstractModel):
         if 'notification_approval_id' not in kwargs:
             notification_approval = rec.get_notification_approval()
             notification_approval and kwargs.update(notification_approval_id=notification_approval.id)
+        transaction_object = kwargs.get('transaction_object')
+        if not isinstance(transaction_object, models.BaseModel):
+            transaction_object = rec.get_transaction_object()
         kwargs['approval_instance'] = rec
-        kwargs['transaction_model_name'] = rec.transaction_model_name,
-        kwargs['transaction_id'] = rec.transaction_id
-        kwargs['transaction_object'] = transaction_object = rec.get_transaction_object()
+        kwargs['transaction_model_name'] = transaction_object._name
+        kwargs['transaction_id'] = transaction_object.id
+        kwargs['transaction_object'] = transaction_object
         if rec.name and 'name' not in kwargs:
             kwargs['name'] = rec.name
         if rec.document and 'document' not in kwargs:
@@ -271,7 +275,8 @@ class ApprovalInstanceMixin(models.AbstractModel):
             kwargs['company_id'] = rec.company_id.id
 
         if have_method(approval_task_line, 'register_to_approval_task'):
-            approval_task_line.with_context(___register_approval_task_line=True).register_to_approval_task(**kwargs)
+            approval_task = approval_task_line.with_context(
+                ___register_approval_task_line=True).register_to_approval_task(**kwargs)
         else:
             if have_method(approval_task_line, "prepare_approval_task_dict"):
                 update = safe_call_method(approval_task_line, "prepare_approval_task_dict", kwargs=kwargs)
@@ -281,16 +286,17 @@ class ApprovalInstanceMixin(models.AbstractModel):
                 update and kwargs.update(update)
             transaction_id = kwargs.pop('transaction_id', None) or transaction_object.id
             transaction_model_name = kwargs.pop('transaction_model_name', None) or transaction_object._name
-            self.env['approval.task'].approval_setup(
+            approval_task = self.env['approval.task'].approval_setup(
                 transaction_id, transaction_model_name, **kwargs
             )
-
+        self.approval_task_id = approval_task
         return approval_task_line
 
     def unregister_approval_task_line(self, **kwargs):
         if not self:
             return
         rec = self.ensure_one()
+        self.approval_task_id = False
         self.env['approval.task'].approval_done(
             transaction_id=rec.transaction_id,
             transaction_model_name=rec.transaction_model_name

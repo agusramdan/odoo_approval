@@ -120,8 +120,9 @@ class NotificationTemplate(models.Model):
         notif_log['payload'] = json.dumps(payload)
         if self.send_email and kwargs.get('send_notification_email', True):
             if self.template_email:
-                values = self.template_email.with_context(notification_to_user=notification_to_user).generate_email(
-                    res_id)
+                values = self.template_email.with_context(
+                    notification_to_user=notification_to_user
+                ).generate_email(res_id)
                 values['recipient_ids'] = [(4, pid) for pid in values.get('partner_ids', list())]
                 values['attachment_ids'] = [(4, aid) for aid in values.get('attachment_ids', list())]
                 values.pop('partner_ids', None)
