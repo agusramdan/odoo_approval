@@ -1,0 +1,7 @@
+<odoo>
+
+    <menuitem id="menu_to_approve" name="To Approve" parent="amr_esign_pdf.menu_sign"
+              action="action_to_approve"
+    />
+
+</odoo>
