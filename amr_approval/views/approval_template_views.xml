@@ -124,8 +124,7 @@
                                            attrs="{'invisible':[('approve_action_type', '!=', 'server_action')]}"
                                     />
                                     <field name="invoke_before_approve" string="Before"/>
-                                    <field name="invoke_after_approve" string="After"
-                                    />
+                                    <field name="invoke_after_approve" string="After"/>
                                     <field name="notes_chatter_approved" string="Note Chatter"/>
                                 </group>
                                 <group string="Reject">

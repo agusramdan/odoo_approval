@@ -6,12 +6,12 @@
             <field name="model">notification.template</field>
             <field name="arch" type="xml">
                 <search string="External Data">
-                    <field name="name"/>
-                    <field name="model"/>
-                    <separator/>
-                    <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                    <field name="name" />
+                    <field name="model" />
+                    <separator />
+                    <filter string="Archived" name="inactive" domain="[('active', '=', False)]" />
                     <group expand="0" string="Group By">
-                        <filter name="group_model" string="Model" domain="[]" context="{'group_by': 'model'}"/>
+                        <filter name="group_model" string="Model" domain="[]" context="{'group_by': 'model'}" />
                     </group>
                 </search>
             </field>
@@ -30,15 +30,17 @@
                         <group>
                             <group>
                                 <field name="name" />
-                                <field name="model"/>
-                            </group>
-                            <group>
-                                <field name="send_email" />
-                                <field name="template_email" />
+                                <field name="model" />
                                 <field name="send_chat" />
                                 <field name="send_firebase" />
                                 <field name="send_whatsapp" />
                                 <field name="send_telegram" />
+                            </group>
+                            <group>
+                                <field name="send_email" />
+                                <field name="template_email" />
+<!--                                <field name="template_wa" />-->
+<!--                                <field name="template_chatter" />-->
                             </group>
                         </group>
                         <notebook>
@@ -52,6 +54,11 @@
                             <page string="Html">
                                 <field name="body_html" />
                             </page>
+
+                            <page string="Chat">
+                                <field name="body_chat" />
+                            </page>
+
                             <page string="Whatsapp">
                                 <field name="body_whatsapp" />
                             </page>
@@ -101,11 +108,13 @@
                 <tree>
                     <field name="active" invisible="1" />
                     <field name="name" />
-                    <field name="model"/>
+                    <field name="model" />
                     <field name="template_email" />
+<!--                    <field name="template_wa" />-->
                 </tree>
             </field>
         </record>
+
         <record model="ir.actions.act_window" id="notification_template_action">
             <field name="name">Notification Template</field>
             <field name="type">ir.actions.act_window</field>

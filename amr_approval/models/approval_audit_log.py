@@ -98,7 +98,6 @@ class ApprovalAuditLog(models.Model):
 
     def create_audit_log(self, **kwargs):
         _field = self._fields
-        # approval_template = self.env['approval.template'].lookup_approval_template(**kwargs)
         transaction_model_name = kwargs.get('transaction_object')
         transaction_id = kwargs.get('transaction_id')
         transaction_object = kwargs.get('transaction_object')

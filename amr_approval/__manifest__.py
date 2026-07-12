@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-
 {
     'name': "Approval Task and Assignment",
     'summary': """Approval Task""",
@@ -12,7 +11,7 @@
     """,
     'author': "Agus Muhammad Ramdan",
     'website': "http://agus.ramdan.tech",
-    'category': 'Tools',
+    'category': 'Base',
     'version': '13.0.0.2.0',
     'depends': ['base', 'base_setup', 'mail'],
     'data': [
@@ -36,6 +35,7 @@
         'views/user_delegation_views.xml',
         'views/res_config_settings_views.xml',
         'views/menuitem.xml',
+
         'wizard/popup_reject.xml',
         'wizard/approval_task_line_assignment.xml',
         'wizard/rule_condition.xml',

@@ -49,7 +49,7 @@
                         icon="fa-solid fa-user-plus text-success" groups="base.group_system" help="Assign Responsible User"/>
                 <button name="action_approval_transaction" string="Show Detail" type="object" class="oe_highlight"/>
                 <button name="send_to_mobile_approval" string="Send to Mobile" type="object"
-                        icon="fa-solid fa-paper-plane text-success" groups="base.group_no_one"
+                        icon="fa-solid fa-mobile" groups="base.group_no_one"
                 />
                 <button name="send_notification" string="Send Notification" type="object"
                         icon="fa-solid fa-envelope text-success" groups="base.group_no_one"

@@ -3,14 +3,8 @@ access_user_delegation_user,user.delegation User,model_user_delegation,base.grou
 access_user_delegation_user_create,user.delegation User Create,model_user_delegation,amr_approval.group_doa_internal_user_create,1,1,1,0
 access_user_delegation_admin,user.delegation Admin,model_user_delegation,base.group_erp_manager,1,1,1,1
 
-access_notification_template_user,access_notification_template user,model_notification_template,base.group_user,1,0,0,0
-access_notification_template_group_system,access_notification_template group_system,model_notification_template,base.group_system,1,1,1,1
-
-access_notification_log_user,access_notification_log user,model_notification_log,base.group_user,1,1,1,0
-access_notification_log_group_system,access_notification_log group_system,model_notification_log,base.group_system,1,1,1,1
-
-access_approval_approval_task_user,approval.task user,model_approval_task,base.group_user,1,1,1,0
-access_approval_approval_task_admin,approval.task admin,model_approval_task,base.group_system,1,1,1,1
+access_approval_task_user,approval.task user,model_approval_task,base.group_user,1,1,1,0
+access_approval_task_admin,approval.task admin,model_approval_task,base.group_system,1,1,1,1
 
 access_approval_audit_log_user,approval.task.audit.log user,model_approval_audit_log,base.group_user,1,1,1,0
 access_approval_audit_log_admin,approval.task.audit.log admin,model_approval_audit_log,base.group_system,1,1,1,1
@@ -25,3 +19,17 @@ access_approval_matrix_rule_user,approval.matrix.rule.user,model_approval_matrix
 access_approval_matrix_rule_manager,approval.matrix.rule.manager,model_approval_matrix_rule,base.group_system,1,1,1,1
 access_approval_matrix_rule_line_user,approval.matrix.rule.user,model_approval_matrix_rule_line,base.group_user,1,0,0,0
 access_approval_matrix_rule_line_manager,approval.matrix.rule.manager,model_approval_matrix_rule_line,base.group_system,1,1,1,1
+
+access_popup_reject_message_wizard,popup.reject.message.wizard Wizard,model_popup_reject_message_wizard,base.group_user,1,1,1,1
+
+access_approval_task_assignment_history_user,approval.task.assignment.history.user,model_approval_task_assignment_history,base.group_user,1,0,0,0
+access_approval_task_assignment_history_system,approval.task.assignment.history.system,model_approval_task_assignment_history,base.group_system,1,1,1,1
+
+access_notification_template_user,access.notification.template user,model_notification_template,base.group_user,1,0,0,0
+access_notification_template_group_system,access.notification.template group_system,model_notification_template,base.group_system,1,1,1,1
+
+access_notification_log_user,access.notification.log user,model_notification_log,base.group_user,1,1,1,0
+access_notification_log_group_system,access.notification.log group_system,model_notification_log,base.group_system,1,1,1,1
+
+access_reminder_log_user,access.reminder.log user,model_reminder_log,base.group_user,1,0,0,0
+access_reminder_log_group_system,access.reminder.log group_system,model_reminder_log,base.group_system,1,1,1,1

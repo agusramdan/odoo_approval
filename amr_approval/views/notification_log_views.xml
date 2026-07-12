@@ -6,9 +6,9 @@
             <field name="model">notification.log</field>
             <field name="arch" type="xml">
                 <search string="External Data">
-                    <field name="user_id"/>
-                    <field name="notification_template_id"/>
-                    <field name="receiver_id"/>
+                    <field name="user_id" />
+                    <field name="notification_template_id" />
+                    <field name="receiver_id" />
                 </search>
             </field>
         </record>
@@ -19,14 +19,17 @@
             <field name="priority" eval="99" />
             <field name="arch" type="xml">
                 <tree >
-                    <field name="user_id"/>
+                    <field name="user_id" />
                     <field name="notification_template_id"/>
                     <field name="receiver_id"/>
                     <field name="mail_id" optional="hide"/>
                     <field name="chat_id" optional="hide"/>
+                    <field name="mobile_id" optional="hide"/>
+
                     <button name="send" string="Send Notification" type="object" />
                     <button name="action_show_mail" string="Show Mail" type="object" class="oe_highlight" attrs="{'invisible':[('mail_id','=',0)]}"/>
-                    <button name="action_show_chat_message" string="Show Chat" type="object" class="oe_highlight" attrs="{'invisible':[('chat_id','=',0)]}"/>
+                    <button name="action_show_chat" string="Show Chat" type="object" class="oe_highlight" attrs="{'invisible':[('chat_id','=',0)]}"/>
+                    <button name="action_show_mobile" string="Show Mobile" type="object" class="oe_highlight" attrs="{'invisible':[('mobile_id','=',0)]}"/>
                 </tree>
             </field>
         </record>
@@ -40,22 +43,34 @@
                         <button name="send" string="Send Now" type="object" icon="fa-paper-plane text-success"/>
                         <button name="send_mail" string="Send email" type="object" icon="fa-paper-plane text-success"/>
                         <button name="send_chat" string="Send Odoo Chat" type="object" icon="fa-paper-plane text-success"/>
+                        <button name="send_mobile" string="Send Mobile" type="object" icon="fa-paper-plane text-success"/>
                         <button name="action_show_mail" string="Show Mail" type="object" class="oe_highlight" attrs="{'invisible':[('mail_id','=',0)]}"/>
                         <button name="action_show_chat" string="Show Chat" type="object" class="oe_highlight" attrs="{'invisible':[('chat_id','=',0)]}"/>
+                        <button name="action_show_mobile" string="Show Mobile" type="object" class="oe_highlight" attrs="{'invisible':[('mobile_id','=',0)]}"/>
                     </header>
                     <sheet>
+                        <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Name ..." readonly="1"/>
+                        </h1>
+                    </div>
                         <group>
                             <group>
-                                <field name="user_id"/>
-                                <field name="receiver_id"/>
-                                <field name="notification_template_id"/>
+                                <field name="user_id" />
+                                <field name="receiver_id" />
+                                <field name="notification_template_id" />
                             </group>
                             <group>
-                                <field name="mail_id" optional="hide"/>
-                                <field name="chat_id" optional="hide"/>
+                                <field name="mail_id" />
+                                <field name="chat_id" />
+                                <field name="mobile_id" />
                             </group>
                         </group>
-                        <notebook/>
+                        <notebook>
+                            <page string="Payload">
+                                <field name="payload" />
+                            </page>
+                        </notebook>
                     </sheet>
                     <footer/>
                 </form>
@@ -69,7 +84,5 @@
             <field name="view_mode">tree,form</field>
             <field name="domain">[]</field>
         </record>
-
-
     </data>
 </odoo>

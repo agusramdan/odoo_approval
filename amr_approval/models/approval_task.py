@@ -553,7 +553,10 @@ class ApprovalTask(models.Model):
             res_id, model_name = self.get_res_id_for_notification(notification_approval, **kwargs)
             if res_id:
                 users = self.get_users_for_notification(**kwargs)
-                notification_approval.send_notification_to_users(users, res_id)
+                notification_log = notification_approval.send_notification_to_users(
+                    users, res_id, approval_task_id=self.id
+                )
+        return notification_log
 
     def check_approval_task_status(self):
         if not self:
@@ -587,8 +590,9 @@ class ApprovalTask(models.Model):
 
     def _compute_assignment_able(self):
         for rec in self:
-            rec.assignment_able = self.approval_model in self.env \
-                                  and have_method(self.env[self.approval_model], 'action_assignment')
+            rec.assignment_able = self.approval_model in self.env and have_method(
+                self.env[self.approval_model], "action_assignment"
+            )
 
     def action_assign(self):
         return self.action_assignment()

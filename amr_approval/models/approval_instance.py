@@ -62,8 +62,6 @@ class ApprovalInstanceMixin(models.AbstractModel):
 
     @api.depends_context('uid')
     def _compute_access_rights(self):
-        """Hitung apakah user login punya akses approve/reject."""
-
         for rec in self:
             if not rec.is_status_waiting_approval():
                 rec.access_approval = False
@@ -468,7 +466,6 @@ class ApprovalInstanceMixin(models.AbstractModel):
 
     def action_approve(self):
         rec = self.ensure_approval_template()
-        transaction = rec.get_transaction_object()
         check_approval = self.get_next_approval_task_line()
         self.ensure_approval_template()
         approval_template = self.approval_template_id

@@ -140,6 +140,8 @@ class NotificationTemplate(models.Model):
             notif_log['mail_model'] = 'mail.mail'
         payload.get('send_chat') and self.send_notification_chat(notification_to_user, payload, notif_log, **kwargs)
         self.send_notification_mobile(notification_to_user, payload, notif_log, **kwargs)
+        if payload.get('title'):
+            notif_log['name'] = payload.get('title')
         _logger.info("notif_log %s", notif_log)
         return notif_log
 

@@ -11,9 +11,6 @@ from odoo.exceptions import UserError, ValidationError
 from odoo.tools import float_compare
 from odoo.tools.safe_eval import safe_eval, test_python_expr
 from pytz import timezone
-
-from ..tools.utils import safe_call_method
-
 from ..tools.utils import have_method, safe_call_method
 
 _logger = logging.getLogger(__name__)
@@ -293,7 +290,9 @@ class ApprovalTemplateMixin(models.AbstractModel):
         return self.search([('model_id.model', '=', transaction_model_name)], limit=1)
 
     def get_approval_matrix_model(self, default='approval.matrix.rule'):
-        return self.approval_matrix_model or default
+        if self.approval_matrix_id:
+            return self.approval_matrix_id._name
+        return default
 
     def get_approval_matrix(self, **kwargs):
         self.ensure_one()
