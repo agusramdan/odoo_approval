@@ -3,7 +3,7 @@
 from . import rule_condition
 
 # Notification
-# from . import chat_template
+from . import chat_template
 from . import notification_template
 
 # DOA
@@ -18,9 +18,11 @@ from . import approval_task
 
 from . import approval_template
 from . import approval_instance
-from . import approval_instance_able
 from . import approval_task_line
+from . import approval_instance_able
+
 from . import notification_log
+from . import reminder_log
 
 from . import res_partner
 from . import res_users

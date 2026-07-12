@@ -9,7 +9,6 @@
 <!--                <field name="next_approval_task_id"/>-->
 <!--                <filter string="My Approvals" name="filter_can_approve"-->
 <!--                        domain="[('access_approval', '=', True)]"/>-->
-
 <!--            </search>-->
 <!--        </field>-->
 <!--    </record>-->
@@ -21,8 +20,8 @@
             <tree string="Approval instances">
                 <field name="display_name" string="Name"/>
                 <field name="model_id" optional="hide"/>
-                <field name="model" optional="hide"/>
-                <field name="transaction_status"/>
+                <field name="user_ids" widget="many2many_tags"/>
+                <field name="group_ids" widget="many2many_tags"/>
                 <button name="action_approval_transaction" string="Show Detail" type="object" class="oe_highlight"/>
                 <button name="check_approval_task_status" string="Check Approval Task" type="object" icon="fa-solid fa-list-check text-success" groups="base.group_no_one"/>
             </tree>

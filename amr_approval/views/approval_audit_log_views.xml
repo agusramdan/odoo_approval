@@ -7,7 +7,7 @@
                 <field name="transaction_display_name" />
                 <field name="user_id"/>
                 <field name="job_position" optional="hide"/>
-                <field name="delegator_user_id" optional="hide"/>
+                <field name="delegator_id" optional="hide"/>
                 <field name="delegator_job_position" optional="hide"/>
                 <field name="delegatee_user_id" optional="hide"/>
                 <field name="delegatee_job_position" optional="hide"/>

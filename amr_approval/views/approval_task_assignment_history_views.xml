@@ -1,15 +1,12 @@
 <odoo>
-
     <record id="view_approval_task_assignment_history_tree" model="ir.ui.view">
         <field name="name">approval.task.assignment.history.tree</field>
         <field name="model">approval.task.assignment.history</field>
         <field name="arch" type="xml">
             <tree string="Assignment History">
-                <field name="display_name" placeholder="Name . . ." readonly="1"/>
-
+                <field name="display_name" placeholder="Name..." readonly="1"/>
                 <field name="from_user_ids" widget="many2many_tags" optional="hide" groups="base.group_no_one"/>
                 <field name="new_user_id" readonly="1" optional="hide" groups="base.group_no_one"/>
-
                 <field name="reason" readonly="1" optional="hide"/>
                 <field name="reassigned_at" readonly="1"/>
                 <field name="reassigned_by" readonly="1" optional="hide"/>
@@ -27,22 +24,28 @@
                 <sheet>
                     <div class="oe_title">
                         <h1>
-                            <field name="display_name" placeholder="Name . . ." readonly="1"/>
+                            <field name="display_name" placeholder="Name..." readonly="1"/>
                         </h1>
                     </div>
                     <group>
-                        <group>
-                            <field name="from_user_ids" widget="many2many_tags" readonly="1"/>
-                            <field name="new_user_id" readonly="1"/>
+                        <group string="Task Information">
+                            <field name="task_line_model"/>
+                            <field name="task_line_id"/>
                         </group>
-                        <group>
-                            <field name="reassigned_at" readonly="1"/>
-                            <field name="reassigned_by" readonly="1"/>
+                        <group string="Reassignment Information">
+                            <field name="from_user_ids" widget="many2many_tags"/>
+                            <field name="new_user_id"/>
                         </group>
                     </group>
                     <notebook>
-                        <page string="Reason" >
-                            <field name="reason" readonly="1"/>
+                        <page string="Reason">
+                            <field name="reason" placeholder="Input reassignment reason..."/>
+                        </page>
+                        <page string="Audit Information">
+                            <group>
+                                <field name="reassigned_by" readonly="1"/>
+                                <field name="reassigned_at" readonly="1"/>
+                            </group>
                         </page>
                     </notebook>
                     <footer/>
@@ -51,10 +54,45 @@
         </field>
     </record>
 
+    <!-- TREE VIEW -->
+    <record id="view_approval_task_assignment_history_tree" model="ir.ui.view">
+        <field name="name">approval.task.assignment.history.tree</field>
+        <field name="model">approval.task.assignment.history</field>
+        <field name="arch" type="xml">
+            <tree string="Approval Task Assignment History">
+                <field name="task_line_model"/>
+                <field name="task_line_id"/>
+                <field name="new_user_id"/>
+                <field name="reassigned_by"/>
+                <field name="reassigned_at"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- SEARCH VIEW -->
+    <record id="view_approval_task_assignment_history_search" model="ir.ui.view">
+        <field name="name">approval.task.assignment.history.search</field>
+        <field name="model">approval.task.assignment.history</field>
+        <field name="arch" type="xml">
+            <search string="Search Assignment History">
+                <field name="task_line_model"/>
+                <field name="new_user_id"/>
+                <field name="reassigned_by"/>
+                <filter name="filter_today" string="Today" domain="[('reassigned_at', '&gt;=', context_today().strftime('%%Y-%%m-%%d 00:00:00'))]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_by_model" string="Task Model" context="{'group_by': 'task_line_model'}"/>
+                    <filter name="group_by_user" string="New User" context="{'group_by': 'new_user_id'}"/>
+                    <filter name="group_by_reassigned_by" string="Reassigned By" context="{'group_by': 'reassigned_by'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ACTION -->
     <record id="approval_task_assignment_history_action" model="ir.actions.act_window">
         <field name="name">Assignment History</field>
         <field name="res_model">approval.task.assignment.history</field>
         <field name="view_mode">tree</field>
-        <field name="context">{'create': 0,'edit': 0,'delete': 0}</field>
+        <field name="context">{'create': 0, 'edit': 0, 'delete': 0}</field>
     </record>
 </odoo>

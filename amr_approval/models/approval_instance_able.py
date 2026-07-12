@@ -177,6 +177,9 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
         Register to approval task system
         """
         self.ensure_one()
+
+        if 'transaction_object' not in kwargs:
+            kwargs['transaction_object'] = self
         if 'transaction_id' in kwargs:
             kwargs.pop('transaction_id')
         if 'transaction_model_name' in kwargs:
@@ -214,17 +217,38 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
             [('transaction_model_name', '=', model_name), ('transaction_id', 'in', list_ids)]).unlink()
         return result
 
+    def get_approval_template(self):
+        return self.env['approval.template'].search_template(transaction_model_name=self._name)
+
     def write(self, vals):
+        if self.env.context.get('__skip_approval_status'):
+            return super().write(vals)
+        approval_template = self.get_approval_template()
+        state_field = None
+        old = None
+        if approval_template and approval_template.state_field:
+            state_field = approval_template.state_field
+            if state_field in vals:
+                old = {r.id: r.state for r in self}
         # handling bila keluar approval
-        in_waiting_approval = [res.id for res in self if res.is_status_waiting_approval()]
-
-        result = super(ApprovalInstanceAbleMixin, self).write(vals)
-
-        if in_waiting_approval:
+        result = super().write(vals)
+        if old and state_field:
+            state_waiting_approvals = approval_template.get_state_waiting_approvals()
             for rec in self:
-                if rec.id in in_waiting_approval and not rec.is_status_waiting_approval():
+                state_approval = getattr(rec, state_field)
+                if old[rec.id] in state_waiting_approvals and state_approval not in state_waiting_approvals:
                     _logger.info(f"Keluar dari waiting_approval {rec.id}")
                     rec.unregister_approval_task(skip_create_approval_log=True)
+                elif (approval_template.auto_register_approval_task
+                      and not self.env.context.get('__skip_auto_register_approval_task_line_status')
+                      and old[rec.id] not in state_waiting_approvals
+                      and state_approval in state_waiting_approvals
+                ):
+                    rec.register_to_approval_task(
+                        approval_template=approval_template,
+                        transaction_object=rec,
+                    )
+
         return result
 
     def get_approval_users_signature(self):
@@ -247,18 +271,24 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
 
     def get_all_to_approve_ids(self):
         # get all ids to approve by transaction model
-        approval_task = self.env['approval.task'].with_context(__transaction_model_name=self._name).search(
-            [('user_have_access_to_approval', '=', True)])
+        approval_task = self.env['approval.task'].with_context(
+            __transaction_model_name=self._name
+        ).search(
+            [('user_have_access_to_approval', '=', True)]
+        )
         return list(approval_task.mapped('transaction_id'))
 
     @api.depends_context("uid")
     @api.depends('approval_instance_id')
     def compute_access_approval(self):
         for rec in self:
-            rec.access_approval = rec.approval_instance_id.access_approval
+            rec.access_approval = rec.approval_instance_id and rec.approval_instance_id.access_approval
 
+    @api.model
     def search_filter_access_approval(self, operator, value):
-        datas = self.search([])
+        approval_template = self.get_approval_template()
+        domain = approval_template.get_domain_waiting_status()
+        datas = self.search(domain)
         ids = [data.id for data in datas if data.access_approval]
         return [('id', 'in', ids)]
 
@@ -284,39 +314,42 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
 
     def action_request_approval(self):
         rec = self.ensure_one()
-        approval_instance = rec.approval_instance_id.create_or_get(rec)
+        approval_instance = rec.ensure_approval_instance()
         return approval_instance.request_approval()
 
     def action_approve(self):
         rec = self.ensure_one()
-        approval_instance = rec.approval_instance_id.create_or_get(rec)
+        approval_instance = rec.ensure_approval_instance()
         return approval_instance.action_approve()
 
     def action_reject(self):
         rec = self.ensure_one()
-        approval_instance = rec.approval_instance_id.create_or_get(rec)
+        approval_instance = rec.ensure_approval_instance()
         return approval_instance.action_reject()
 
     def reject_from_popup_reject(self, **kwargs):
         rec = self.ensure_one()
-        approval_instance = rec.approval_instance_id.create_or_get(rec)
+        approval_instance = rec.ensure_approval_instance()
         return approval_instance.reject_from_popup_reject(**kwargs)
 
     def action_clear_approval(self):
         rec = self.ensure_one()
-        approval_instance = rec.approval_instance_id.create_or_get(rec)
+        approval_instance = rec.ensure_approval_instance()
         return approval_instance.clear_approval()
 
     def compute_approval_instance_id(self):
         for rec in self:
-            rec.approval_instance_id = self.approval_instance_id.search(
-                [('model_id.model', '=', self._name), ('transaction_id', '=', rec.id)]
-            )
+            rec.approval_instance_id = self.approval_instance_id.get_instance_for_transaction(self._name, rec.id)
 
     def get_next_approval_task_line(self):
         rec = self.ensure_one()
-        approval_instance = rec.approval_instance_id.create_or_get(rec)
+        approval_instance = rec.approval_instance_id.get_instance_for_transaction(self._name, rec.id)
         return approval_instance and approval_instance.get_next_approval_task_line()
+
+    def get_last_approval_task_line(self):
+        rec = self.ensure_one()
+        approval_instance = rec.approval_instance_id.get_instance_for_transaction(self._name, rec.id)
+        return approval_instance and approval_instance.get_last_approval_task_line()
 
     def get_users_approval_notification(self, **kwargs):
         return self.get_next_approval_task_line().get_users_for_notification(**kwargs)
@@ -332,7 +365,10 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
     def is_status_waiting_approval(self):
         rec = self.ensure_one()
         approval_instance = rec.approval_instance_id.create_or_get(rec)
-        return approval_instance.is_status_waiting_approval()
+        return approval_instance and approval_instance.is_status_waiting_approval()
 
     def get_all_approval_task_line(self):
         return self.approval_instance_id.get_all_approval_task_line()
+
+    def get_notification_approval(self):
+        return self.approval_template_id.notification_approval_id

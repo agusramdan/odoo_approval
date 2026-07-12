@@ -23,7 +23,7 @@ class ApprovalAuditLog(models.Model):
         'res.users',
         "User",
         default=lambda self: self.env.user,
-        required=True
+        required=True,
     )
     # jika approval berdasarkan group
     group_name = fields.Char()
@@ -33,7 +33,13 @@ class ApprovalAuditLog(models.Model):
     delegatee_user_id = fields.Many2one('res.users', string="Acting User")
     delegatee_job_position = fields.Char()
 
-    delegator_user_id = fields.Many2one('res.users', string="On Behalf Of")
+    delegator_id = fields.Many2one(
+        'res.users',
+        "Delegator",
+        default=lambda self: self.env.user,
+        ondelete='set null',
+        help="User who delegated the approval action",
+    )
     delegator_job_position = fields.Char()
     action_type = fields.Selection([
         ('approve', 'Approve'),
@@ -92,11 +98,13 @@ class ApprovalAuditLog(models.Model):
 
     def create_audit_log(self, **kwargs):
         _field = self._fields
+        # approval_template = self.env['approval.template'].lookup_approval_template(**kwargs)
         transaction_model_name = kwargs.get('transaction_object')
         transaction_id = kwargs.get('transaction_id')
-        transaction_object = kwargs.get('transaction_object') or (
-                    transaction_model_name and transaction_id and self.env[transaction_model_name].sudo().browse(
-                transaction_id))
+        transaction_object = kwargs.get('transaction_object')
+
+        if not transaction_object and transaction_model_name and transaction_id:
+            transaction_object = self.env[transaction_model_name].sudo().browse(transaction_id)
         kw = dict(kwargs)
         user_delegate = kwargs.get('user_delegate')
         if user_delegate:
@@ -132,10 +140,10 @@ class ApprovalAuditLog(models.Model):
             _logger.warning("Ignored unknown fields in audit log: %s", ignored_keys)
         return self.create([create_dict])[0]
 
+    def get_approval_line_for_document(self, transaction_model_name, transaction_id, limit=100):
+        self.get_approval_audit_log_for_document(transaction_model_name, transaction_id, limit=limit)
+
     def get_approval_audit_log_for_document(self, transaction_model_name, transaction_id, limit=100):
-        """
-        Retrieve the approval document based on model name and ID. agar bisa di pakai untuk tanda tangan di dokument
-        """
         approval_line = self.browse()
         candidate = self.search(
             [('transaction_model_name', '=', transaction_model_name), ('transaction_id', '=', transaction_id)],

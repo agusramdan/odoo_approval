@@ -5,8 +5,9 @@
         <field name="model">approval.template</field>
         <field name="arch" type="xml">
             <tree string="Approval Template" default_order="model_id">
-                <field name="model_id" />
-<!--                <field name="approval_matrix_reference"/>-->
+                <field name="model_id"/>
+                <field name="model" string="Model Name"/>
+                <field name="view_name"/>
             </tree>
         </field>
     </record>
@@ -41,46 +42,65 @@
                         </page>
 
                         <page string="Help" name="help_info" autofocus="autofocus" >
-                                <div style="margin-top: 4px;">
-                                    <h3>Help with Python expressions</h3>
-                                    <p>Various fields may use Python code or Python expressions. The following variables can be used:</p>
-                                    <ul>
-                                        <li><code>env</code>: Odoo Environment on which the action is triggered</li>
-                                        <li><code>transaction_object</code>: TODO </li>
-                                        <li><code>time</code>, <code>datetime</code>, <code>dateutil</code>, <code>timezone</code>: useful Python libraries</li>
-                                        <li><code>log(message, level='info')</code>:logging function to record debug information in <code>ir.logging</code> table</li>
-                                        <li><code>UserError</code>: Warning Exception to use with <code>raise</code></li>
-                                        <li>To return an response, assign: <code> = {...}</code></li>
-                                        <li>Bila ingin custom approval line bisa memasukan data ke response['approval_line']</li>
-                                    </ul>
-                                    <div >
-                                        <p>Example of Python code</p>
+                            <div style="margin-top: 4px;">
+                                <h3>Help with Python expressions</h3>
+                                <p>Various fields may use Python code or Python expressions. The following variables can be used:</p>
+                                <ul>
+                                    <li><code>env</code>: Odoo Environment on which the action is triggered</li>
+                                    <li><code>transaction_object</code>: TODO </li>
+                                    <li><code>time</code>, <code>datetime</code>, <code>dateutil</code>, <code>timezone</code>: useful Python libraries</li>
+                                    <li><code>log(message, level='info')</code>:logging function to record debug information in <code>ir.logging</code> table</li>
+                                    <li><code>UserError</code>: Warning Exception to use with <code>raise</code></li>
+                                    <li>To return an response, assign: <code> = {...}</code></li>
+                                    <li>Bila ingin custom approval line bisa memasukan data ke response['approval_line']</li>
+                                </ul>
+                                <div >
+                                    <p>Example of Python code</p>
 <code style="white-space: pre-wrap">
 
 </code>
-                                    </div>
                                 </div>
+                            </div>
                         </page>
                         <page string="Approval">
                             <group>
-                                <group string="Approval Matrix/Line">
-                                    <field name="approval_matrix_id" string="Matrix Id"/>
-                                    <field name="approval_matrix_model" string="Model"/>
-                                    <field name="approval_task_line_model_id" string="Approval Line" />
+                                <group string="Approval Matrix">
+                                    <field name="approval_mode" string="Matrix Mode"/>
+                                    <field name="approval_matrix_id" string="Matrix Id" attrs="{'invisible':[('approval_mode', '!=', 'matrix')]}"/>
+                                    <field name="approval_matrix_model_id" string="Model" attrs="{'invisible':[('approval_mode', '!=', 'model')]}"/>
                                 </group>
                                 <group string="Approval Default">
                                     <field name="type_approval_default"/>
-                                    <field name="groups_approval_default_ids" attrs="{'invisible':[('type_approval_default','!=','multi_group')]}"/>
-                                    <field name="users_approval_default_ids" attrs="{'invisible':[('type_approval_default','!=','multi_user')]}"/>
+                                    <field name="groups_approval_default_ids" attrs="{'invisible':[('type_approval_default', '!=', 'multi_group')]}"/>
+                                    <field name="users_approval_default_ids" attrs="{'invisible':[('type_approval_default', '!=', 'multi_user')]}"/>
                                 </group>
                             </group>
                         </page>
+                        <page string="Approval Line">
+                            <group>
+                                <group string="Approval Line">
+                                    <field name="approval_task_line_model_id" string="Approval Line" />
+                                    <field name="approval_task_line_parent_filed" />
+                                    <field name="approval_task_line_state_field" />
+                                    <field name="approval_task_line_users_mode" />
+                                    <field name="approval_task_line_users_params" />
+                                </group>
+                                <group string="State Config">
+                                    <field name="approval_task_line_state_cancel" />
+                                    <field name="approval_task_line_state_reject" />
+                                    <field name="approval_task_line_state_approved" />
+                                    <field name="approval_task_line_state_waiting_approvals" />
+                                </group>
+                            </group>
+                        </page>
+
                         <page string="State Config">
                             <group>
                                 <group>
                                     <field name="state_field"/>
                                     <field name="state_waiting_approvals"/>
                                     <field name="state_reject"/>
+                                    <field name="state_canceled"/>
                                     <field name="state_approved"/>
                                 </group>
                             </group>
@@ -95,11 +115,28 @@
                                     <field name="invoke_approval_done" string="Done"/>
                                 </group>
                                 <group string="Approve">
+                                    <field name="approve_action_type" string="Action"/>
+                                    <field name="approve_window_action_id" string="Window"
+                                           attrs="{'invisible':[('approve_action_type', '!=', 'window_action')]}"
+                                           domain="[('target', '=', 'new')]"
+                                    />
+                                    <field name="approve_server_action_id" string="Server"
+                                           attrs="{'invisible':[('approve_action_type', '!=', 'server_action')]}"
+                                    />
                                     <field name="invoke_before_approve" string="Before"/>
-                                    <field name="invoke_after_approve" string="After"/>
+                                    <field name="invoke_after_approve" string="After"
+                                    />
                                     <field name="notes_chatter_approved" string="Note Chatter"/>
                                 </group>
                                 <group string="Reject">
+                                    <field name="reject_action_type" string="Action"/>
+                                    <field name="reject_window_action_id" string="Window"
+                                           attrs="{'invisible':[('reject_action_type', '!=', 'window_action')]}"
+                                           domain="[('target', '=', 'new')]"
+                                    />
+                                    <field name="reject_server_action_id" string="Server"
+                                           attrs="{'invisible':[('reject_action_type', '!=', 'server_action')]}"
+                                    />
                                     <field name="invoke_before_reject" string="Before"/>
                                     <field name="invoke_after_reject" string="After"/>
                                     <field name="notes_chatter_rejected" string="Note Chatter"/>
@@ -109,11 +146,17 @@
                         <page string="Template Notification">
                             <group>
                                 <group>
-                                    <field name="notification_approval_id"/>
+                                    <field name="notification_approval_id" domain="[('model_id.model','=',model)]"/>
+                                    <field name="notification_reminder_id" domain="[('model_id.model','=',model)]"/>
+                                    <label for="reminder_interval_number" string="reminder Every"/>
+                                    <div>
+                                        <field name="reminder_interval_number" class="oe_inline"/>
+                                        <field name="reminder_interval_type" class="oe_inline"/>
+                                    </div>
                                 </group>
                                 <group>
-                                    <field name="notification_rejection_id"/>
-                                    <field name="notification_approved_id"/>
+                                    <field name="notification_rejection_id" domain="[('model_id.model','=',model)]"/>
+                                    <field name="notification_approved_id" domain="[('model_id.model','=',model)]"/>
                                 </group>
                             </group>
                         </page>

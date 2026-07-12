@@ -5,14 +5,11 @@ from odoo.exceptions import ValidationError
 class ApprovalTaskLineAssignmentWizard(models.TransientModel):
     _name = 'approval.task.line.assignment.wizard'
 
-    task_line_id = fields.Integer()
-    task_line_model = fields.Char()
-
-    from_user_ids = fields.Many2many('res.users')
+    task_line_id = fields.Integer(readonly=True)
+    task_line_model = fields.Char(readonly=True)
+    from_user_ids = fields.Many2many('res.users', readonly=True)
     new_user_id = fields.Many2one('res.users', required=True)
-
     reason = fields.Text()
-
     display_name = fields.Char(
         compute="_compute_display_name",
         string="Record"

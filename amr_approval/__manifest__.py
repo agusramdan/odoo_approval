@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+
 {
     'name': "Approval Task and Assignment",
     'summary': """Approval Task""",
@@ -12,7 +13,7 @@
     'author': "Agus Muhammad Ramdan",
     'website': "http://agus.ramdan.tech",
     'category': 'Tools',
-    'version': '13.0.0.1.1',
+    'version': '13.0.0.2.0',
     'depends': ['base', 'base_setup', 'mail'],
     'data': [
         'security/base_groups.xml',
@@ -29,8 +30,9 @@
         'views/approval_task_line_views.xml',
         'views/approval_template_views.xml',
         'views/approval_instance_views.xml',
-        'views/approval_task_assignment_history_views.xml',
         'views/approval_matrix_rule_views.xml',
+        'views/approval_task_assignment_history_views.xml',
+        'views/reminder_log_views.xml',
         'views/user_delegation_views.xml',
         'views/res_config_settings_views.xml',
         'views/menuitem.xml',

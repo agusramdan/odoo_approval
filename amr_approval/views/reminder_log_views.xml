@@ -1,0 +1,61 @@
+<odoo>
+    <data>
+        <record id="reminder_log_filter" model="ir.ui.view">
+            <field name="name">reminder.log.search</field>
+            <field name="model">reminder.log</field>
+            <field name="arch" type="xml">
+                <search string="Reminder Data">
+                    <field name="receiver_id" />
+                    <field name="request_approval_task_date"/>
+                    <field name="reminder_datetime" />
+                    <field name="reminder_count"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="reminder_log_tree" model="ir.ui.view">
+            <field name="name">reminder.log.tree</field>
+            <field name="model">reminder.log</field>
+            <field name="priority" eval="99" />
+            <field name="arch" type="xml">
+                <tree string="Reminder Logs">
+                    <field name="receiver_id"/>
+                    <field name="notification_log_id"/>
+                    <field name="request_approval_task_date"/>
+                    <field name="reminder_datetime"/>
+                    <field name="reminder_count"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="reminder_log_from" model="ir.ui.view">
+            <field name="name">reminder.log.form</field>
+            <field name="model">reminder.log</field>
+            <field name="arch" type="xml">
+                <form string="Reminder Log" create="false">
+                    <sheet>
+                        <group>
+                            <group string="Reminder Information">
+                                <field name="notification_log_id"/>
+                                <field name="receiver_id"/>
+                                <field name="reminder_count" readonly="1"/>
+                            </group>
+                            <group string="Date Information">
+                                <field name="request_approval_task_date" readonly="1"/>
+                                <field name="reminder_datetime" readonly="1"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record model="ir.actions.act_window" id="reminder_log_action">
+            <field name="name">Reminder Log</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">reminder.log</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[]</field>
+        </record>
+    </data>
+</odoo>

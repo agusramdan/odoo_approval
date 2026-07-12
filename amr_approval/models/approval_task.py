@@ -2,6 +2,7 @@
 
 import logging
 
+from dateutil.relativedelta import relativedelta
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError
 from odoo.models import BaseModel
@@ -15,19 +16,31 @@ class ApprovalTask(models.Model):
     _name = 'approval.task'
     _inherit = 'approval.transaction.able.mixin'
     _description = 'This is Approval Task for Approval helper waiting approval'
-    _order = 'create_date desc'
+    _order = 'request_approval_task_date, create_date desc'
 
     name = fields.Char('Name')
     document = fields.Char()
     description = fields.Char()
     url = fields.Char(string="URL")
-    date = fields.Datetime(string='Create Time', readonly=True, default=fields.Datetime.now)
+    date = fields.Datetime(
+        string='Request Date', readonly=True, default=fields.Datetime.now,
+        help="Waktu yang dicatat ketika Requester Request Approval."
+    )
     request_approval_task_date = fields.Datetime(
         string="Request Approval Task Date",
         readonly=True,
         default=fields.Datetime.now,
         help="Waktu yang dicatat ketika Approval Task diberikan pada user atau group tertentu.",
     )
+    aging = fields.Integer(
+        compute="_compute_aging_display",
+        string="Aging"
+    )
+
+    aging_display = fields.Char(
+        compute="_compute_aging_display"
+    )
+
     transaction_id = fields.Integer(
         'Transaction ID'
     )
@@ -78,6 +91,7 @@ class ApprovalTask(models.Model):
     approval_user_ids = fields.Many2many(
         'res.users', compute='_compute_approval_user_ids', compute_sudo=True
     )
+
     assignment_able = fields.Boolean(
         compute='_compute_assignment_able'
     )
@@ -86,10 +100,100 @@ class ApprovalTask(models.Model):
         string='Notification',
         ondelete='set null',
     )
+    notification_reminder_id = fields.Many2one(
+        'notification.template',
+        string='Reminder',
+        ondelete='set null',
+        help="Notification template used for reminder notifications."
+    )
+    reminder_last_datetime = fields.Datetime(
+        'Last Reminder',
+        readonly=True,
+    )
+    reminder_next_datetime = fields.Datetime(
+        'Next Reminder',
+        readonly=True,
+    )
+    reminder_count = fields.Integer(
+        'Count Reminder',
+    )
+
     user_delegation_id = fields.Many2one(
         'user.delegation',
         compute='_compute_user_delegation'
     )
+
+    @api.depends("request_approval_task_date")
+    def _compute_aging_display(self):
+        today = fields.Date.context_today(self)
+        for rec in self:
+            if not rec.request_approval_task_date:
+                rec.aging = 0
+                rec.aging_display = ""
+                continue
+            request_date = fields.Datetime.context_timestamp(
+                rec,
+                rec.request_approval_task_date
+            ).date()
+            days = (today - request_date).days
+            rec.aging = days
+            if days < 30:
+                rec.aging_display = "%s Days" % days
+            else:
+                rec.aging_display = "%s Months" % (days // 30)
+
+    def cron_reminder(self):
+        reminders = self.search([('reminder_next_datetime', '<', fields.Datetime.now())], limit=1000)
+        for rem in reminders:
+            rem.send_reminder()
+
+    def send_reminder(self, **kwargs):
+        self.ensure_one()
+        approval_instance = kwargs.get('approval_instance') or self.approval_instance_id.get_instance_for_transaction(
+            self.transaction_model_name, self.transaction_id
+        )
+        approval_template = kwargs.get('approval_template') or approval_instance.approval_template_id
+        kwargs['reminder_count'] = reminder_count = self.reminder_count + 1
+
+        notification_approval = kwargs.get("notification_approval")
+        if "notification_approval_id" in kwargs:
+            notification_approval = self.env['notification.template'].browse(kwargs.get("notification_approval_id"))
+
+        if not notification_approval:
+            notification_approval = self.notification_reminder_id or approval_template.notification_reminder_id
+
+        if not notification_approval:
+            notification_approval = self.notification_approval_id or approval_template.notification_approval_id
+
+        notification_log = None
+        kwargs['approval_task_id'] = self.id
+        if notification_approval:
+            res_id, model_name = self.get_res_id_for_notification(notification_approval, **kwargs)
+            if res_id:
+                self.write({
+                    'reminder_count': reminder_count,
+                    'reminder_last_datetime': fields.Datetime.now(),
+                    'reminder_next_datetime': approval_template.get_next_reminder_datetime(),
+                })
+                users = self.get_users_for_notification(**kwargs)
+                notification_log = notification_approval.send_notification_to_users(
+                    users, res_id, **kwargs
+                )
+
+        if notification_log:
+            reminder_datetime = fields.Datetime.now()
+            reminders = [{
+                'transaction_id': self.transaction_id,
+                'transaction_model_name': self.transaction_model_name,
+                'request_approval_task_date': self.request_approval_task_date,
+                'reminder_datetime': reminder_datetime,
+                'reminder_count': reminder_count,
+                'receiver_id': notif.receiver_id.id,
+                'notification_log_id': notif.id
+            } for notif in notification_log]
+            self.env["reminder.log"].sudo().create(reminders)
+        elif reminder_count:
+            self.write({'reminder_count': reminder_count - 1, })
 
     def _compute_approval_user_ids(self):
         for rec in self:
@@ -239,6 +343,10 @@ class ApprovalTask(models.Model):
         if notification_approval:
             data['notification_approval_id'] = notification_approval
 
+        notification_reminder = kwargs.get("notification_reminder_id")
+        if notification_reminder:
+            data['notification_reminder_id'] = notification_reminder
+
         return data
 
     def prepare_create(self, **kwargs):
@@ -287,16 +395,25 @@ class ApprovalTask(models.Model):
             if not rec.name and 'name' not in kw and have_method(transaction_object, 'get_internal_number'):
                 kw['name'] = transaction_object.get_internal_number()
 
-            if not rec.document and not kw.get('document') \
-                    and have_method(transaction_object, 'get_internal_document'):
+            if (
+                    not rec.document
+                    and not kw.get('document')
+                    and have_method(transaction_object, 'get_internal_document')
+            ):
                 kw['document'] = transaction_object.get_internal_document()
 
-            if not rec.description and not kw.get('description') \
-                    and have_method(transaction_object, 'get_internal_description'):
+            if (
+                    not rec.description
+                    and not kw.get('description')
+                    and have_method(transaction_object, 'get_internal_description')
+            ):
                 kw['description'] = transaction_object.get_internal_description()
 
-            if not rec.requester_id and not kw.get('requester_id') \
-                    and have_method(transaction_object, 'get_internal_requester_id'):
+            if (
+                    not rec.requester_id
+                    and not kw.get('requester_id')
+                    and have_method(transaction_object, 'get_internal_requester_id')
+            ):
                 kw['requester_id'] = transaction_object.get_internal_requester_id()
 
             if not rec.url and 'url' not in kw and have_method(transaction_object, 'get_internal_url'):
@@ -325,6 +442,28 @@ class ApprovalTask(models.Model):
             transaction_id=transaction_id,
             transaction_model_name=transaction_model_name,
         )
+        approval_instance = kwargs.get('approval_instance') or self.approval_instance_id.get_instance_for_transaction(
+            self.transaction_model_name, self.transaction_id
+        )
+        approval_template = kwargs.get('approval_template') or approval_instance.approval_template_id
+        prepare_dict['approval_template'] = approval_template
+        prepare_dict['approval_instance'] = approval_instance
+        if not prepare_dict.get('user_ids') and not prepare_dict.get('group_ids'):
+            prepare_dict['approval_task_line'] = approval_task_line = approval_template.get_next_approval_task_line(
+                **prepare_dict
+            )
+            if have_method(approval_task_line, "prepare_approval_task_dict"):
+                prepare_dict.update(approval_task_line.prepare_approval_task_dict() or {})
+            else:
+                prepare_dict.update(approval_template.get_approval_groups_or_users(**prepare_dict) or {})
+
+        if prepare_dict.get('reset_reminder', True):
+            prepare_dict.update(
+                reminder_count=0,
+                reminder_last_datetime=False,
+                reminder_next_datetime=approval_template.get_next_reminder_datetime()
+            )
+
         if approval_task:
             write_dict = approval_task.prepare_write(**prepare_dict)
             approval_task.sudo().write(write_dict)
@@ -333,6 +472,12 @@ class ApprovalTask(models.Model):
             approval_task = self.sudo().create(create_dict)
         if not kwargs.get('skip_send_notification'):
             approval_task.send_notification(**kwargs)
+
+        if not approval_task.reminder_next_datetime:
+            approval_task.sudo().write({
+                'reminder_next_datetime': approval_template.get_next_reminder_datetime(approval_task.request_approval_task_date)
+            })
+
         return approval_task
 
     def action_approval_transaction(self):
@@ -391,13 +536,19 @@ class ApprovalTask(models.Model):
 
     def send_notification(self, **kwargs):
         self.ensure_one()
+        approval_instance = kwargs.get('approval_instance') or self.approval_instance_id.get_instance_for_transaction(
+            self.transaction_model_name, self.transaction_id
+        )
+        approval_template = kwargs.get('approval_template') or approval_instance.approval_template_id
         notification_approval = kwargs.get("notification_approval")
         if "notification_approval_id" in kwargs:
             notification_approval = self.env['notification.template'].browse(kwargs.get("notification_approval_id"))
 
         if not notification_approval:
-            notification_approval = self.notification_approval_id
+            notification_approval = self.notification_approval_id or approval_template.notification_approval_id
 
+        notification_log = None
+        kwargs['approval_task_id']=self.id
         if notification_approval:
             res_id, model_name = self.get_res_id_for_notification(notification_approval, **kwargs)
             if res_id:

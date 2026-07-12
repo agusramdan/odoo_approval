@@ -1,8 +1,158 @@
 # -*- coding: utf-8 -*-
 
+import logging
+
 from odoo import models, fields, api
 from odoo.exceptions import UserError
 from ..tools.utils import have_method
+
+_logger = logging.getLogger(__name__)
+
+
+class ApprovalAutoRegisterMixin(models.AbstractModel):
+    _name = "approval.auto.register.mixin"
+
+    def get_approval_template(self):
+        return self.env['approval.template'].search_template_by_model(self._name)
+
+    def write(self, vals):
+        if self.env.context.get('__skip_approval_status'):
+            return super().write(vals)
+        approval_template = self.get_approval_template()
+        state_field = None
+        old = None
+        if approval_template and approval_template.state_field:
+            state_field = approval_template.state_field
+            if state_field in vals:
+                old = {r.id: r.state for r in self}
+        # handling bila keluar approval
+        result = super().write(vals)
+        if old and state_field:
+            state_waiting_approvals = approval_template.get_state_waiting_approvals()
+            for transaction_object in self:
+                state_approval = getattr(transaction_object, state_field)
+                if old[transaction_object.id] in state_waiting_approvals and state_approval not in state_waiting_approvals:
+                    _logger.info(f"Exit waiting_approval {transaction_object.id}")
+                    if have_method(transaction_object, 'unregister_approval_task'):
+                        transaction_object.unregister_approval_task(skip_create_approval_log=True)
+                    else:
+                        approval_instance = self.env['approval.instance'].create_or_get(transaction_object)
+                        if approval_instance:
+                            approval_instance.unregister_approval_task_line()
+                elif (approval_template.auto_register_approval_task
+                      and not self.env.context.get('__skip_auto_register_approval_task_line_status')
+                      and old[transaction_object.id] not in state_waiting_approvals
+                      and state_approval in state_waiting_approvals
+                ):
+                    _logger.info(f"Register waiting_approval {transaction_object.id}")
+                    if have_method(transaction_object, 'register_to_approval_task'):
+                        transaction_object.register_to_approval_task(
+                            approval_template=approval_template,
+                        )
+                    else:
+                        approval_instance = self.env['approval.instance'].create_or_get(transaction_object)
+                        approval_instance.register_approval_task_line(
+                            transaction_object=transaction_object,
+                            approval_template=approval_template,
+                        )
+        return result
+
+
+class ApprovalLineAutoRegisterMixin(models.AbstractModel):
+    _name = "approval.line.auto.register.mixin"
+
+    def get_approval_template(self):
+        if self:
+            transaction_model_name = getattr(self[0], 'transaction_model_name', None)
+            if transaction_model_name:
+                return self.env['approval.template'].search_template_by_model(transaction_model_name)
+        return self.env['approval.template'].search_template_by_approval_task_line_model(self._name)
+
+    def state_leave_waiting_approvals(self, approval_template, state_approval, create_date=None):
+        rec = self
+        al = None
+        if approval_template.approval_task_line_state_approved == state_approval:
+            _logger.info("To Approve %s , %s .", self, state_approval)
+            al = self.env['approval.audit.log'].create_audit_log(
+                approval_task_line=rec,
+                action_type='approve',
+                name='Approval',
+                create_date=create_date or fields.Datetime.now(),
+            )
+        elif approval_template.approval_task_line_state_reject == state_approval:
+            _logger.info("To Reject %s , %s .", self, state_approval)
+            al = rec.create_approval_audit_log_rejected(
+                approval_task_line=rec,
+                action_type='reject',
+                name='Reject',
+                create_date=create_date or fields.Datetime.now(),
+            )
+        elif approval_template.approval_task_line_state_cancel == state_approval:
+            _logger.info("To Cancel %s , %s .", self, state_approval)
+        else:
+            _logger.warning("%s , %s .", self, state_approval)
+        return al
+
+    def write(self, vals):
+        if self.env.context.get('__skip_approval_task_line_status'):
+            return super().write(vals)
+        old = None
+        approval_template = self.get_approval_template()
+        approval_task_line_state_field = None
+        trx_change = {}
+        if approval_template and approval_template.approval_task_line_state_field:
+            approval_task_line_state_field = approval_template.approval_task_line_state_field
+            if approval_task_line_state_field in vals:
+                old = {r.id: r.state for r in self}
+        res = super().write(vals)
+        if old:
+            state_waiting_approvals = approval_template.get_approval_task_line_state_waiting_approvals()
+            for rec in self:
+                state_approval = getattr(rec, approval_task_line_state_field)
+                if old[rec.id] in state_waiting_approvals and state_approval not in state_waiting_approvals:
+                    transaction_object = approval_template.get_transaction_object(
+                        approval_template=approval_template,
+                        approval_task_line=rec,
+                    )
+                    trx_change[transaction_object.id] = transaction_object
+                    rec.state_leave_waiting_approvals(approval_template, state_approval)
+
+        if (
+                trx_change and
+                approval_template and
+                approval_template.auto_register_approval_task and
+                not self.env.context.get('__skip_auto_register_approval_task_line_status')
+        ):
+            for trx_id, transaction_object in trx_change.items():
+                approval_task_line = None
+                approval_instance = None
+                if transaction_object:
+                    approval_instance = self.env['approval.instance'].create_or_get(
+                        transaction=transaction_object,
+                        approval_template=approval_template,
+                        raise_exception_without_template=False,
+                    )
+                    if approval_instance:
+                        approval_task_line = approval_instance.get_next_approval_task_line()
+                if (
+                        approval_task_line and
+                        transaction_object and
+                        approval_instance and
+                        approval_instance.is_status_waiting_approval()
+                ):
+                    if have_method(transaction_object, 'register_to_approval_task'):
+                        transaction_object.register_to_approval_task(
+                            approval_task_line=approval_task_line,
+                            approval_template=approval_template,
+                        )
+                    else:
+                        approval_instance.register_approval_task_line(
+                            transaction_object=transaction_object,
+                            approval_task_line=approval_task_line,
+                            approval_template=approval_template,
+                        )
+
+        return res
 
 
 class ApprovalTransactionAbleMixin(models.AbstractModel):
@@ -192,19 +342,46 @@ class ApprovalTaskLineAccessMixin(models.AbstractModel):
             rec.access_approval = current_user in rec.get_users_for_approval()
 
     def get_users(self):
-        return self.env['res.users'].browse()
+        if hasattr(self, 'responsible_user_id') and self.responsible_user_id:
+            return self.responsible_user_id
+
+        users = self.env['res.users'].browse()
+        if hasattr(self, 'user_id') and self.user_id:
+            users |= self.user_id
+        if hasattr(self, 'user_ids') and self.user_ids:
+            users |= self.user_ids
+        if hasattr(self, 'group_id') and self.group_id:
+            users |= self.group_id.users
+        if hasattr(self, 'group_ids') and self.group_ids:
+            users |= self.group_ids.mapped('users')
+        return users
 
     def get_groups(self):
-        return self.env['res.groups'].browse()
+        groups = self.env['res.groups'].browse()
+        if hasattr(self, 'group_id') and self.group_id:
+            groups |= self.group_id.users
+        if hasattr(self, 'group_ids') and self.group_ids:
+            groups |= self.group_ids.mapped('users')
+        return groups
 
     def prepare_approval_task_dict(self):
-        """Prepare dict untuk create record approval task"""
         self.ensure_one()
         kw = {
             'approval_task_line': self,
             'approval_model': self._name,
-            'approval_res_id': self.id
+            'approval_res_id': self.id,
         }
+        users = self.env['res.users'].browse()
+        if hasattr(self, 'user_id') and self.user_id:
+            users |= self.user_id
+        if hasattr(self, 'user_ids') and self.user_ids:
+            users |= self.user_ids
+        groups = self.env['res.groups'].browse()
+        if hasattr(self, 'group_id') and self.group_id:
+            groups |= self.group_id.users
+        if hasattr(self, 'group_ids') and self.group_ids:
+            groups |= self.group_ids.mapped('users')
+
         return kw
 
     def get_users_for_approval(self, **kwargs):
@@ -243,7 +420,7 @@ class ApprovalTypeMixin(models.AbstractModel):
     assign_responsible_rule = fields.Selection([
         ('legacy', 'Legacy'),
         ('have_one_user', 'Have One User'),
-        ('pickup', 'Responsible'),
+        ('pickup', 'Pickup Responsible'),
     ], 'Responsible', default='legacy')
     responsible_user_id = fields.Many2one('res.users', 'Responsible User')
 
@@ -302,7 +479,7 @@ class ApprovalTypeMixin(models.AbstractModel):
         kw = {
             'approval_task_line': self,
             'approval_model': self._name,
-            'approval_res_id': self.id
+            'approval_res_id': self.id,
         }
         if self.responsible_user_id:
             kw['user_ids'] = self.responsible_user_id
@@ -340,12 +517,18 @@ class ApprovalTypeMixin(models.AbstractModel):
     def get_users_for_approval(self, **kwargs):
         record = self.ensure_one()
         users = kwargs.get('users') or record.get_users()
-        return users.get_users_for_approval(company=record.company_id)
+        company = None
+        if 'company_id' in self._fields:
+            company = self.company_id
+        return users.get_users_for_approval(company=company)
 
     def get_users_for_notification(self, **kwargs):
         record = self.ensure_one()
         users = kwargs.get('users') or record.get_users()
-        return users.get_users_for_notification(company=record.company_id)
+        company = None
+        if 'company_id' in self._fields:
+            company = self.company_id
+        return users.get_users_for_notification(company=company)
 
 
 class ApprovalAccessMixin(models.AbstractModel):
@@ -357,7 +540,7 @@ class ApprovalAccessMixin(models.AbstractModel):
         string="Can Approve",
         compute="_compute_access_rights",
         search='search_filter_access_approval',
-        store=False
+        store=False,
     )
 
     def _compute_access_rights(self):
@@ -368,7 +551,6 @@ class ApprovalAccessMixin(models.AbstractModel):
 
     def get_approval_domain(self):
         current_uid = self.env.user.id
-        model_name = self._name
         table = self._table
         cr = self._cr
 
@@ -428,11 +610,11 @@ class ApprovalAccessMixin(models.AbstractModel):
 
     def search_for_current_user(self):
         """Cari record yang bisa di-approve user login."""
-        return self.search(self.get_approval_domain())
+        return self.search(self.get_domain_for_current_user())
 
     def search_read(self, domain=None, fields=None, offset=0, limit=None, order=None):
         if self.env.context.get('current_user_only'):
-            approval_domain = self.get_approval_domain()
+            approval_domain = self.get_domain_for_current_user()
             if domain:
                 if isinstance(domain, str):
                     domain = eval(domain)

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from odoo import models, fields, api
-from ..tools.utils import have_method
 import logging
+
+from odoo import api, fields, models
 
 _logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class ApprovalTaskAssignmentHistory(models.Model):
     reason = fields.Text()
     reassigned_by = fields.Many2one(
         'res.users',
-        default=lambda self: self.env.user
+        default=lambda self: self.env.user,
     )
     reassigned_at = fields.Datetime(
         default=fields.Datetime.now
@@ -57,7 +57,7 @@ class ApprovalMassAssignmentCommand(models.Model):
         commands = self.search([
             ('execution_type', '=', 'scheduled'),
             ('state', 'in', ['draft', 'waiting']),
-            ('scheduled_at', '<=', fields.Datetime.now())
+            ('scheduled_at', '<=', fields.Datetime.now()),
         ])
 
         for command in commands:
@@ -76,7 +76,7 @@ class ApprovalMassAssignmentCommand(models.Model):
                 for line in task_lines:
                     line.do_assignment(
                         new_user_id=command.new_user_id.id,
-                        reason=f"Mass assignment: {command.name}"
+                        reason=f"Mass assignment: {command.name}",
                     )
 
                 command.state = 'done'

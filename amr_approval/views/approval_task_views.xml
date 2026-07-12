@@ -23,7 +23,7 @@
         <field name="name">approval.task.tree</field>
         <field name="model">approval.task</field>
         <field name="arch" type="xml">
-            <tree>
+            <tree decoration-danger="aging > 7" decoration-warning="aging > 3">
                 <field name="document" string="Type"/>
                 <field name="name" string="Name"/>
                 <field name="description" string="Description"/>
@@ -38,17 +38,24 @@
                 <field name="approval_res_id" string="Res ID" optional="hide" groups="base.group_no_one"/>
                 <field name="approval_model" string="Model" optional="hide" groups="base.group_no_one"/>
                 <field name="approval_instance_id" optional="hide" groups="base.group_no_one"/>
-                <field name="approval_user_ids" string="Approvers" widget="many2many_tags" optional="hide" groups="base.group_no_one"/>
                 <field name="notification_approval_id" string="Notification" optional="hide" groups="base.group_no_one"/>
+                <field name="notification_reminder_id" string="Reminder" optional="hide" groups="base.group_no_one"/>
+                <field name="aging" optional="hide"/>
+                <field name="aging_display" optional="hide"/>
+                <field name="reminder_last_datetime" optional="hide" groups="base.group_no_one"/>
+                <field name="reminder_next_datetime" optional="hide" groups="base.group_no_one"/>
+                <field name="approval_user_ids" string="Approvers" widget="many2many_tags" optional="hide" groups="base.group_no_one"/>
+                <button name="action_assign" string="Assignment User" type="object" class="oe_highlight"
+                        icon="fa-solid fa-user-plus text-success" groups="base.group_system" help="Assign Responsible User"/>
                 <button name="action_approval_transaction" string="Show Detail" type="object" class="oe_highlight"/>
-                <button name="action_assign" string="Assignment User" type="object"
-                        icon="fa-solid fa-user-plus text-success" groups="base.group_no_one"
+                <button name="send_to_mobile_approval" string="Send to Mobile" type="object"
+                        icon="fa-solid fa-paper-plane text-success" groups="base.group_no_one"
                 />
                 <button name="send_notification" string="Send Notification" type="object"
                         icon="fa-solid fa-envelope text-success" groups="base.group_no_one"
                 />
-                <button name="send_to_mobile_approval" string="Send to Mobile" type="object"
-                        icon="fa-solid fa-paper-plane text-success" groups="base.group_no_one"
+                <button name="send_reminder" string="Send Reminder" type="object"
+                        icon="fa-solid fa-envelope text-success" groups="base.group_no_one"
                 />
                 <button name="check_approval_task_status" string="Check Approval Task" type="object"
                         icon="fa-solid fa-dropbox text-success" groups="base.group_no_one"

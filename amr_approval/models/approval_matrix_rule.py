@@ -2,9 +2,9 @@
 
 import logging
 
-from odoo import models, fields, api, _
+from odoo import api, fields, models
 
-from ..tools.utils import have_method, safe_call_method
+from ..tools.utils import safe_call_method
 
 _logger = logging.getLogger(__name__)
 
@@ -39,6 +39,9 @@ class ApprovalMatrixRule(models.Model):
         return self.prepare_list_approval_task_line(**kwargs)
 
     def prepare_list_approval_task_line(self, **kwargs):
+        if not self:
+            return []
+
         self.ensure_one()
         prepare_list = []
         for line in self.approval_matrix_rule_line:

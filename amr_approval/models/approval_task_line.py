@@ -33,10 +33,13 @@ class ApprovalTaskLineMixin(models.AbstractModel):
     requester_id = fields.Many2one(
         'res.users', 'Requester',
         default=lambda self: self.env.user,
+        ondelete='set null',
         help="User who requested the approval."
     )
     user_execution_id = fields.Many2one(
-        'res.users', 'User Execution',
+        'res.users',
+        'User Execution',
+        ondelete='set null',
         help="User who executed approval (Approve/Reject)the transaction"
     )
     date_execution = fields.Datetime('Date Execution')
@@ -97,9 +100,13 @@ class ApprovalTaskLineMixin(models.AbstractModel):
         if self:
             transaction_model_name = self[0].transaction_model_name
             transaction_id = self[0].transaction_id
-            return self.env['approval.instance'].search(
-                [('transaction_id', '=', transaction_id), ('transaction_model_name', '=', transaction_model_name)],
-                limit=1)
+            return self.env["approval.instance"].search(
+                [
+                    ('transaction_id', '=', transaction_id),
+                    ('transaction_model_name', '=', transaction_model_name),
+                ],
+                limit=1,
+            )
         return self.env['approval.instance'].browse()
 
     def get_all_approval_task_line(self, transaction_id=None, transaction_model_name=None):
@@ -112,7 +119,11 @@ class ApprovalTaskLineMixin(models.AbstractModel):
         if not transaction_model_name or not transaction_id:
             raise UserError(" Transaction not set ")
         return self.search(
-            [('transaction_id', '=', transaction_id), ('transaction_model_name', '=', transaction_model_name)])
+            [
+                ('transaction_id', '=', transaction_id),
+                ('transaction_model_name', '=', transaction_model_name),
+            ]
+        )
 
     def get_previous_approval_task_line(self, transaction_id=None, transaction_model_name=None):
         end_task = self.ensure_one()
@@ -126,8 +137,13 @@ class ApprovalTaskLineMixin(models.AbstractModel):
 
     def get_last_approval_task_line(self, transaction_id=None, transaction_model_name=None):
         return self.search(
-            [('transaction_id', '=', transaction_id), ('transaction_model_name', '=', transaction_model_name)],
-            order='id desc', limit=1)
+            [
+                ('transaction_id', '=', transaction_id),
+                ('transaction_model_name', '=', transaction_model_name),
+            ],
+            order="id desc",
+            limit=1,
+        )
 
     def get_next_approval_task_line(self, transaction_id=None, transaction_model_name=None):
         if not transaction_id or not transaction_model_name:
@@ -143,7 +159,6 @@ class ApprovalTaskLineMixin(models.AbstractModel):
         return result
 
     def register_approval_task(self, **kwargs):
-
         return self.register_to_approval_task(**kwargs)
 
     def register_to_approval_task(self, **kwargs):
@@ -176,12 +191,12 @@ class ApprovalTaskLineMixin(models.AbstractModel):
         self.ensure_one()
         transaction_object = kwargs.get('transaction_object')
         kw = dict(kwargs)
-        if transaction_object:
+        if transaction_object and isinstance(transaction_object, models.BaseModel):
             if have_method(transaction_object, "create_approval_log"):
                 return transaction_object.create_approval_log(**kw)
             kw.update(
                 transaction_id=transaction_object.id,
-                transaction_model_name=transaction_object._name
+                transaction_model_name=transaction_object._name,
             )
         return self.env['approval.audit.log'].create_audit_log(**kw)
 
@@ -196,13 +211,77 @@ class ApprovalTaskLineMixin(models.AbstractModel):
         return self._create_approval_audit_log(**kw)
 
     def send_approval_notification(self, **kwargs):
-        pass
+        approval_template = kwargs.get('approval_template')
+        if not kwargs.get('notification_template') and approval_template:
+            kwargs = dict(kwargs)
+            kwargs['notification_template'] = approval_template.notification_approval_id
+
+        self.send_notification(**kwargs)
+
+    def send_reminder_notification(self, **kwargs):
+        approval_template = kwargs.get('approval_template')
+        if not kwargs.get('notification_template') and approval_template:
+            kwargs = dict(kwargs)
+            kwargs['notification_template'] = approval_template.notification_reminder_id
+
+        self.send_notification(**kwargs)
 
     def send_rejected_notification(self, **kwargs):
-        pass
+        kwargs = dict(kwargs)
+        kwargs['users'] = self.requester_id
+        approval_template = kwargs.get('approval_template')
+        if not kwargs.get('notification_template') and approval_template:
+            kwargs = dict(kwargs)
+            kwargs['notification_template'] = approval_template.notification_rejection_id
+
+        self.send_notification(**kwargs)
 
     def send_approved_notification(self, **kwargs):
-        pass
+        approval_template = kwargs.get('approval_template')
+        if not kwargs.get('notification_template') and approval_template:
+            kwargs = dict(kwargs)
+            kwargs['notification_template'] = approval_template.notification_approved_id
+
+        self.send_notification(**kwargs)
+
+    def send_notification(self, **kwargs):
+        self.ensure_one()
+        notification_template = kwargs.get("notification_template")
+        if "notification_template_id" in kwargs:
+            notification_template = self.env['notification.template'].browse(
+                kwargs.get("notification_template_id")
+            )
+
+        if notification_template:
+            res_id, model_name = self.get_res_id_for_notification(notification_template, **kwargs)
+            if res_id:
+                if 'company_id' in self._fields:
+                    company = self.company_id
+                else:
+                    company = self.env.company
+                users = None
+                kw = dict(kwargs)
+                if 'users' in kw:
+                    users = kw.pop('users')
+                if not users:
+                    users = self.get_users_for_notification(company=company)
+                else:
+                    users = users.get_users_for_notification(company=company)
+
+                kw['approval_task_line'] = self
+                if 'res_id' in kw:
+                    kw.pop('res_id')
+
+                notification_template.send_notification_to_users(users, res_id, **kw)
+
+    def get_users_for_notification(self, **kwargs):
+        record = self.ensure_one()
+        users = kwargs.get('users') or record.get_users()
+        company = kwargs.get('company') or self.env.company
+        if isinstance(users,models.Model):
+            return users.get_users_for_notification(company=company)
+        else:
+            return users
 
     def set_approved_status(self, **kwargs):
         if have_method(self, "set_approve_state"):
@@ -215,12 +294,15 @@ class ApprovalTaskLineMixin(models.AbstractModel):
     def set_rejected_status(self, **kwargs):
         if have_method(self, "set_reject_state"):
             self.set_reject_state()
-        self.write({
-            'user_execution_id': self.env.uid,
-            'date_execution': fields.Datetime.now(),
-            'reject_reason': kwargs.get('reject_reason') or kwargs.get('reason') or self.env.context.get(
-                '__reject_reason')
-        })
+        self.write(
+            {
+                'user_execution_id': self.env.uid,
+                'date_execution': fields.Datetime.now(),
+                'reject_reason': kwargs.get('reject_reason')
+                or kwargs.get('reason')
+                or self.env.context.get('__reject_reason'),
+            }
+        )
 
     def set_waiting_status(self, **kwargs):
         if have_method(self, "set_waiting_approval_state"):
@@ -278,7 +360,11 @@ class ApprovalTaskLineMixin(models.AbstractModel):
         if not kwargs.get('user_delegation'):
             kw['user_delegation'] = rec.get_user_delegation()
         rec.before_approve(**kw)
-        rec.with_context(__skip_create_approval_audit_log=True).set_approved_status(**kw)
+        rec.with_context(
+            __skip_create_approval_audit_log=True,
+            __skip_approval_task_line_status=True,
+            __skip_auto_register_approval_task_line_status=True,
+        ).set_approved_status(**kw)
         rec.create_approval_audit_log_approved(**kw)
         rec.after_approve(**kw)
 
@@ -306,7 +392,6 @@ class ApprovalTaskLineMixin(models.AbstractModel):
 
     def reject_method_legacy(self, reason=None, **kwargs):
         raise NotImplemented
-        # return approval_task_line_next, approval_task_line_between
 
     def do_reject(self, reason=None, **kwargs):
         self.ensure_one()
@@ -335,8 +420,9 @@ class ApprovalTaskLineMixin(models.AbstractModel):
                 approval_task_line_next, approval_task_line_between = self.reject_method_legacy(reason, **kwargs)
             else:
                 approval_task_line_next = kwargs.get('approval_task_line_next')
-                approval_task_line_between = kwargs.get('approve_task_line_between') or self.get_approval_start_task(
-                    approval_task_line_next)
+                approval_task_line_between = kwargs.get(
+                    'approve_task_line_between'
+                ) or self.get_approval_start_task(approval_task_line_next)
             is_approval_done = not approval_task_line_next
         if is_approval_done:
             kw['is_approval_done'] = True
@@ -345,7 +431,11 @@ class ApprovalTaskLineMixin(models.AbstractModel):
             kw['approval_task_line_next'] = approval_task_line_next
         kw['approve_task_task_between'] = approval_task_line_between
         kw['approve_task_line'] = kw['approve_task_line_reject'] = self
-        self.with_context(__skip_create_approval_audit_log=True).set_rejected_status(**kw)
+        self.with_context(
+            __skip_create_approval_audit_log=True,
+            __skip_approval_task_line_status=True,
+            __skip_auto_register_approval_task_line_status=True,
+        ).set_rejected_status(**kw)
         self.create_approval_audit_log_rejected(**kw)
         self.after_reject(**kw)
         if not is_approval_done and approval_task_line_next:
@@ -605,8 +695,12 @@ class ApprovalTaskLine(models.Model):
         transaction_id = transaction_id or self.transaction_id
         transaction_model_name = transaction_model_name or self.transaction_model_name
         return self.search(
-            [('transaction_id', '=', transaction_id), ('transaction_model_name', '=', transaction_model_name)],
-            order='id asc')
+            [
+                ('transaction_id', '=', transaction_id),
+                ('transaction_model_name', '=', transaction_model_name),
+            ],
+            order='id asc',
+        )
 
     def get_next_approval_task_line(self, transaction_id=None, transaction_model_name=None):
         # transaction_id = transaction_id or self.transaction_id
@@ -623,32 +717,28 @@ class ApprovalTaskLine(models.Model):
     def get_approval_instance(self):
         return self.approval_instance_id
 
-    def get_users_for_notification(self, **kwargs):
-        record = self.ensure_one()
-        users = kwargs.get('users') or record.get_users()
-        company = kwargs.get('company') or self.env.company
-        if users:
-            return users.get_users_for_notification(company=company)
-        else:
-            return users
+    # def get_users_for_notification(self, **kwargs):
+    #     record = self.ensure_one()
+    #     users = kwargs.get('users') or record.get_users()
+    #     company = kwargs.get('company') or self.env.company
+    #     if users:
+    #         return users.get_users_for_notification(company=company)
+    #     else:
+    #         return users
 
-    def send_approval_notification(self, **kwargs):
-        self.send_notification(**kwargs)
+    # def send_approval_notification(self, **kwargs):
+    #     self.send_notification(**kwargs)
 
-    def send_rejected_notification(self, **kwargs):
-        kwargs = dict(kwargs)
-        kwargs['users'] = self.requester_id
-        self.send_notification(**kwargs)
+    # def send_rejected_notification(self, **kwargs):
+    #     kwargs = dict(kwargs)
+    #     kwargs['users'] = self.requester_id
+    #     self.send_notification(**kwargs)
 
-    def send_approved_notification(self, **kwargs):
-        kwargs = dict(kwargs)
-        kwargs['users'] = self.requester_id
-        self.send_notification(**kwargs)
+    # def send_approved_notification(self, **kwargs):
+    #     kwargs = dict(kwargs)
+    #     kwargs['users'] = self.requester_id
+    #     self.send_notification(**kwargs)
 
-    def send_notification(self, **kwargs):
-        # implment di module notification
-        pass
-
-    def search_responsible_user(self, old_user_id):
-        old_user_id = int(old_user_id)
-        return self.search([('user_id', '=', old_user_id), ('responsible_user_id', '=', old_user_id)])
+    # def send_notification(self, **kwargs):
+    #     # implement di module notification
+    #     pass
