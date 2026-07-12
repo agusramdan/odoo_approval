@@ -45,13 +45,13 @@ class MobileApprovalClient(models.Model):
 
     @api.model
     def get_mobile_approval_path(self):
-        return "/api/intra/mobile/approval"
+        return self.env['ir.config_parameter'].sudo().get_param(
+            'mobile_notification_server_path', "/api/intra/mobile/approval"
+        )
 
     def get_server_auth(self):
         server_auth_id = int(
-            self.env['ir.config_parameter']
-            .sudo()
-            .get_param('mobile_approval_server_id', 0)
+            self.env['ir.config_parameter'].sudo().get_param('mobile_approval_server_id', 0)
         )
         return self.env['service.endpoint'].browse(server_auth_id)
 
@@ -80,7 +80,7 @@ class MobileApprovalClient(models.Model):
         else:
             data['user_ids'] = []
 
-        return self.create([data])[0]
+        return self.sudo().create([data])[0]
 
     # -------------------------------------------------------
     # SEND
@@ -91,22 +91,33 @@ class MobileApprovalClient(models.Model):
     def send(self):
         self.ensure_one()
         payload = None
+        response_text = None
         try:
             payload_dict = self.prepare_send_data()
-            payload = json.dumps(payload_dict)
+            payload = json.dumps(payload_dict, indent=4)
             server_auth = self.get_server_auth()
-            with server_auth.get_service_client() as s:
-                response = s.post(path=self.get_mobile_approval_path(), payload=payload)
-                response.raise_for_status()
-                self.write({
-                    'response': response.text,
+            if server_auth:
+                with server_auth.get_service_client() as s:
+                    response = s.post(path=self.get_mobile_approval_path(), payload=payload)
+                    response_text = response.text
+                    response.raise_for_status()
+            elif "ceria.mobile.approval" in self.env:
+                result = self.env["ceria.mobile.approval"].with_context(ceria_mobile_local=True).api_create_request(
+                    **payload_dict)
+                response_text=json.dumps(result, indent=4)
+            else:
+                return False
+
+            self.sudo().write({
+                    'response': response_text,
                     'payload': payload,
                     'state': 'done'
                 })
-                return True
+            return True
         except Exception:
             stack = traceback.format_exc()
-            self.write({
+            self.sudo().write({
+                'response': response_text,
                 'payload': payload,
                 'state': 'error',
                 'errors_message': stack,
@@ -120,10 +131,10 @@ class MobileApprovalClient(models.Model):
             rec.send()
 
     def mark_outgoing(self):
-        self.write({'state': 'outgoing'})
+        self.sudo().write({'state': 'outgoing'})
 
     def cancel(self):
-        self.write({'state': 'cancel'})
+        self.sudo().write({'state': 'cancel'})
 
     # -------------------------------------------------------
     # SEND PAYLOAD

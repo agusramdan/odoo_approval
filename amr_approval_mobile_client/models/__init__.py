@@ -3,5 +3,4 @@
 from . import approval_task
 from . import mobile_approval_client
 from . import mobile_notification_client
-from . import notification_template
 from . import res_config_settings

@@ -7,7 +7,7 @@
     "license": "LGPL-3",
     'author': "Agus Muhammad Ramdan",
     'description': "Client connect to mobile application",
-    'depends': ['base', 'mail', 'amr_approval', 'amr_service_client'],
+    'depends': ['base', 'mail', 'amr_resource', 'amr_approval', 'amr_service_client'],
     'data': [
         'security/ir.model.access.csv',
         'views/mobile_approval_views.xml',

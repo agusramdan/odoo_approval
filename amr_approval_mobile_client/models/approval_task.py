@@ -14,7 +14,7 @@ class ApprovalTask(models.Model):
         if not self:
             transaction_id = kwargs.get('transaction_id')
             transaction_model_name = kwargs.get('transaction_model_name')
-            if transaction_id and transaction_id:
+            if transaction_id and transaction_model_name:
                 records = self.search([
                     ('transaction_id', '=', transaction_id),
                     ('transaction_model_name', '=', transaction_model_name),

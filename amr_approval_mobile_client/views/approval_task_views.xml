@@ -4,7 +4,7 @@
         <field name="model">approval.task</field>
         <field name="inherit_id" ref="amr_approval.view_approval_task_tree"/>
         <field name="arch" type="xml">
-            <field name="approval_model" postions="after">
+            <field name="approval_model" position="after">
                 <button name="send_to_mobile_approval" string="Send to Mobile" type="object" class="oe_highlight"
                         icon="fa-solid fa-paper-plane text-success" groups="base.group_no_one"/>
             </field>

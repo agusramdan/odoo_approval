@@ -39,9 +39,15 @@ class MobileNotificationClient(models.Model):
     last_error = fields.Datetime()
     response = fields.Text()
 
-    def create_payload(self, **kwargs):
+    def create_payload(self, to_user_id=None, **kwargs):
         accept_data = json.dumps(kwargs)
         return self.create([{
+            'to_user_id': to_user_id,
+            'title': kwargs.get('title'),
+            'body': kwargs.get('body'),
+            'image': kwargs.get('image'),
+            'source_model': kwargs.get('source_model'),
+            'source_res_id': kwargs.get('source_res_id'),
             'accept_data': accept_data
         }])[0]
 
@@ -50,45 +56,59 @@ class MobileNotificationClient(models.Model):
     # -------------------------------------------------------
 
     def get_mobile_notification_path(self):
-        return "/api/intra/mobile/notification"
+        return self.env['ir.config_parameter'].sudo().get_param(
+            'mobile_notification_server_path', "/api/intra/mobile/notification"
+        )
 
     def get_server_auth(self):
         server_auth_id = int(
-            self.env['ir.config_parameter']
-            .sudo()
-            .get_param('mobile_notification_server_id', 0)
+            self.env['ir.config_parameter'].sudo().get_param('mobile_notification_server_id', 0)
         )
-
         return self.env['service.endpoint'].browse(server_auth_id)
+
+    def send_payload(self, payload):
+        server_auth = self.get_server_auth()
+        if server_auth:
+            with server_auth.get_service_client() as s:
+                response = s.post(path=self.get_mobile_notification_path(), payload=payload)
+                response.raise_for_status()
+                response_text = response.text
+        elif "notification.service" in self.env:
+            result = self.env["notification.service"].sudo().with_context(
+                __call_form_mobile_notification_client=True).send_notification(
+                payload
+            )
+            response_text = json.dumps(result)
+        else:
+            return False
+
+        self.sudo().write({
+            'response': response_text,
+            'payload': json.dumps(payload),
+            'state': 'done'
+        })
+        return True
 
     def send(self):
         self.ensure_one()
-        payload = {}
+        response = False
+        response_text = None
+        payload = json.loads(self.accept_data or "{}")
         try:
             payload.update(json.loads(self.accept_data or "{}"))
-            data = payload.get('data') or {}
-            payload['data'] = self.prepare_send_data(**data)
-            payload['notification'] = {
-                'title': self.title or None,
-                'body': self.body or None,
-                'image': self.image or None,
-            }
-            server_auth = self.get_server_auth()
-            with server_auth.get_service_client() as s:
-                response = s.post(path=self.get_mobile_notification_path(), payload=payload)
-                # response = requests.post(url, data=json.dumps(payload), headers=headers)
-                response.raise_for_status()
-                self.write({
-                    'response': response.text,
-                    'payload': json.dumps(payload),
-                    'state': 'done'
-                })
-                return True
-
+            if self.title:
+                payload['title'] = self.title
+            if self.body:
+                payload['body'] = self.body
+            if self.image:
+                payload['image'] = self.image
+            payload['notification_type'] = 'approval'
+            return self.send_payload(payload)
         except Exception:
             stack = traceback.format_exc()
-            self.write({
-                'payload': json.dumps(payload),
+            self.sudo().write({
+                'response': response_text,
+                'payload': json.dumps(payload, indent=4),
                 'state': 'error',
                 'errors_message': stack,
                 'last_error': fields.Datetime.now(),
@@ -101,10 +121,10 @@ class MobileNotificationClient(models.Model):
             rec.send()
 
     def mark_outgoing(self):
-        self.write({'state': 'outgoing'})
+        self.sudo().write({'state': 'outgoing'})
 
     def cancel(self):
-        self.write({'state': 'cancel'})
+        self.sudo().write({'state': 'cancel'})
 
     def dispatch_send(self):
         self.send()
@@ -118,13 +138,15 @@ class MobileNotificationClient(models.Model):
             accept_data = json.loads(self.accept_data or "{}")
             mobile_notification = {}
             notification = accept_data.get('notification') or {}
+            notification_fields = {
+                'title',
+                'body',
+                'image',
+            }
             if notification and isinstance(notification, dict):
-                notification_fields = {
-                    'title',
-                    'body',
-                    'image',
-                }
                 mobile_notification.update({k: v for k, v in notification.items() if k in notification_fields})
+            else:
+                mobile_notification.update({k: v for k, v in accept_data.items() if k in notification_fields})
             data = accept_data.get('data') or {}
             notification_to_user = None
             if data and isinstance(data, dict):
@@ -140,18 +162,17 @@ class MobileNotificationClient(models.Model):
                 to_user_id = self.to_user_id.search(
                     ['|', ('partner_id.email', '=', notification_to_user), ('login', '=', notification_to_user)],
                     limit=1)
-            else:
-                raise ValueError("notification_to_user not found")
-
-            if to_user_id:
-                mobile_notification['to_user_id'] = to_user_id.id
-            else:
-                raise ValueError("User not found")
-            self.write({**mobile_notification, 'state': 'outgoing'})
+                if to_user_id:
+                    mobile_notification['to_user_id'] = to_user_id.id
+                else:
+                    raise ValueError("User not found")
+            # else:
+            #     raise ValueError("notification_to_user not found")
+            self.sudo().write({**mobile_notification, 'state': 'outgoing'})
 
         except Exception:
             stack_trace = traceback.format_exc()
-            self.write({
+            self.sudo().write({
                 'errors_message': stack_trace,
                 'state': 'error',
                 'last_error': fields.Datetime.now(),

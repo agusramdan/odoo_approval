@@ -1,3 +1,5 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_mobile_approval_client,access_mobile_approval_client,model_mobile_approval_client,,1,1,1,1
-access_mobile_notification_client,access_mobile_notification_client,model_mobile_notification_client,,1,1,1,1
+access_mobile_approval_client_user,access_mobile_approval_client user,model_mobile_approval_client,base.group_user,1,0,0,0
+access_mobile_approval_client_system,access_mobile_approval_client system,model_mobile_approval_client,base.group_system,1,1,1,1
+access_mobile_notification_client_user,access_mobile_notification_client user,model_mobile_notification_client,base.group_user,1,0,0,0
+access_mobile_notification_client_system,access_mobile_notification_client system,model_mobile_notification_client,base.group_system,1,1,1,1
