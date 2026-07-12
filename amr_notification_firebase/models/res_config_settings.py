@@ -8,5 +8,6 @@ class ResConfigSettings(models.TransientModel):
 
     firebase_credentials_id = fields.Many2one(
         "service.credential",
-        config_parameter="amr_notification_firebase.credentials_id"
+        config_parameter="amr_notification_firebase.credentials_id",
+        ondelete='set null'
     )

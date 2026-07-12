@@ -60,7 +60,6 @@ class FirebaseService(models.AbstractModel):
 
         try:
             return firebase_admin.get_app()
-
         except ValueError:
             pass
 
@@ -87,7 +86,28 @@ class FirebaseService(models.AbstractModel):
         return result
 
     @api.model
-    def _prepare_topic_message(self, topic, title, body, image=None, data=None, **kwargs):
+    def _prepare_topic_message(self, title, body, image=None, data=None, android=None, apns=None, **kwargs):
+        kw = {}
+        topic = kwargs.pop("topic", None)
+        condition = kwargs.pop("condition", None)
+        if topic:
+            kw["topic"] = topic
+        elif condition:
+            kw["condition"] = condition
+
+        message = messaging.Message(
+            notification=messaging.Notification(
+                title=title or None,
+                body=body or None,
+                image=image or None,
+            ),
+            data=self._normalize_data(data, **kwargs),
+            android=android, apns=apns, **kw
+        )
+        return message
+
+    @api.model
+    def send_to_topic(self, title, body, data=None, **kwargs):
         android = messaging.AndroidConfig(
             priority='high',
             ttl=3600,
@@ -104,22 +124,7 @@ class FirebaseService(models.AbstractModel):
                 ),
             ),
         )
-
-        message = messaging.Message(
-            topic=topic,
-            notification=messaging.Notification(
-                title=title or None,
-                body=body or None,
-                image=image or None,
-            ),
-            data=self._normalize_data(data, **kwargs),
-            android=android, apns=apns
-        )
-        return message
-
-    @api.model
-    def send_to_topic(self, topic, title, body, image=None, data=None):
-        message = self._prepare_topic_message(topic, title, body, image=image, data=data)
+        message = self._prepare_topic_message(title, body, data=data, android=android, apns=apns, **kwargs)
         return messaging.send(message, app=self._get_firebase_app(), )
 
     @api.model
@@ -192,3 +197,21 @@ class FirebaseService(models.AbstractModel):
             "code",
             "UNKNOWN",
         )
+
+    class NotificationService(models.AbstractModel):
+        _inherit = "notification.service"
+
+        def check_active_token_fcm(self, token=None):
+            active = True
+            try:
+                app=self.env["amr.firebase.service"]._get_firebase_app()
+                message = firebase_admin.messaging.Message(token=token, data={"ping": "test"})
+                firebase_admin.messaging.send(message,app=app)
+            except firebase_admin.messaging.UnregisteredError:
+                active = False
+            except firebase_admin.messaging.InvalidArgumentError:
+                active = False
+            except Exception:
+                pass
+
+            return active

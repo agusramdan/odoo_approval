@@ -50,6 +50,15 @@ class ApiControllerMixin(object):
 
     @classmethod
     def json_unknown_exception(cls, ex):
+        if isinstance(ex, ValueError):
+            return cls.json_response(
+                {
+                    "success": False,
+                    "error": "data_error",
+                    "error_description": str(ex),
+                },
+                status=400,
+            )
         _logger.exception(ex)
         return cls.json_response(
             {
