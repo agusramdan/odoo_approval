@@ -10,8 +10,8 @@
             <field name="approval_task_line_users_params">user_id</field>
             <field name="approval_task_line_parent_filed">pdf_document_id</field>
             <field name="approval_task_line_state_field">state</field>
-<!--            <field name="approval_task_line_state_cancel">request</field>-->
-<!--            <field name="approval_task_line_state_reject">request</field>-->
+<!--            <field name="approval_task_line_state_cancel">cancel</field>-->
+<!--            <field name="approval_task_line_state_reject">reject</field>-->
             <field name="approval_task_line_state_approved">signed</field>
             <field name="approval_task_line_state_waiting_approvals">request,draft</field>
 
@@ -22,6 +22,8 @@
             <field name="auto_register_approval_task" eval="True"/>
             <field name="state_field">state</field>
             <field name="state_approved">signed</field>
+<!--            <field name="state_cancel">cancel</field>-->
+<!--            <field name="state_reject">reject</field>-->
             <field name="state_waiting_approvals">request</field>
 
             <!-- reject and approve status will handle in event_approval_done to draft or approved,-->
@@ -34,18 +36,18 @@
 <!--            <field name="users_approval_default_ids" />-->
             <field name="code">
 # skip task line
-transaction_requester = transaction_object.delegator_id
+transaction_requester = transaction_object.users_id
 transaction_company = transaction_object.company_id
-#response['skip_create_approval_task_line'] = True
+response['skip_create_approval_task_line'] = True
 #response['transaction_value'] = transaction_object.total_cost
 #response['transaction_currency'] = transaction_object.currency_id
 response['transaction_company'] = transaction_company
 response['transaction_requester'] = transaction_requester
             </field>
 <!--            <field name="invoke_validate_request_approval">validate_request_approval</field>-->
-            <field name="invoke_approval_start">event_approval_start</field>
+<!--            <field name="invoke_approval_start">event_approval_start</field>-->
 <!--            <field name="invoke_after_approve">event_after_approve</field>-->
-            <field name="invoke_approval_done">event_approval_done</field>
+<!--            <field name="invoke_approval_done">event_approval_done</field>-->
         </record>
     </data>
 </odoo>
