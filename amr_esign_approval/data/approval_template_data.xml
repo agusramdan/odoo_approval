@@ -22,8 +22,8 @@
             <field name="auto_register_approval_task" eval="True"/>
             <field name="state_field">state</field>
             <field name="state_approved">signed</field>
-<!--            <field name="state_cancel">cancel</field>-->
-<!--            <field name="state_reject">reject</field>-->
+            <field name="state_canceled">cancel</field>
+            <field name="state_reject">reject</field>
             <field name="state_waiting_approvals">request</field>
 
             <!-- reject and approve status will handle in event_approval_done to draft or approved,-->
@@ -48,6 +48,43 @@ response['transaction_requester'] = transaction_requester
 <!--            <field name="invoke_approval_start">event_approval_start</field>-->
 <!--            <field name="invoke_after_approve">event_after_approve</field>-->
 <!--            <field name="invoke_approval_done">event_approval_done</field>-->
+        </record>
+
+        <record id="approval_template_line" model="approval.template.line">
+            <field name="model_id" ref="amr_esign_pdf.model_pdf_sign"/>
+            <field name="approval_template_id" ref="approval_template"/>
+            <field name="users_mode">field</field>
+            <field name="users_params">user_id</field>
+            <field name="parent_filed">pdf_document_id</field>
+            <field name="state_field">state</field>
+            <field name="state_canceled">cancel</field>
+            <field name="state_reject">reject</field>
+            <field name="state_approved">signed</field>
+            <field name="state_waiting_approvals">request</field>
+            <field name="auto_register_approval_task" eval="True"/>
+<!--            <field name="invoke_validate_request_approval">validate_request_approval</field>-->
+<!--            <field name="invoke_approval_start">event_approval_start</field>-->
+            <!--
+            ('window_action', 'Window Action'),
+            ('server_action', 'Server Action'),
+            ('method', 'Method'),
+        -->
+
+<!--            <field name="approve_action_type">method</field>-->
+<!--            <field name="approve_window_action_id" ref=""/>-->
+<!--            <field name="approve_server_action_id" ref=""/>-->
+<!--            <field name="invoke_method_approve">do_approve</field>-->
+
+<!--            <field name="reject_action_type">method</field>-->
+<!--            <field name="reject_window_action_id">event_after_approve</field>-->
+<!--            <field name="reject_server_action_id">event_approval_done</field>-->
+<!--            <field name="invoke_method_reject">do_reject</field>-->
+
+<!--            <field name="cancel_action_type">method</field>-->
+<!--            <field name="cancel_window_action_id">validate_request_approval</field>-->
+<!--            <field name="cancel_server_action_id">event_approval_start</field>-->
+<!--            <field name="invoke_method_cancel">do_cancel</field>-->
+
         </record>
     </data>
 </odoo>
