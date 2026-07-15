@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record model="service.credential" id="firebase_service_credential">
+            <field name="name">firebase.credential</field>
+            <field name="source">env_path</field>
+            <field name="reference">/vault/secrets/service_account_intra.json</field>
+        </record>
+
+    </data>
+</odoo>

@@ -198,20 +198,21 @@ class FirebaseService(models.AbstractModel):
             "UNKNOWN",
         )
 
-    class NotificationService(models.AbstractModel):
-        _inherit = "notification.service"
 
-        def check_active_token_fcm(self, token=None):
-            active = True
-            try:
-                app=self.env["amr.firebase.service"]._get_firebase_app()
-                message = firebase_admin.messaging.Message(token=token, data={"ping": "test"})
-                firebase_admin.messaging.send(message,app=app)
-            except firebase_admin.messaging.UnregisteredError:
-                active = False
-            except firebase_admin.messaging.InvalidArgumentError:
-                active = False
-            except Exception:
-                pass
+class NotificationService(models.AbstractModel):
+    _inherit = "notification.service"
+
+    def check_active_token_fcm(self, token=None):
+        active = True
+        try:
+            app = self.env["amr.firebase.service"]._get_firebase_app()
+            message = firebase_admin.messaging.Message(token=token, data={"ping": "test"})
+            firebase_admin.messaging.send(message, app=app)
+        except firebase_admin.messaging.UnregisteredError:
+            active = False
+        except firebase_admin.messaging.InvalidArgumentError:
+            active = False
+        except Exception:
+            pass
 
             return active
