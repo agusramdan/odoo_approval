@@ -78,7 +78,7 @@ class ApprovalTaskLineMixin(models.AbstractModel):
     def get_reject_to_task_line(self):
         return self.reject_to_task_line_id
 
-    def get_approval_start_task(self, start_task):
+    def get_approval_start_task(self, start_task=None):
         """
         Get list approval from start_task to this object
         """

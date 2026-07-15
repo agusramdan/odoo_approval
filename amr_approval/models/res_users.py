@@ -1,13 +1,25 @@
 # -*- coding: utf-8 -*-
 
-from odoo import models, api, tools
 import logging
+
+from odoo import _, api ,models, tools
 
 _logger = logging.getLogger(__name__)
 
 
 class ResUsers(models.Model):
     _inherit = 'res.users'
+
+    def get_phone_number(self):
+        partner = self.partner_id
+        if 'hr.employee' in self.env:
+            employees = self.env['hr.employee'].sudo().search([('user_id', '=', self.id)])
+            for emp in employees:
+                phone_number = partner.format_phone_number(getattr(emp,'mobile_phone',None))
+                if phone_number:
+                    return phone_number
+
+        return partner.get_phone_number()
 
     @api.model
     @tools.ormcache('self._uid', 'group_id')
@@ -117,19 +129,31 @@ class ResUsers(models.Model):
         return self.env['user.delegation'].get_notification_user_ids(user_ids=[self._uid], company_id=company_id)
 
     def send_odoobot_message(self, message):
-        """Kirim pesan lewat OdooBot ke user ini"""
-        self.ensure_one()
-        user_root = self.env.ref('base.user_root')
-        MailChannel = self.env['mail.channel'].with_user(user_root)
-        channel_info = MailChannel.channel_get([self.partner_id.id])
-        channel = MailChannel.browse(channel_info['id'])
-        result = channel.message_post(
-            body=message,
-            author_id=user_root.partner_id.id,
-            message_type="comment",
-            subtype="mail.mt_comment"
-        )
+        result = None
+        for user in self:
+            # user.partner_id.send_odoobot_message(message)
+            try:
+                with self.env.cr.savepoint():
+                    if self._uid == user.id:
+                        partner = user.partner_id
+                    else:
+                        partner = user.partner_id.with_user(user)
+                    result = partner.send_odoobot_message(message)
+            except Exception:
+                _logger.info('User #%i %s error chanel.', user.id, user.name)
         return result
+        # self.ensure_one()
+        # user_root = self.env.ref('base.user_root')
+        # MailChannel = self.env['mail.channel'].with_user(user_root)
+        # channel_info = MailChannel.channel_get([self.partner_id.id])
+        # channel = MailChannel.browse(channel_info['id'])
+        # result = channel.message_post(
+        #     body=message,
+        #     author_id=user_root.partner_id.id,
+        #     message_type="comment",
+        #     subtype="mail.mt_comment"
+        # )
+        # return result
 
     def prepare_dict_approval_task_line(self, **kwargs):
         if not self:

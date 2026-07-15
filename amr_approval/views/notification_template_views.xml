@@ -25,22 +25,21 @@
                 <form string="sync">
                     <header>
                         <field name="active" invisible="1" />
+                        <field name="model" invisible="1"/>
                     </header>
                     <sheet>
                         <group>
                             <group>
                                 <field name="name" />
-                                <field name="model" />
                                 <field name="send_chat" />
+                                <field name="send_email" />
                                 <field name="send_firebase" />
                                 <field name="send_whatsapp" />
                                 <field name="send_telegram" />
                             </group>
                             <group>
-                                <field name="send_email" />
-                                <field name="template_email" />
-<!--                                <field name="template_wa" />-->
-<!--                                <field name="template_chatter" />-->
+                                <field name="model_id" />
+                                <field name="template_email" domain="[('model_id','=',model_id)]" string="Email"/>
                             </group>
                         </group>
                         <notebook>
@@ -108,9 +107,8 @@
                 <tree>
                     <field name="active" invisible="1" />
                     <field name="name" />
-                    <field name="model" />
+                    <field name="model_id" />
                     <field name="template_email" />
-<!--                    <field name="template_wa" />-->
                 </tree>
             </field>
         </record>

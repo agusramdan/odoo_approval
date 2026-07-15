@@ -12,6 +12,8 @@ _logger = logging.getLogger(__name__)
 class ApprovalAutoRegisterMixin(models.AbstractModel):
     _name = "approval.auto.register.mixin"
 
+    _approval_auto_register_mixin = True
+
     def get_approval_template(self):
         return self.env['approval.template'].search_template_by_model(self._name)
 
@@ -24,7 +26,7 @@ class ApprovalAutoRegisterMixin(models.AbstractModel):
         if approval_template and approval_template.state_field:
             state_field = approval_template.state_field
             if state_field in vals:
-                old = {r.id: r.state for r in self}
+                old = {r.id: getattr(r,state_field,None) for r in self}
         # handling bila keluar approval
         result = super().write(vals)
         if old and state_field:
@@ -60,6 +62,11 @@ class ApprovalAutoRegisterMixin(models.AbstractModel):
 
 class ApprovalLineAutoRegisterMixin(models.AbstractModel):
     _name = "approval.line.auto.register.mixin"
+
+    _approval_line_auto_register_mixin = True
+
+    def get_approval_template_line(self):
+        return self.env['approval.template.line'].search_template_line_by_model(self._name)
 
     def get_approval_template(self):
         if self:
@@ -100,10 +107,11 @@ class ApprovalLineAutoRegisterMixin(models.AbstractModel):
         approval_template = self.get_approval_template()
         approval_task_line_state_field = None
         trx_change = {}
+
         if approval_template and approval_template.approval_task_line_state_field:
             approval_task_line_state_field = approval_template.approval_task_line_state_field
             if approval_task_line_state_field in vals:
-                old = {r.id: r.state for r in self}
+                old = {r.id: getattr(r,approval_task_line_state_field,None) for r in self}
         res = super().write(vals)
         if old:
             state_waiting_approvals = approval_template.get_approval_task_line_state_waiting_approvals()

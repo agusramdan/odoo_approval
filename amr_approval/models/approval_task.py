@@ -307,6 +307,13 @@ class ApprovalTask(models.Model):
         return records.sudo().unlink()
 
     @api.model
+    def get_field_prepare(self):
+        return ['name', 'document', 'description', 'url', 'date', 'view_name', 'requester_id', 'company_id',
+                'approval_res_id', 'approval_model', 'approval_instance_id', 'request_approval_task_date',
+                'reminder_count', 'reminder_last_datetime', 'reminder_next_datetime', 'reminder_next_datetime'
+                ]
+
+    @api.model
     def prepare_data(self, **kwargs):
         data = dict()
 
@@ -317,8 +324,7 @@ class ApprovalTask(models.Model):
                 return values
             return []
 
-        for key in ['name', 'document', 'description', 'url', 'date', 'requester_id', 'company_id',
-                    'approval_res_id', 'approval_model', 'approval_instance_id']:
+        for key in self.get_field_prepare():
             value = kwargs.get(key, None)
             if value is not None:
                 data[key] = value
@@ -435,13 +441,14 @@ class ApprovalTask(models.Model):
             limit=1,
         )
 
-    def approval_setup(self, transaction_id, transaction_model_name, **kwargs):
+    def approval_setup(self, transaction_id, transaction_model_name, reset_request_approval_task_date=True, reset_reminder=True, **kwargs):
         approval_task = self.get_approval_task(transaction_id, transaction_model_name)
         prepare_dict = dict(kwargs)
         prepare_dict.update(
             transaction_id=transaction_id,
             transaction_model_name=transaction_model_name,
         )
+
         approval_instance = kwargs.get('approval_instance') or self.approval_instance_id.get_instance_for_transaction(
             self.transaction_model_name, self.transaction_id
         )
@@ -457,8 +464,13 @@ class ApprovalTask(models.Model):
             else:
                 prepare_dict.update(approval_template.get_approval_groups_or_users(**prepare_dict) or {})
 
-        if prepare_dict.get('reset_reminder', True):
+        if reset_request_approval_task_date or reset_reminder:
+            reset_reminder = True
+            prepare_dict['request_approval_task_date'] = fields.Datetime.now()
+
+        if reset_reminder:
             prepare_dict.update(
+                request_approval_task_date=fields.Datetime.now(),
                 reminder_count=0,
                 reminder_last_datetime=False,
                 reminder_next_datetime=approval_template.get_next_reminder_datetime()
@@ -548,7 +560,7 @@ class ApprovalTask(models.Model):
             notification_approval = self.notification_approval_id or approval_template.notification_approval_id
 
         notification_log = None
-        kwargs['approval_task_id']=self.id
+        kwargs['approval_task_id'] = self.id
         if notification_approval:
             res_id, model_name = self.get_res_id_for_notification(notification_approval, **kwargs)
             if res_id:

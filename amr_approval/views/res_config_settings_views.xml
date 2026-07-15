@@ -1,4 +1,5 @@
 <odoo>
+
     <record id="view_config_settings_form" model="ir.ui.view">
         <field name="name">res.config.settings.view.form.approval</field>
         <field name="model">res.config.settings</field>

@@ -44,6 +44,7 @@ class ApprovalAuditLog(models.Model):
     action_type = fields.Selection([
         ('approve', 'Approve'),
         ('reject', 'Reject'),
+        ('cancel', 'Cancel'),
         ('behalf_approve', 'Behalf Approve'),
         ('behalf_reject', 'Behalf Reject'),
         ('proxy_approve', 'Proxy Approve'),

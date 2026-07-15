@@ -27,6 +27,7 @@ class NotificationTemplate(models.Model):
     name = fields.Char("Notification")
     model_id = fields.Many2one('ir.model')
     model = fields.Char(related='model_id.model', store=True)
+    auto_delete = fields.Boolean(default=True)
     send_mobile = fields.Boolean(
         compute="_compute_send_mobile",
         store=True,
@@ -76,7 +77,7 @@ class NotificationTemplate(models.Model):
         for vals in vals_list:
             if not vals.get('model_id'):
                 vals['model_id'] = self.model_id.search([('model', '=', vals.get('model'))], limit=1).id
-
+            vals.pop('model', None)
         results = super(NotificationTemplate, self).create(vals_list)
         for res in results:
             if res.model_id and res.model_id.model != res.model:
@@ -119,41 +120,22 @@ class NotificationTemplate(models.Model):
         payload = self.get_notification_payload(notification_to_user, res_id, **kwargs)
         notif_log['payload'] = json.dumps(payload)
         if self.send_email and kwargs.get('send_notification_email', True):
-            if self.template_email:
-                values = self.template_email.with_context(
-                    notification_to_user=notification_to_user
-                ).generate_email(res_id)
-                values['recipient_ids'] = [(4, pid) for pid in values.get('partner_ids', list())]
-                values['attachment_ids'] = [(4, aid) for aid in values.get('attachment_ids', list())]
-                values.pop('partner_ids', None)
-                # supaya tidak di tulis di chatter res_id di hapus
-                if 'res_id' in values:
-                    values.pop('res_id')
-            else:
-                values = {
-                    'subject': payload.get('title', None),
-                    'body_html': payload.get('body_html', None) or payload.get('body', None),
-                    'body': payload.get('body', None),
-                    'recipient_ids': [(4, notification_to_user.partner_id.id)]
-                }
-            result = self.env['mail.mail'].sudo().create(values)
-            notif_log['mail_id'] = result.id
-            notif_log['mail_model'] = 'mail.mail'
-        payload.get('send_chat') and self.send_notification_chat(notification_to_user, payload, notif_log, **kwargs)
-        self.send_notification_mobile(notification_to_user, payload, notif_log, **kwargs)
-        if payload.get('title'):
-            notif_log['name'] = payload.get('title')
-        _logger.info("notif_log %s", notif_log)
+            result = self.send_notification_email(notification_to_user,  payload, notif_log, res_id=res_id, **kwargs)
+            notif_log.update(result or {})
+        self.send_notification_payload(notification_to_user, payload, notif_log, **kwargs)
+
         return notif_log
 
-    @api.model
-    def prepare_data_eval_context(self, context, notification_to_user=None, res_id=None, **kwargs):
-        return context
+    def prepare_data_eval_context(self, data, notification_to_user=None, res_id=None, **kwargs):
+
+        return data
 
     def get_notification_payload(self, notification_to_user, res_id, **kwargs):
         template = self.ensure_one()
         Template = self.env['mail.template'].with_context(notification_to_user=notification_to_user)
         fields = ['title', 'body', 'image', 'body_html', 'body_chat', 'body_whatsapp', 'body_telegram']
+        phone_number = notification_to_user.get_phone_number(),
+        email = notification_to_user.email
         request = {
             'send_email': self.send_email,
             'send_chat': self.send_chat,
@@ -161,7 +143,14 @@ class NotificationTemplate(models.Model):
             'send_firebase': self.send_firebase,
             'send_whatsapp': self.send_whatsapp,
             'send_telegram': self.send_telegram,
+            'phone': phone_number,
+            'email': email,
+            'notification_to_partner_id': notification_to_user.partner_id.id,
+            'notification_to_user_id': notification_to_user.id,
+            'notification_to_email': email
         }
+
+        request = self.prepare_data_eval_context(request, notification_to_user, res_id, **kwargs) or request
         for field in fields:
             Template = Template.with_context(safe=field in {'title'})
             request[field] = Template._render_template(getattr(template, field), template.model, res_id)
@@ -184,21 +173,11 @@ class NotificationTemplate(models.Model):
             template_chat = self.template_chat.with_context(
                 notification_to_user=notification_to_user
             )
-            values = template_chat.generate_email(res_id, ['body_html'])
+            values = template_chat.generate_email([res_id], ['body_html'])[res_id]
             eval_context['body_chat'] = values["body_html"]
             eval_context['send_chat'] = True
 
-        # if self.template_wa:
-        #     values = self.template_wa.with_context(notification_to_user=notification_to_user).generate_email(
-        #         res_id, ['subject', 'body_html']
-        #     )
-        #     eval_context['message'] = values['body_html']
-        #     ref = values['subject']
-        #     if ref:
-        #         eval_context['ref'] = ref
-        #     eval_context['send_whatsapp'] = True
-
-        eval_context['data'] = self.prepare_data_eval_context(request, notification_to_user, res_id, **kwargs)
+        eval_context['data'] = request
         eval_context = self._run_action_code_multi(eval_context)
         data = eval_context.get('data') or {}
         if 'url' not in data and not data.get('url'):
@@ -211,6 +190,53 @@ class NotificationTemplate(models.Model):
             'source_model': self.model,
         })
         return data
+
+    def send_notification_payload(self, notification_to_user, payload, notif_log, **kwargs):
+        self.send_notification_email(notification_to_user, payload, notif_log, **kwargs)
+        payload.get('send_chat') and self.send_notification_chat(notification_to_user, payload, notif_log, **kwargs)
+        self.send_notification_mobile(notification_to_user, payload, notif_log, **kwargs)
+        if payload.get('title'):
+            notif_log['name'] = payload.get('title')
+        _logger.info("notif_log %s", notif_log)
+        return notif_log
+
+    @api.model
+    def get_email_fields(self):
+        return ['subject', 'body_html', 'reply_to', 'auto_delete', 'scheduled_date']
+        # return['subject', 'body_html',
+        # 'email_from',
+        # 'email_cc', 'email_to', 'partner_to', 'reply_to',
+        # 'auto_delete', 'scheduled_date']
+
+    @api.model
+    def setup_email_values(self,values):
+        # values['recipient_ids'] = [(4, pid) for pid in values.get('partner_ids', list())]
+        values['attachment_ids'] = [(4, aid) for aid in values.get('attachment_ids', list())]
+        #values.pop('partner_ids', None)
+        return values
+
+    @api.model
+    def send_notification_email(self, notification_to_user, payload, notif_log, **kwargs):
+        # payload is firebase format notification
+        if self.template_email:
+            res_id = kwargs.get('res_id') or payload.get('res_id')
+            template = self.template_email.with_context(notification_to_user=notification_to_user)
+            values = template.generate_email([res_id], self.get_email_fields())[res_id]
+        else:
+            values = {
+                'subject': payload.get('title', None),
+                'body_html': payload.get('body_html', None) or payload.get('body', None),
+                'body': payload.get('body', None),
+                'auto_delete':self.auto_delete,
+            }
+        self.setup_email_values(values)
+        values['recipient_ids']: [(4, notification_to_user.partner_id.id)]
+        # supaya tidak di tulis di chatter res_id di hapus
+        values.pop('res_id',None)
+        result = self.env['mail.mail'].sudo().create(values)
+        notif_log['mail_id'] = result.id
+        notif_log['mail_model'] = 'mail.mail'
+        return notif_log
 
     @api.model
     def send_notification_chat(self, notification_to_user, payload, notif_log, **kwargs):

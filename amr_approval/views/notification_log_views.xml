@@ -18,7 +18,7 @@
             <field name="model">notification.log</field>
             <field name="priority" eval="99" />
             <field name="arch" type="xml">
-                <tree >
+                <tree>
                     <field name="user_id" />
                     <field name="notification_template_id"/>
                     <field name="receiver_id"/>

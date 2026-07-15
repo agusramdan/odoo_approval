@@ -241,7 +241,7 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
         if approval_template and approval_template.state_field:
             state_field = approval_template.state_field
             if state_field in vals:
-                old = {r.id: r.state for r in self}
+                old = {r.id: getattr(r, state_field, None) for r in self}
         # handling bila keluar approval
         result = super().write(vals)
         if old and state_field:

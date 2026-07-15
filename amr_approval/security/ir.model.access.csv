@@ -11,6 +11,8 @@ access_approval_audit_log_admin,approval.task.audit.log admin,model_approval_aud
 
 access_approval_template_read_user,Read Approval Template,model_approval_template,base.group_user,1,0,0,0
 access_approval_template_system_user,CRUD Approval Template,model_approval_template,base.group_system,1,1,1,1
+access_approval_template_line_read_user,Read Approval Template Line,model_approval_template_line,base.group_user,1,0,0,0
+access_approval_template_line_system_user,CRUD Approval Template Line,model_approval_template_line,base.group_system,1,1,1,1
 
 access_approval_instance_user,Approval Instance,model_approval_instance,base.group_user,1,1,1,1
 access_approval_task_line_user,Approval Task Line,model_approval_task_line,base.group_user,1,1,1,1

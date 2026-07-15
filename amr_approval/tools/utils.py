@@ -1,10 +1,12 @@
 from functools import wraps
-from odoo import models
+
 import logging
 import inspect
 import traceback
 import base64
 import binascii
+
+from odoo import models
 
 _logger = logging.getLogger(__name__)
 

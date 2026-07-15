@@ -97,7 +97,9 @@
                         <page string="State Config">
                             <group>
                                 <group>
+                                    <field name="need_approval_field" />
                                     <field name="state_field"/>
+                                    <field name="state_request_approval"/>
                                     <field name="state_waiting_approvals"/>
                                     <field name="state_reject"/>
                                     <field name="state_canceled"/>

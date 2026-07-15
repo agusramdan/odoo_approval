@@ -17,6 +17,7 @@ from . import approval_task_assignment
 from . import approval_task
 
 from . import approval_template
+from . import approval_template_line
 from . import approval_instance
 from . import approval_task_line
 from . import approval_instance_able

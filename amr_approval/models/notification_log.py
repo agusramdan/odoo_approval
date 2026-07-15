@@ -29,24 +29,20 @@ class NotificationLog(models.Model):
     res_id = fields.Integer()
 
     def send(self):
-        result = {}
-        result = self.notification_template_id.with_user(self.user_id).send_notification_to_user(
-            self.receiver_id, self.res_id, notif_log=result,
-            payload=None,
-            transaction_id=self.transaction_id,
-            transaction_model_name=self.transaction_model_name
-        )
-        if result:
-            self.write(result)
+        for rec in self:
+            rec.send_payload()
 
     def send_payload(self):
-        payload = json.loads(self.payload)
+        if self.payload:
+            payload = json.loads(self.payload)
+        elif self.notification_template_id:
+            payload = self.notification_template_id.get_notification_payload( self.receiver_id, self.res_id)
+        else:
+            return
+
         result = {}
-        result = self.notification_template_id.with_user(self.user_id).send_notification_to_user(
-            self.receiver_id, self.res_id, notif_log=result,
-            payload=payload,
-            transaction_id=self.transaction_id,
-            transaction_model_name=self.transaction_model_name
+        result = self.notification_template_id.with_user(self.user_id).send_notification_payload(
+            self.receiver_id, payload, result, res_id=self.res_id
         )
         if result:
             if payload.get('title'):
@@ -65,6 +61,24 @@ class NotificationLog(models.Model):
         else:
             raise UserError("Error Shoe %s , %s " % (model, res_id))
 
+    def send_mail(self):
+        payload = json.loads(self.payload)
+        result = {}
+        result = self.notification_template_id.with_user(self.user_id).send_notification_email(
+            self.receiver_id, payload, result, res_id=self.res_id,
+        )
+        if result:
+            self.write(result)
+
+    def send_chat(self):
+        payload = json.loads(self.payload)
+        result = {}
+        result = self.notification_template_id.with_user(self.user_id).send_notification_chat(
+            self.receiver_id,payload, result, res_id=self.res_id,
+        )
+        if result:
+            self.write(result)
+
     def send_mobile(self):
         self.ensure_one()
         payload = json.loads(self.payload)
@@ -72,7 +86,7 @@ class NotificationLog(models.Model):
         result = self.notification_template_id.with_user(
             self.user_id
         ).send_notification_mobile(
-            self.receiver_id, payload, result, self.res_id,
+            self.receiver_id, payload, result, res_id=self.res_id,
             transaction_id=self.transaction_id,
             transaction_model_name=self.transaction_model_name
         )
