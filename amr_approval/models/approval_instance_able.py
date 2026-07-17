@@ -18,6 +18,13 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
         compute="compute_access_approval",
         search="search_filter_access_approval",
     )
+    is_waiting_approval = fields.Boolean(compute="compute_access_approval",)
+    access_request_approval_action = fields.Boolean(store=False)
+    access_approve_action = fields.Boolean(compute="compute_access_approval",)
+    access_reject_action = fields.Boolean(compute="compute_access_approval",)
+    access_cancel_action = fields.Boolean(compute="compute_access_approval",)
+    access_reset_to_draft_action = fields.Boolean(store=False)
+
     flag_reject = fields.Boolean()
     note_reject = fields.Text()
     approval_line_for_document = fields.Many2many(
@@ -294,8 +301,13 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
     @api.depends('approval_instance_id')
     def compute_access_approval(self):
         for rec in self:
-            rec.access_approval = rec.approval_instance_id and rec.approval_instance_id.access_approval
-
+            access_approval = rec.approval_instance_id and rec.approval_instance_id.access_approval
+            is_waiting_approval = rec.is_status_waiting_approval()
+            rec.is_waiting_approval = is_waiting_approval
+            rec.access_approval = access_approval
+            rec.access_approve_action = is_waiting_approval and access_approval
+            rec.access_reject_action = is_waiting_approval and access_approval
+            rec.access_cancel_action = is_waiting_approval and access_approval
     @api.model
     def search_filter_access_approval(self, operator, value):
         approval_template = self.get_approval_template()
@@ -319,6 +331,11 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
                 'edit': 0,
             }
         }
+
+    def approval_action(self):
+        rec = self.ensure_one()
+        approval_instance = rec.ensure_approval_instance()
+        return approval_instance.approval_action()
 
     def ensure_approval_instance(self):
         rec = self.ensure_one()

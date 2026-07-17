@@ -12,8 +12,6 @@ _logger = logging.getLogger(__name__)
 class ApprovalAutoRegisterMixin(models.AbstractModel):
     _name = "approval.auto.register.mixin"
 
-    _approval_auto_register_mixin = True
-
     def get_approval_template(self):
         return self.env['approval.template'].search_template_by_model(self._name)
 
@@ -62,8 +60,6 @@ class ApprovalAutoRegisterMixin(models.AbstractModel):
 
 class ApprovalLineAutoRegisterMixin(models.AbstractModel):
     _name = "approval.line.auto.register.mixin"
-
-    _approval_line_auto_register_mixin = True
 
     def get_approval_template_line(self):
         return self.env['approval.template.line'].search_template_line_by_model(self._name)

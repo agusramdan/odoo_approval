@@ -297,6 +297,9 @@ class ApprovalInstanceMixin(models.AbstractModel):
             return approval_task_lin.get_users_for_notification(**kwargs)
         return self.env['res.users']
 
+    def approval_action(self):
+        pass
+
     def request_approval(self):
         approval_instance = self.ensure_one()
         approval_instance.ensure_approval_template()

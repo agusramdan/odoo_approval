@@ -191,7 +191,9 @@ class UserDelegation(models.Model):
                 raise ValidationError("Duplicate active delegation with overlapping period found.")
 
     # @tools.ormcache('delegatee_id', 'group_id')
-    # def has_delegate_group(self, delegatee_id, group_id):
+    @api.model
+    def has_delegate_group(self, delegatee_id, group_id):
+        return False
     #     """
     #     Checks this user as proxy user have DoA form delegator user given group delegator user to proxy user.
     #     """
@@ -245,7 +247,8 @@ class UserDelegation(models.Model):
     #                 for group in rec.delegator_id.groups_id:
     #                     self.has_delegate_group.clear_cache(self, rec.delegatee_id.id, group.id)
     #
-    # def get_all_delegations(self, delegatee_id=None, delegator_id=None, group_id=None, company_id=None, limit=None):
+    def get_all_delegations(self, delegatee_id=None, delegator_id=None, group_id=None, company_id=None, limit=None):
+        return self.browse()
     #     """
     #     Ambil delegasi aktif untuk proxy tertentu.
     #     Jika group_id diberikan, hanya delegator yang termasuk dalam grup tersebut.
@@ -283,7 +286,10 @@ class UserDelegation(models.Model):
     #
     #     return self.search(domain, limit=limit, order='start_date desc,end_date')
     #
-    # def get_notification_user_ids(self, delegator_ids, company_id=None):
+
+    @api.model
+    def get_notification_user_ids(self, delegator_ids, company_id=None):
+        return delegator_ids or []
     #     delegations = self.get_all_delegations(delegator_id=delegator_ids, company_id=company_id)
     #     result = []
     #     exclude_user_delegation = []
@@ -296,7 +302,10 @@ class UserDelegation(models.Model):
     #     result.extend(set(delegator_ids) - set(exclude_user_delegation))
     #     return list(set(result))
     #
-    # def get_all_delegatee(self, delegator_ids, company_id=None):
+
+    @api.model
+    def get_all_delegatee(self, delegator_ids, company_id=None):
+        return []
     #     """
     #     get delegatee_ids for this delegator_ids
     #     """
@@ -307,7 +316,8 @@ class UserDelegation(models.Model):
     #         set(d.delegatee_id.id for d in delegations) - set(delegator_ids)
     #     )
 
-    # def get_all_delegator(self, delegatee_ids, company_id=None):
+    def get_all_delegator(self, delegatee_ids, company_id=None):
+        return []
     #     """
     #     get delegator for this delegatee_ids
     #     """

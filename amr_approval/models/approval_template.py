@@ -3,6 +3,7 @@
 import base64
 import logging
 
+from lxml import etree
 from pytz import timezone
 from dateutil.relativedelta import relativedelta
 
@@ -37,6 +38,44 @@ DEFAULT_PYTHON_CODE = """
 
 \n\n\n\n
 """
+# access_request_approval_action
+# access_approve_action
+# access_reject_action
+# access_cancel_approval_action
+# access_reset_to_draft_action
+
+APPROVAL_BUTTONS = [
+    {
+        "action": "request_approval",
+        "label": "Request Approval",
+        "access_field": "access_request_approval_action",
+        "class": "oe_highlight",
+    },
+    {
+        "action": "approve",
+        "label": "Approve",
+        "access_field": "access_approve_action",
+        "class": "oe_highlight",
+    },
+    {
+        "action": "reject",
+        "label": "Reject",
+        "access_field": "access_reject_action",
+        "class": "oe_highlight",
+    },
+    {
+        "action": "cancel",
+        "label": "Cancel",
+        "access_field": "access_cancel_action",
+        "class": "oe_highlight",
+    },
+    {
+        "action": "reset_to_draft",
+        "label": "Reset To Draft",
+        "access_field": "access_reset_to_draft_action",
+        "class": None,
+    },
+]
 
 
 class ApprovalTemplateMixin(models.AbstractModel):
@@ -48,12 +87,22 @@ class ApprovalTemplateMixin(models.AbstractModel):
     model_id = fields.Many2one('ir.model')
     model = fields.Char(related='model_id.model')
 
+    available_action_request_approval = fields.Boolean()
+    available_action_approve = fields.Boolean()
+    available_action_reject = fields.Boolean()
+    available_action_cancel = fields.Boolean()
+    available_action_reset_draft = fields.Boolean()
+    generate_view_id = fields.Many2one(
+        'ir.ui.view',
+        'Generate Form',
+        readonly=True
+    )
     view_id = fields.Many2one(
         'ir.ui.view',
         'Form Transaction',
         domain="[('model', '=', model)]",
     )
-    view_name = fields.Char(related='view_id.name')
+    view_name = fields.Char()
     action_id = fields.Many2one(
         'ir.actions.act_window',
         'Window Transaction',
@@ -204,6 +253,110 @@ class ApprovalTemplateMixin(models.AbstractModel):
     )
     invoke_get_pdf_document = fields.Char()
 
+    def action_generate_view(self):
+        for template in self:
+            template._create_or_update_view()
+
+    def remove_generated_view(self):
+        self.ensure_one()
+        if self.generate_view_id:
+            self.generate_view_id.unlink()
+            self.generate_view_id = False
+
+    def _create_or_update_view(self):
+        self.ensure_one()
+
+        vals = {
+            "name": "%s Approval Generated" % self.model,
+            "type": "form",
+            "model": self.model,
+            "mode": "extension",
+            "inherit_id": self.view_id.id,
+            "arch_base": self._generate_arch(),
+        }
+
+        if self.generate_view_id:
+            self.generate_view_id.write(vals)
+            view = self.generate_view_id
+        else:
+            view = self.env["ir.ui.view"].create(vals)
+            self.generate_view_id = view
+
+        return view
+
+    def _generate_arch(self):
+        root = etree.Element("data")
+
+        xpath = etree.SubElement(root, "xpath")
+        xpath.set("expr", "//header")
+        xpath.set("position", "inside")
+
+        self._generate_buttons(xpath)
+
+        return etree.tostring(
+            root,
+            pretty_print=True,
+            encoding="unicode",
+        )
+
+    def _generate_buttons(self, parent):
+        """
+        Generate approval fields and buttons
+        parent: xpath node
+        """
+
+        for button_def in APPROVAL_BUTTONS:
+            # 'available_action_request',
+            # 'available_action_approve',
+            # 'available_action_reject',
+            # 'available_action_cancel',
+            # 'available_action_reset_draft',
+            if not getattr(self, "available_action_%s" % button_def["action"], False):
+                continue
+            # field invisible untuk attrs
+            field = etree.SubElement(parent, "field")
+            field.set("name", button_def["access_field"])
+            field.set("invisible", "1")
+
+            # button
+            button = etree.SubElement(parent, "button")
+            button.set("name", "approval_action")
+            button.set("string", button_def["label"])
+            button.set("type", "object")
+            button.set("context", "{'approval_action':'%s'}" % button_def["action"])
+
+            if button_def["class"]:
+                button.set("class", button_def["class"])
+
+            # visibility berdasarkan access field
+            button.set(
+                "attrs",
+                "{'invisible':[('%s','=',False)]}"
+                % button_def["access_field"]
+            )
+
+    def write(self, vals):
+        res = super().write(vals)
+
+        trigger_fields = {
+            'view_id',
+            'available_action_request',
+            'available_action_approve',
+            'available_action_reject',
+            'available_action_cancel',
+            'available_action_reset_draft',
+        }
+
+        if trigger_fields.intersection(vals):
+            self.action_generate_view()
+
+        return res
+
+    def unlink(self):
+        for rec in self:
+            rec.remove_generated_view()
+        return super().unlink()
+
     def invoke_method(self, transaction_object, method_name, kwargs=None, raise_exceptions=False):
         atts_method_name = f"invoke_{method_name}"
         object_method_name = getattr(self, atts_method_name)
@@ -339,6 +492,8 @@ class ApprovalTemplateMixin(models.AbstractModel):
         return self.notification_approved_id
 
     def get_next_reminder_datetime(self, from_date_time=None):
+        if not self.reminder_interval_number:
+            return False
         nextcall = from_date_time or fields.Datetime.now()
         nextcall += _intervalTypes[self.reminder_interval_type](self.reminder_interval_number)
         return nextcall
@@ -742,7 +897,8 @@ class ApprovalTemplate(models.Model):
 
     approval_matrix_id = fields.Many2one("approval.matrix.rule", string="Matrix")
 
-    def migrate_approval_task(self, raise_exception=True, skip_send_notification=True, reset_reminder=False, reset_request_approval_task_date=False):
+    def migrate_approval_task(self, raise_exception=True, skip_send_notification=True, reset_reminder=False,
+                              reset_request_approval_task_date=False):
         env = self.env
         for template in self:
             model, field_status, waiting_status = template.model, template.get_state_field(), template.get_state_waiting_approvals()
@@ -762,12 +918,12 @@ class ApprovalTemplate(models.Model):
                         )
                         transaction_ids.append(rec.transaction_id)
                         approval_audit_log = env['approval.audit.log'].search([
-                            ('create_date','>',rec.request_approval_task_date),
+                            ('create_date', '>', rec.request_approval_task_date),
                             ('transaction_model_name', '=', rec.transaction_model_name),
                             ('transaction_id', '=', rec.transaction_id),
-                        ],limit=1)
+                        ], limit=1)
                         if approval_audit_log:
-                            rec.sudo().write({'request_approval_task_date':approval_audit_log.create_date})
+                            rec.sudo().write({'request_approval_task_date': approval_audit_log.create_date})
                         # chek last action
                     else:
                         approval_instance.unregister_approval_task_line()

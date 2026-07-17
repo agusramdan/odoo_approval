@@ -110,13 +110,15 @@
                         <page string="Event">
                             <group>
                                 <group string="Request Approval">
+                                    <field name="available_action_request_approval" string="Request Approval"/>
+                                    <field name="available_action_cancel" />
+                                    <field name="available_action_reset_draft"/>
                                     <field name="invoke_validate_request_approval" string="Validate"/>
-                                </group>
-                                <group string="Approval">
                                     <field name="invoke_approval_start" string="Start"/>
                                     <field name="invoke_approval_done" string="Done"/>
                                 </group>
                                 <group string="Approve">
+                                    <field name="available_action_approve" />
                                     <field name="approve_action_type" string="Action"/>
                                     <field name="approve_window_action_id" string="Window"
                                            attrs="{'invisible':[('approve_action_type', '!=', 'window_action')]}"
@@ -130,6 +132,7 @@
                                     <field name="notes_chatter_approved" string="Note Chatter"/>
                                 </group>
                                 <group string="Reject">
+                                    <field name="available_action_reject" />
                                     <field name="reject_action_type" string="Action"/>
                                     <field name="reject_window_action_id" string="Window"
                                            attrs="{'invisible':[('reject_action_type', '!=', 'window_action')]}"

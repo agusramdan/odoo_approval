@@ -485,7 +485,7 @@ class ApprovalTask(models.Model):
         if not kwargs.get('skip_send_notification'):
             approval_task.send_notification(**kwargs)
 
-        if not approval_task.reminder_next_datetime:
+        if not approval_task.reminder_next_datetime and approval_template.reminder_interval_number:
             approval_task.sudo().write({
                 'reminder_next_datetime': approval_template.get_next_reminder_datetime(approval_task.request_approval_task_date)
             })

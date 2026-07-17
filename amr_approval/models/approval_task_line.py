@@ -24,12 +24,6 @@ class ApprovalTaskLineMixin(models.AbstractModel):
         'approval.task',
         ondelete='set null',
     )
-    reject_to_method = fields.Selection([
-        ('legacy', "Legacy"),
-        ('to_requestor', "To Requestor"),
-        ('to_previous', "To Previous"),
-        ('to_task_line', "To Task Line"),
-    ], default='legacy', readonly=True)
     requester_id = fields.Many2one(
         'res.users', 'Requester',
         default=lambda self: self.env.user,
@@ -43,15 +37,11 @@ class ApprovalTaskLineMixin(models.AbstractModel):
         help="User who executed approval (Approve/Reject)the transaction"
     )
     date_execution = fields.Datetime('Date Execution')
-    reject_reason = fields.Text('Reject Reason')
     sign_title = fields.Char("Sign Title")
     approval_user_ids = fields.Many2many(
         'res.users', compute='_compute_approval_user_ids', compute_sudo=True
     )
     user_delegation_id = fields.Many2one('user.delegation', compute='_compute_user_delegation')
-    matrix_rule_line_id = fields.Many2one('approval.matrix.rule.line')
-    reject_to_matrix_rule_line_id = fields.Many2one('approval.matrix.rule.line')
-    reject_to_task_line_id = fields.Many2one('approval.task.line.mixin')
 
     def _compute_approval_user_ids(self):
         for rec in self:
@@ -169,7 +159,10 @@ class ApprovalTaskLineMixin(models.AbstractModel):
         else:
             kw = dict(kwargs)
 
-        transaction_object = kw.get('transaction_object') or safe_call_method(self, 'get_transaction_object', kwargs=kwargs )
+        transaction_object = (
+                kw.get('transaction_object') or
+                safe_call_method(self, 'get_transaction_object', kwargs=kwargs)
+        )
         if transaction_object:
             if have_method(transaction_object, 'prepare_approval_task_dict'):
                 update = safe_call_method(transaction_object, 'prepare_approval_task_dict', kwargs=kw)
@@ -205,10 +198,7 @@ class ApprovalTaskLineMixin(models.AbstractModel):
         kw['action_type'] = 'approve'
         return self._create_approval_audit_log(**kw)
 
-    def create_approval_audit_log_rejected(self, **kwargs):
-        kw = dict(kwargs)
-        kw['action_type'] = 'reject'
-        return self._create_approval_audit_log(**kw)
+
 
     def send_approval_notification(self, **kwargs):
         approval_template = kwargs.get('approval_template')
@@ -278,7 +268,7 @@ class ApprovalTaskLineMixin(models.AbstractModel):
         record = self.ensure_one()
         users = kwargs.get('users') or record.get_users()
         company = kwargs.get('company') or self.env.company
-        if isinstance(users,models.Model):
+        if isinstance(users, models.Model):
             return users.get_users_for_notification(company=company)
         else:
             return users
@@ -299,8 +289,8 @@ class ApprovalTaskLineMixin(models.AbstractModel):
                 'user_execution_id': self.env.uid,
                 'date_execution': fields.Datetime.now(),
                 'reject_reason': kwargs.get('reject_reason')
-                or kwargs.get('reason')
-                or self.env.context.get('__reject_reason'),
+                                 or kwargs.get('reason')
+                                 or self.env.context.get('__reject_reason'),
             }
         )
 
@@ -390,75 +380,75 @@ class ApprovalTaskLineMixin(models.AbstractModel):
             if have_method(transaction_object, 'event_after_approve'):
                 safe_call_method(transaction_object, 'event_after_approve')
 
-    def reject_method_legacy(self, reason=None, **kwargs):
-        raise NotImplemented
-
-    def do_reject(self, reason=None, **kwargs):
-        self.ensure_one()
-        kw = dict(kwargs)
-        if not self.access_approval:
-            raise UserError("User not allow to reject")
-        kw['reason'] = reason
-        if 'transaction_object' not in kw:
-            kw['transaction_object'] = self.get_transaction_object()
-        if not kwargs.get('user_delegation'):
-            kw['user_delegation'] = self.get_user_delegation()
-        self.before_reject(**kwargs)
-        is_approval_done = False
-        approval_task_line_next = None
-        approval_task_line_between = self.browse()
-        if self.reject_to_method == 'to_requestor':
-            is_approval_done = True
-            approval_task_line_between = self.get_approval_start_task(None)
-        else:
-            if self.reject_to_method == 'to_task_line':
-                approval_task_line_next = self.get_reject_to_task_line()
-                approval_task_line_between = self.get_approval_start_task(approval_task_line_next)
-            elif self.reject_to_method == 'to_previous':
-                approval_task_line_next = self.get_previous_approval_task_line()
-            elif self.reject_to_method == 'legacy':
-                approval_task_line_next, approval_task_line_between = self.reject_method_legacy(reason, **kwargs)
-            else:
-                approval_task_line_next = kwargs.get('approval_task_line_next')
-                approval_task_line_between = kwargs.get(
-                    'approve_task_line_between'
-                ) or self.get_approval_start_task(approval_task_line_next)
-            is_approval_done = not approval_task_line_next
-        if is_approval_done:
-            kw['is_approval_done'] = True
-            kw['is_rejected'] = True
-        else:
-            kw['approval_task_line_next'] = approval_task_line_next
-        kw['approve_task_task_between'] = approval_task_line_between
-        kw['approve_task_line'] = kw['approve_task_line_reject'] = self
-        self.with_context(
-            __skip_create_approval_audit_log=True,
-            __skip_approval_task_line_status=True,
-            __skip_auto_register_approval_task_line_status=True,
-        ).set_rejected_status(**kw)
-        self.create_approval_audit_log_rejected(**kw)
-        self.after_reject(**kw)
-        if not is_approval_done and approval_task_line_next:
-            approval_task_line_next.set_waiting_status(**kw)
-            if approval_task_line_between:
-                approval_task_line_between.set_waiting_status(**kw)
-
-    def before_reject(self, **kwargs):
-        rec = self
-        kw = dict(kwargs)
-        kw['approval_task_line'] = rec
-        approval_instance = kwargs.get('approval_instance') or rec.get_approval_instance()
-        approval_instance and approval_instance.before_reject(**kw)
-
-    def after_reject(self, **kwargs):
-        rec = self
-        kw = dict(kwargs)
-        kw['approval_task_line'] = rec
-        approval_instance = kwargs.get('approval_instance') or rec.get_approval_instance()
-        approval_instance and approval_instance.after_reject(**kw)
-
-    def reject_from_popup_reject(self, **kwargs):
-        return self.do_reject(**kwargs)
+    # def reject_method_legacy(self, reason=None, **kwargs):
+    #     raise NotImplemented
+    #
+    # def do_reject(self, reason=None, **kwargs):
+    #     self.ensure_one()
+    #     kw = dict(kwargs)
+    #     if not self.access_approval:
+    #         raise UserError("User not allow to reject")
+    #     kw['reason'] = reason
+    #     if 'transaction_object' not in kw:
+    #         kw['transaction_object'] = self.get_transaction_object()
+    #     if not kwargs.get('user_delegation'):
+    #         kw['user_delegation'] = self.get_user_delegation()
+    #     self.before_reject(**kwargs)
+    #     is_approval_done = False
+    #     approval_task_line_next = None
+    #     approval_task_line_between = self.browse()
+    #     if self.reject_to_method == 'to_requestor':
+    #         is_approval_done = True
+    #         approval_task_line_between = self.get_approval_start_task(None)
+    #     else:
+    #         if self.reject_to_method == 'to_task_line':
+    #             approval_task_line_next = self.get_reject_to_task_line()
+    #             approval_task_line_between = self.get_approval_start_task(approval_task_line_next)
+    #         elif self.reject_to_method == 'to_previous':
+    #             approval_task_line_next = self.get_previous_approval_task_line()
+    #         elif self.reject_to_method == 'legacy':
+    #             approval_task_line_next, approval_task_line_between = self.reject_method_legacy(reason, **kwargs)
+    #         else:
+    #             approval_task_line_next = kwargs.get('approval_task_line_next')
+    #             approval_task_line_between = kwargs.get(
+    #                 'approve_task_line_between'
+    #             ) or self.get_approval_start_task(approval_task_line_next)
+    #         is_approval_done = not approval_task_line_next
+    #     if is_approval_done:
+    #         kw['is_approval_done'] = True
+    #         kw['is_rejected'] = True
+    #     else:
+    #         kw['approval_task_line_next'] = approval_task_line_next
+    #     kw['approve_task_task_between'] = approval_task_line_between
+    #     kw['approve_task_line'] = kw['approve_task_line_reject'] = self
+    #     self.with_context(
+    #         __skip_create_approval_audit_log=True,
+    #         __skip_approval_task_line_status=True,
+    #         __skip_auto_register_approval_task_line_status=True,
+    #     ).set_rejected_status(**kw)
+    #     self.create_approval_audit_log_rejected(**kw)
+    #     self.after_reject(**kw)
+    #     if not is_approval_done and approval_task_line_next:
+    #         approval_task_line_next.set_waiting_status(**kw)
+    #         if approval_task_line_between:
+    #             approval_task_line_between.set_waiting_status(**kw)
+    #
+    # def before_reject(self, **kwargs):
+    #     rec = self
+    #     kw = dict(kwargs)
+    #     kw['approval_task_line'] = rec
+    #     approval_instance = kwargs.get('approval_instance') or rec.get_approval_instance()
+    #     approval_instance and approval_instance.before_reject(**kw)
+    #
+    # def after_reject(self, **kwargs):
+    #     rec = self
+    #     kw = dict(kwargs)
+    #     kw['approval_task_line'] = rec
+    #     approval_instance = kwargs.get('approval_instance') or rec.get_approval_instance()
+    #     approval_instance and approval_instance.after_reject(**kw)
+    #
+    # def reject_from_popup_reject(self, **kwargs):
+    #     return self.do_reject(**kwargs)
 
     def create_approval_task_line(self, approval_task_line, **kwargs):
         transaction_object = kwargs.get('transaction_object')
@@ -498,6 +488,29 @@ class ApprovalTaskLineMixin(models.AbstractModel):
 
         return self.with_context(context).create(ensure_list_create(approval_task_line))
 
+
+class ApprovalTaskLineRejectMixin(models.AbstractModel):
+    _name = "approval.task.line.reject.mixin"
+
+    reject_to_method = fields.Selection([
+        ('legacy', "Legacy"),
+        ('to_requestor', "To Requestor"),
+        ('to_previous', "To Previous"),
+        ('to_task_line', "To Task Line"),
+    ], default='legacy', readonly=True
+    )
+    reject_reason = fields.Text('Reject Reason')
+    matrix_rule_line_id = fields.Integer()
+    reject_to_matrix_rule_line_id = fields.Integer()
+    reject_to_task_line_id = fields.Many2one(_name)
+
+    def reject_method_legacy(self, **kwargs):
+        return {
+            'approval_task_line': self,
+            'approval_task_line_between': self.browse(),
+            'approval_task_line_next': self.browse()
+        }
+
     def write(self, vals):
         if 'reject_to_matrix_rule_line' in vals and vals['reject_to_matrix_rule_line']:
             vals['reject_to_method'] = 'to_task_line'
@@ -519,29 +532,134 @@ class ApprovalTaskLineMixin(models.AbstractModel):
 
     def setup_reject_to_rule_line(self):
         for rec in self:
-            if rec.reject_to_task_line_id:
+            if rec.reject_to_matrix_rule_line:
                 rec.reject_to_method = 'to_task_line'
-                reject_to_task_line = self.filtered(lambda r: r.matrix_rule_line == rec.reject_to_matrix_rule_line.id)
+                reject_to_task_line = self.filtered(lambda r: r.matrix_rule_line == rec.reject_to_matrix_rule_line)
                 if reject_to_task_line:
-                    reject_to_task_line = reject_to_task_line[0].id
+                    reject_to_task_line = reject_to_task_line[0]
                 else:
                     reject_to_task_line = self.search([
                         ('transaction_id', '=', rec.transaction_id),
                         ('transaction_model_name', '=', rec.transaction_model_name),
-                        ('matrix_rule_line', '=', rec.reject_to_matrix_rule_line.id)], limit=1)
-                if reject_to_task_line and reject_to_task_line.id != rec.reject_to_matrix_rule_line.id:
-                    rec.reject_to_matrix_rule_line = reject_to_task_line.id
+                        ('matrix_rule_line', '=', rec.reject_to_matrix_rule_line)], limit=1)
+                if reject_to_task_line and reject_to_task_line.id != rec.reject_to_matrix_rule_line:
+                    rec.reject_to_task_line_id = reject_to_task_line.id
+
+    # def reject_method_legacy(self, reason=None, **kwargs):
+    #     raise NotImplemented
+    #
+    @classmethod
+    def do_reject_approval_task_line(cls, approve_task_line_reject=None, **kwargs):
+
+        kw = dict(kwargs)
+        # if not self.access_approval:
+        #     raise UserError("User not allow to reject")
+        # kw['reason'] = reason
+        # if 'transaction_object' not in kw:
+        #     kw['transaction_object'] = self.get_transaction_object()
+        # if not kwargs.get('user_delegation'):
+        #     kw['user_delegation'] = self.get_user_delegation()
+        if not approve_task_line_reject or not isinstance(approve_task_line_reject, models.Model):
+            raise ValueError("Invalid approval_task_line. ")
+        env = approve_task_line_reject.env
+        approval_task_line_reject = approve_task_line_reject.with_context(
+            __has_call_do_reject_approval_task_line=True,
+            __skip_create_approval_audit_log=True,
+            __skip_approval_task_line_status=True,
+            __skip_auto_register_approval_task_line_status=True,
+        )
+        if env.context.get('__has_call_do_reject_approval_task_line'):
+            # skip recall
+            return None
+
+        approval_template_line = env['approval.template.line'].search_template_line_by_model(
+            approve_task_line_reject._name
+        )
+        kw['approval_template_line'] = approval_template_line
+
+        # before reject
+        approval_template_line.before_reject(**kw)
+        reject_plan = cls.plan_to_reject(**kw)
+        approval_task_line_next = reject_plan.get('approval_task_line_next')
+        approval_task_line_between = reject_plan.get('approval_task_line_between')
+        is_approval_done = not approval_task_line_next
+        if is_approval_done:
+            kw['is_approval_done'] = True
+            kw['is_rejected'] = True
+        else:
+            kw['approval_task_line_next'] = approval_task_line_next
+        kw['approve_task_task_between'] = approval_task_line_between
+        kw['approve_task_line_reject'] = approve_task_line_reject
+        approval_template_line.set_rejected_status(**kw)
+        approval_template_line.create_approval_audit_log_rejected(**kw)
+        # after_reject
+        approval_template_line.after_reject(**kw)
+        if not is_approval_done and approval_task_line_next:
+            approval_task_line_next.set_waiting_status(**kw)
+            if approval_task_line_between:
+                approval_task_line_between.set_waiting_status(**kw)
+    @classmethod
+    def plan_to_reject(cls, approval_task_line_reject=None, **kwargs):
+        """
+        return
+        {
+        'approval_task_line_reject' : reject
+        'approval_task_line_next' : next approval task
+        'approval_task_line_between' : empty or multiple record between approval_task_line and approval_task_line_next
+        }
+        """
+
+        if not isinstance(approval_task_line_reject, models.Model):
+            return {}
+        approval_task_line_between = approval_task_line_reject.browse()
+        approval_task_line_next = approval_task_line_reject.browse()
+        result = {
+            'approval_task_line_reject': approval_task_line_reject,
+            'approval_task_line_between': approval_task_line_between,
+            'approval_task_line_next': approval_task_line_next
+        }
+        env = approval_task_line_reject.env
+        template_line = env['approval.template.line']
+        template_line = template_line.search_template_line_by_model(approval_task_line_reject._name)
+        if not template_line:
+            return result
+
+        if not approval_task_line_reject.reject_to_method and approval_task_line_reject.reject_to_method == 'to_requestor':
+            approval_task_line_between = template_line.get_all_approved_task_line(approval_task_line_reject, **kwargs)
+        else:
+            if approval_task_line_reject.reject_to_method == 'to_task_line':
+                approval_task_line_next = approval_task_line_reject.get_reject_to_task_line()
+                approval_task_line_between = template_line.get_approval_task_line_between(
+                    approval_task_line_next, approval_task_line_reject, **kwargs
+                )
+            elif approval_task_line_reject.reject_to_method == 'to_previous':
+                approval_task_line_next = template_line.get_previous_approval_task_line(approval_task_line_reject, **kwargs)
+            elif approval_task_line_reject.reject_to_method == 'legacy':
+                approval_task_line_next, approval_task_line_between = approval_task_line_reject.reject_method_legacy(**kwargs)
+            else:
+                approval_task_line_next = kwargs.get('approval_task_line_next')
+                approval_task_line_between = kwargs.get(
+                    'approval_task_task_between'
+                ) or template_line.get_approval_task_line_between(
+                    approval_task_line_next, approval_task_line_reject, **kwargs
+                )
+        result['approval_task_line_next'] = approval_task_line_next
+        result['approval_task_task_between'] = approval_task_line_between
+        result['approval_task_line_reject'] = approval_task_line_reject
+        return result
 
 
 class ApprovalTaskLine(models.Model):
     _name = 'approval.task.line'
-    _inherit = ['approval.task.line.assignment.mixin',
-                'approval.task.line.access.mixin',
-                'approval.task.line.mixin',
-                'approval.status.mixin',
-                'approval.access.mixin',
-                'approval.transaction.able.mixin',
-                ]
+    _inherit = [
+        'approval.task.line.assignment.mixin',
+        'approval.task.line.access.mixin',
+        'approval.task.line.mixin',
+        'approval.task.line.reject.mixin',
+        'approval.status.mixin',
+        'approval.access.mixin',
+        'approval.transaction.able.mixin',
+    ]
     _description = 'This is Approval Task Line for Approval helper waiting approval'
     _order = 'id'
 
@@ -568,7 +686,7 @@ class ApprovalTaskLine(models.Model):
                     sign_title = ''
                 type_name = f"{sign_title + rec.responsible_user_id.name}"
             elif rec.type_approval == 'user':
-                type_name = f"{rec.sign_title or'User'} - {rec.user_id.name}"
+                type_name = f"{rec.sign_title or 'User'} - {rec.user_id.name}"
             elif rec.type_approval == 'group':
                 type_name = f"{rec.sign_title or 'Group'} - {rec.group_id.name}"
             elif rec.type_approval == 'multi_group':
