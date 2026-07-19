@@ -17,20 +17,18 @@
                 <field name="company_id" optional="hide"/>
                 <field name="transaction_id" optional="hide"/>
                 <field name="transaction_model_name" optional="hide"/>
-                <field name="approval_instance_id" optional="hide"/>
                 <field name="reject_to_method" optional="hide"/>
                 <field name="type_approval" optional="hide"/>
                 <field name="user_id" readonly="1" optional="hide" groups="base.group_no_one"/>
                 <field name="group_id" readonly="1" optional="hide" groups="base.group_no_one"/>
                 <field name="user_ids" widget="many2many_tags" optional="hide" groups="base.group_no_one"/>
                 <field name="group_ids" widget="many2many_tags" optional="hide" groups="base.group_no_one"/>
-                <field name="status_approval" readonly="1"/>
+                <field name="started_task_time" readonly="1" optional="hide"/>
                 <field name="responsible_user_id" readonly="1" optional="hide"/>
-                <field name="approval_instance_id" optional="hide" groups="base.group_no_one"/>
+                <field name="approval_instance_id" readonly="1" optional="hide" groups="base.group_no_one"/>
                 <field name="approval_user_ids" string="Approval User" widget="many2many_tags" optional="hide" groups="base.group_no_one"/>
                 <field name="user_execution_id" readonly="1" optional="hide"/>
                 <field name="user_delegation_id" readonly="1" optional="hide"/>
-                <field name="reject_to_method" readonly="1" optional="hide" groups="base.group_no_one"/>
             </tree>
         </field>
     </record>

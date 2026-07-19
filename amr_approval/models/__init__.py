@@ -3,7 +3,7 @@
 from . import rule_condition
 
 # Notification
-from . import chat_template
+# from . import chat_template
 from . import notification_template
 
 # DOA

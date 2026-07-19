@@ -10,20 +10,54 @@ _logger = logging.getLogger(__name__)
 class ApprovalInstanceAbleMixin(models.AbstractModel):
     _name = 'approval.instance.able.mixin'
 
+    approval_template_id = fields.Many2one(
+        'approval.template',
+        compute="_compute_approval_template_id"
+    )
+    approval_template_line_id = fields.Many2one(
+        'approval.template.line',
+        compute="_compute_approval_template_id"
+    )
     approval_instance_id = fields.Many2one(
         'approval.instance',
-        compute="compute_approval_instance_id"
+        compute="_compute_approval_instance_id"
     )
     access_approval = fields.Boolean(
-        compute="compute_access_approval",
+        compute="_compute_access_approval",
         search="search_filter_access_approval",
     )
-    is_waiting_approval = fields.Boolean(compute="compute_access_approval",)
-    access_request_approval_action = fields.Boolean(store=False)
-    access_approve_action = fields.Boolean(compute="compute_access_approval",)
-    access_reject_action = fields.Boolean(compute="compute_access_approval",)
-    access_cancel_action = fields.Boolean(compute="compute_access_approval",)
-    access_reset_to_draft_action = fields.Boolean(store=False)
+    access_requester = fields.Boolean(
+        string="Requester",
+        compute="_compute_access_requester",
+    )
+    approval_task_line = fields.One2many(
+        'approval.task.line',
+        related='approval_instance_id.approval_task_line',
+        string='Approval Task Lines'
+    )
+    is_need_approval = fields.Boolean(
+        compute="_compute_need_approval",
+        help="document flag need approval"
+    )
+    is_waiting_approval = fields.Boolean(
+        compute="_compute_waiting_approval",
+        help="status is waiting approval"
+    )
+    is_status_request_approval = fields.Boolean(
+        compute="_compute_status_request_approval",
+        help="status is waiting approval"
+    )
+    # is_user_requestor = fields.Boolean(
+    #     compute="_compute_user_requestor",
+    # )
+    # access_active when draft/state request_approve
+    access_request_approval_action = fields.Boolean(compute="compute_access_request_approval_action", )
+    # access_approval when state waiting approval
+    access_approve_action = fields.Boolean(compute="_compute_access_approval", )
+    access_reject_action = fields.Boolean(compute="_compute_access_approval", )
+    # access_requester when state waiting approval
+    access_cancel_action = fields.Boolean(compute="_compute_access_requester", )
+    access_reset_to_draft_action = fields.Boolean(compute="_compute_access_requester", )
 
     flag_reject = fields.Boolean()
     note_reject = fields.Text()
@@ -164,6 +198,10 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
         action_path = f"&action={action_id}" if action_id else ""
         return f"{base_url}/web#id={self.id}&model={self._name}&view_type=form{menu_part}{cids_part}{action_path}"
 
+    def get_requester_id(self, **kwargs):
+        user = self.approval_instance_id.get_user_requestor(self)
+        return user and user.id
+
     def unregister_from_approval_task(self, skip_create_approval_log=True, **kwargs):
         """
         Approval task as done
@@ -299,15 +337,73 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
 
     @api.depends_context("uid")
     @api.depends('approval_instance_id')
-    def compute_access_approval(self):
+    def _compute_need_approval(self):
         for rec in self:
+            is_need_approval = rec.is_model_need_approval()
+            rec.is_need_approval = is_need_approval
+
+    @api.depends_context("uid")
+    @api.depends('approval_instance_id')
+    def _compute_waiting_approval(self):
+        for rec in self:
+            is_status_waiting_approval = rec.is_status_waiting_approval()
+            rec.is_waiting_approval = is_status_waiting_approval
+
+    # @api.depends_context("uid")
+    # @api.depends('approval_instance_id')
+    # def _compute_user_requestor(self):
+    #     for rec in self:
+    #         user_id = rec.get_requester_id()
+    #         rec.is_user_requestor = user_id == self.env.user.id
+
+    # @api.depends_context("uid")
+    # @api.depends('approval_instance_id', 'is_user_requestor', 'is_waiting_approval')
+    # def compute_access_reset_to_draft_action(self):
+    #     for rec in self:
+    #         is_satus_waiting_approval = rec.is_waiting_approval
+    #         # requestor have access to draft
+    #         access_user_requestor = rec.is_user_requestor
+    #         # and satatus in is_waiting
+    #         # is_waiting_approval = rec.is_status_waiting_approval()
+    #         rec.access_reset_to_draft_action = access_user_requestor and is_satus_waiting_approval
+
+    @api.depends_context("uid")
+    @api.depends('approval_template_id')
+    def _compute_status_request_approval(self):
+        for rec in self:
+            rec.is_status_request_approval = rec.approval_template_id.is_status_request_approval(rec)
+
+    @api.depends_context("uid")
+    @api.depends('access_requester', 'is_need_approval')
+    def compute_access_request_approval_action(self):
+        for rec in self:
+            rec.access_request_approval_action = (
+                    rec.is_status_request_approval and rec.access_requester and rec.is_need_approval
+            )
+
+    @api.depends_context("uid")
+    @api.depends('approval_instance_id', 'is_waiting_approval')
+    def _compute_access_approval(self):
+        for rec in self:
+            if not rec.is_waiting_approval or not rec.approval_instance_id:
+                rec.access_approval = False
+                rec.access_approve_action = False
+                rec.access_reject_action = False
+                continue
             access_approval = rec.approval_instance_id and rec.approval_instance_id.access_approval
-            is_waiting_approval = rec.is_status_waiting_approval()
-            rec.is_waiting_approval = is_waiting_approval
             rec.access_approval = access_approval
-            rec.access_approve_action = is_waiting_approval and access_approval
-            rec.access_reject_action = is_waiting_approval and access_approval
-            rec.access_cancel_action = is_waiting_approval and access_approval
+            rec.access_approve_action = access_approval
+            rec.access_reject_action = access_approval
+
+    @api.depends_context("uid")
+    @api.depends('approval_template_id')
+    def _compute_access_requester(self):
+        for rec in self:
+            access_requester = rec.approval_template_id.get_user_requestor(rec) == self.env.user
+            rec.access_requester = access_requester
+            rec.access_cancel_action = access_requester
+            rec.access_reset_to_draft_action = access_requester
+
     @api.model
     def search_filter_access_approval(self, operator, value):
         approval_template = self.get_approval_template()
@@ -342,19 +438,13 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
         return rec.approval_instance_id.create_or_get(transaction=rec)
 
     def action_request_approval(self):
-        rec = self.ensure_one()
-        approval_instance = rec.ensure_approval_instance()
-        return approval_instance.request_approval()
+        return self.with_context(approval_action='request_approval').approval_action()
 
     def action_approve(self):
-        rec = self.ensure_one()
-        approval_instance = rec.ensure_approval_instance()
-        return approval_instance.action_approve()
+        return self.with_context(approval_action='approve').approval_action()
 
     def action_reject(self):
-        rec = self.ensure_one()
-        approval_instance = rec.ensure_approval_instance()
-        return approval_instance.action_reject()
+        return self.with_context(approval_action='reject').approval_action()
 
     def reject_from_popup_reject(self, **kwargs):
         rec = self.ensure_one()
@@ -366,19 +456,26 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
         approval_instance = rec.ensure_approval_instance()
         return approval_instance.clear_approval()
 
-    def compute_approval_instance_id(self):
+    def _compute_approval_template_id(self):
+        for rec in self:
+            rec.approval_template_id = self.approval_template_id.search_template_by_model(self._name)
+            rec.approval_template_line_id = rec.approval_template_id.approval_template_line_id
+
+    def _compute_approval_instance_id(self):
         for rec in self:
             rec.approval_instance_id = self.approval_instance_id.get_instance_for_transaction(self._name, rec.id)
 
     def get_next_approval_task_line(self):
         rec = self.ensure_one()
-        approval_instance = rec.approval_instance_id.get_instance_for_transaction(self._name, rec.id)
-        return approval_instance and approval_instance.get_next_approval_task_line()
+        return rec.approval_template_line_id.get_next_approval_task_line(transaction_object=rec)
+        # approval_instance = rec.approval_instance_id.get_instance_for_transaction(self._name, rec.id)
+        # return approval_instance and approval_instance.get_next_approval_task_line()
 
     def get_last_approval_task_line(self):
         rec = self.ensure_one()
-        approval_instance = rec.approval_instance_id.get_instance_for_transaction(self._name, rec.id)
-        return approval_instance and approval_instance.get_last_approval_task_line()
+        return rec.approval_template_line_id.get_last_approval_task_line(transaction_object=rec)
+        # approval_instance = rec.approval_instance_id.get_instance_for_transaction(self._name, rec.id)
+        # return approval_instance and approval_instance.get_last_approval_task_line()
 
     def get_users_approval_notification(self, **kwargs):
         return self.get_next_approval_task_line().get_users_for_notification(**kwargs)
@@ -391,13 +488,29 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
         if notification_template:
             notification_template.send_notification_to_users(users, rec.id, **kwargs)
 
-    def is_status_waiting_approval(self):
+    def is_model_need_approval(self):
+        if not self:
+            return False
         rec = self.ensure_one()
-        approval_instance = rec.approval_instance_id.create_or_get(rec)
-        return approval_instance and approval_instance.is_status_waiting_approval()
+        return rec.approval_template_id.is_model_need_approval(rec)
+
+    def is_status_request_approval(self):
+        if not self:
+            return False
+        rec = self.ensure_one()
+        return rec.approval_template_id.is_model_need_approval(rec)
+
+    def is_status_waiting_approval(self):
+        if not self:
+            return False
+        rec = self.ensure_one()
+        return rec.approval_template_id.is_status_waiting_approval(rec)
 
     def get_all_approval_task_line(self):
-        return self.approval_instance_id.get_all_approval_task_line()
+        rec = self.ensure_one()
+        return self.approval_template_line_id.get_all_approval_task_line(
+            transaction_object=rec
+        )
 
     def get_notification_approval(self):
         return self.approval_template_id.notification_approval_id

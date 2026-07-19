@@ -3,7 +3,7 @@ import json
 import logging
 
 from odoo import api, fields, models
-from ..tools.utils import safe_call_method
+from ..tools.utils import safe_call_method, have_method
 from odoo.exceptions import ValidationError
 from odoo.tools.safe_eval import safe_eval, test_python_expr
 
@@ -28,10 +28,8 @@ class NotificationTemplate(models.Model):
     model_id = fields.Many2one('ir.model')
     model = fields.Char(related='model_id.model', store=True)
     auto_delete = fields.Boolean(default=True)
-    send_mobile = fields.Boolean(
-        compute="_compute_send_mobile",
-        store=True,
-    )
+    send_mobile = fields.Boolean(compute="_compute_send_mobile")
+    notes_chatter = fields.Boolean("Note Chater", default=False)
     send_email = fields.Boolean("Send Email", default=False)
     send_chat = fields.Boolean("Send Chat", default=False)
     body_chat = fields.Text()
@@ -49,14 +47,13 @@ class NotificationTemplate(models.Model):
     body_html = fields.Text()
     body_whatsapp = fields.Text()
     body_telegram = fields.Text()
+    body_chatter = fields.Text()
     code = fields.Text(
         string='Python Code',
         default=DEFAULT_PYTHON_CODE,
         help="Write Python code that the action will execute. Some variables are "
              "available for use; help about python expression is given in the help tab."
     )
-
-    template_chat = fields.Many2one('mail.template')
 
     @api.depends(
         "send_firebase",
@@ -120,7 +117,7 @@ class NotificationTemplate(models.Model):
         payload = self.get_notification_payload(notification_to_user, res_id, **kwargs)
         notif_log['payload'] = json.dumps(payload)
         if self.send_email and kwargs.get('send_notification_email', True):
-            result = self.send_notification_email(notification_to_user,  payload, notif_log, res_id=res_id, **kwargs)
+            result = self.send_notification_email(notification_to_user, payload, notif_log, res_id=res_id, **kwargs)
             notif_log.update(result or {})
         self.send_notification_payload(notification_to_user, payload, notif_log, **kwargs)
 
@@ -154,9 +151,6 @@ class NotificationTemplate(models.Model):
         for field in fields:
             Template = Template.with_context(safe=field in {'title'})
             request[field] = Template._render_template(getattr(template, field), template.model, res_id)
-        request['email'] = notification_to_user.partner_id.email
-        request['phone'] = notification_to_user.partner_id.phone
-        request['notification_to_user'] = notification_to_user.partner_id.email
         approval_task_line = kwargs.get('approval_task_line')
         if approval_task_line and isinstance(approval_task_line, models.BaseModel):
             request['source_approval_model'] = approval_task_line._name,
@@ -169,13 +163,6 @@ class NotificationTemplate(models.Model):
             'body': request.get('body', ''),
             'image': request.get('image', ''),
         }
-        if self.template_chat:
-            template_chat = self.template_chat.with_context(
-                notification_to_user=notification_to_user
-            )
-            values = template_chat.generate_email([res_id], ['body_html'])[res_id]
-            eval_context['body_chat'] = values["body_html"]
-            eval_context['send_chat'] = True
 
         eval_context['data'] = request
         eval_context = self._run_action_code_multi(eval_context)
@@ -193,7 +180,7 @@ class NotificationTemplate(models.Model):
 
     def send_notification_payload(self, notification_to_user, payload, notif_log, **kwargs):
         self.send_notification_email(notification_to_user, payload, notif_log, **kwargs)
-        payload.get('send_chat') and self.send_notification_chat(notification_to_user, payload, notif_log, **kwargs)
+        self.send_notification_chat(notification_to_user, payload, notif_log, **kwargs)
         self.send_notification_mobile(notification_to_user, payload, notif_log, **kwargs)
         if payload.get('title'):
             notif_log['name'] = payload.get('title')
@@ -209,10 +196,10 @@ class NotificationTemplate(models.Model):
         # 'auto_delete', 'scheduled_date']
 
     @api.model
-    def setup_email_values(self,values):
+    def setup_email_values(self, values):
         # values['recipient_ids'] = [(4, pid) for pid in values.get('partner_ids', list())]
         values['attachment_ids'] = [(4, aid) for aid in values.get('attachment_ids', list())]
-        #values.pop('partner_ids', None)
+        # values.pop('partner_ids', None)
         return values
 
     @api.model
@@ -227,12 +214,12 @@ class NotificationTemplate(models.Model):
                 'subject': payload.get('title', None),
                 'body_html': payload.get('body_html', None) or payload.get('body', None),
                 'body': payload.get('body', None),
-                'auto_delete':self.auto_delete,
+                'auto_delete': self.auto_delete,
             }
         self.setup_email_values(values)
         values['recipient_ids']: [(4, notification_to_user.partner_id.id)]
         # supaya tidak di tulis di chatter res_id di hapus
-        values.pop('res_id',None)
+        values.pop('res_id', None)
         result = self.env['mail.mail'].sudo().create(values)
         notif_log['mail_id'] = result.id
         notif_log['mail_model'] = 'mail.mail'
@@ -284,3 +271,11 @@ class NotificationTemplate(models.Model):
     def _run_action_code_multi(self, eval_context):
         safe_eval(self.code.strip(), eval_context, mode="exec", nocopy=True)  # nocopy allows to return 'action'
         return eval_context
+
+    @api.model
+    def send_message_post(self, transaction_object, message, **kwargs):
+        if not transaction_object:
+            return
+        if have_method(transaction_object, "message_post"):
+            return transaction_object.sudo().message_post(body=message, author_id=self.env.user.partner_id.id)
+        return

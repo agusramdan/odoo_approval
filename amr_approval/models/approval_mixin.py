@@ -24,14 +24,15 @@ class ApprovalAutoRegisterMixin(models.AbstractModel):
         if approval_template and approval_template.state_field:
             state_field = approval_template.state_field
             if state_field in vals:
-                old = {r.id: getattr(r,state_field,None) for r in self}
+                old = {r.id: getattr(r, state_field, None) for r in self}
         # handling bila keluar approval
         result = super().write(vals)
         if old and state_field:
             state_waiting_approvals = approval_template.get_state_waiting_approvals()
             for transaction_object in self:
                 state_approval = getattr(transaction_object, state_field)
-                if old[transaction_object.id] in state_waiting_approvals and state_approval not in state_waiting_approvals:
+                if old[
+                    transaction_object.id] in state_waiting_approvals and state_approval not in state_waiting_approvals:
                     _logger.info(f"Exit waiting_approval {transaction_object.id}")
                     if have_method(transaction_object, 'unregister_approval_task'):
                         transaction_object.unregister_approval_task(skip_create_approval_log=True)
@@ -71,10 +72,10 @@ class ApprovalLineAutoRegisterMixin(models.AbstractModel):
                 return self.env['approval.template'].search_template_by_model(transaction_model_name)
         return self.env['approval.template'].search_template_by_approval_task_line_model(self._name)
 
-    def state_leave_waiting_approvals(self, approval_template, state_approval, create_date=None):
+    def state_leave_waiting_approvals(self, approval_template_line, state_approval, create_date=None):
         rec = self
         al = None
-        if approval_template.approval_task_line_state_approved == state_approval:
+        if approval_template_line.state_approved == state_approval:
             _logger.info("To Approve %s , %s .", self, state_approval)
             al = self.env['approval.audit.log'].create_audit_log(
                 approval_task_line=rec,
@@ -82,7 +83,7 @@ class ApprovalLineAutoRegisterMixin(models.AbstractModel):
                 name='Approval',
                 create_date=create_date or fields.Datetime.now(),
             )
-        elif approval_template.approval_task_line_state_reject == state_approval:
+        elif approval_template_line.state_rejected == state_approval:
             _logger.info("To Reject %s , %s .", self, state_approval)
             al = rec.create_approval_audit_log_rejected(
                 approval_task_line=rec,
@@ -90,41 +91,42 @@ class ApprovalLineAutoRegisterMixin(models.AbstractModel):
                 name='Reject',
                 create_date=create_date or fields.Datetime.now(),
             )
-        elif approval_template.approval_task_line_state_cancel == state_approval:
+        elif approval_template_line.state_canceled == state_approval:
             _logger.info("To Cancel %s , %s .", self, state_approval)
         else:
             _logger.warning("%s , %s .", self, state_approval)
         return al
 
     def write(self, vals):
+        global state_field
         if self.env.context.get('__skip_approval_task_line_status'):
             return super().write(vals)
         old = None
-        approval_template = self.get_approval_template()
+        approval_template_line = self.get_approval_template_line()
         approval_task_line_state_field = None
         trx_change = {}
 
-        if approval_template and approval_template.approval_task_line_state_field:
-            approval_task_line_state_field = approval_template.approval_task_line_state_field
+        if approval_template_line and approval_template_line.state_field:
+            state_field = approval_template_line.state_field
             if approval_task_line_state_field in vals:
-                old = {r.id: getattr(r,approval_task_line_state_field,None) for r in self}
+                old = {r.id: getattr(r, state_field, None) for r in self}
         res = super().write(vals)
         if old:
-            state_waiting_approvals = approval_template.get_approval_task_line_state_waiting_approvals()
+            state_waiting_approvals = approval_template_line.get_approval_task_line_state_waiting_approvals()
             for rec in self:
-                state_approval = getattr(rec, approval_task_line_state_field)
+                state_approval = getattr(rec, state_field, None)
                 if old[rec.id] in state_waiting_approvals and state_approval not in state_waiting_approvals:
-                    transaction_object = approval_template.get_transaction_object(
-                        approval_template=approval_template,
+                    transaction_object = approval_template_line.get_transaction_object(
+                        approval_template_line=approval_template_line,
                         approval_task_line=rec,
                     )
                     trx_change[transaction_object.id] = transaction_object
-                    rec.state_leave_waiting_approvals(approval_template, state_approval)
+                    rec.state_leave_waiting_approvals(approval_template_line, state_approval)
 
         if (
                 trx_change and
-                approval_template and
-                approval_template.auto_register_approval_task and
+                approval_template_line and
+                approval_template_line.auto_register_approval_task and
                 not self.env.context.get('__skip_auto_register_approval_task_line_status')
         ):
             for trx_id, transaction_object in trx_change.items():
@@ -133,7 +135,6 @@ class ApprovalLineAutoRegisterMixin(models.AbstractModel):
                 if transaction_object:
                     approval_instance = self.env['approval.instance'].create_or_get(
                         transaction=transaction_object,
-                        approval_template=approval_template,
                         raise_exception_without_template=False,
                     )
                     if approval_instance:
@@ -147,13 +148,10 @@ class ApprovalLineAutoRegisterMixin(models.AbstractModel):
                     if have_method(transaction_object, 'register_to_approval_task'):
                         transaction_object.register_to_approval_task(
                             approval_task_line=approval_task_line,
-                            approval_template=approval_template,
                         )
                     else:
                         approval_instance.register_approval_task_line(
-                            transaction_object=transaction_object,
                             approval_task_line=approval_task_line,
-                            approval_template=approval_template,
                         )
 
         return res
@@ -671,4 +669,7 @@ class ApprovalStatusMixin(models.AbstractModel):
         self.status_approval = APPROVAL_STATUS_REJECTED
 
     def set_canceled_state(self):
+        self.status_approval = APPROVAL_STATUS_CANCELLED
+
+    def set_to_draft_state(self):
         self.status_approval = APPROVAL_STATUS_CANCELLED

@@ -168,3 +168,39 @@ class ApprovalAuditLog(models.Model):
         notification_res_id = rec.notification_res_id or kwargs.get('notification_res_id')
         if rec.notification_template_id and notification_res_id and rec.requestor_id:
             rec.notification_template_id.send_notification_to_users(rec.requestor_id, notification_res_id)
+
+    def create_approval_audit_log(self, **kwargs):
+        transaction_object = kwargs.get('transaction_object')
+        kw = dict(kwargs)
+        if transaction_object and isinstance(transaction_object, models.BaseModel):
+            if have_method(transaction_object, "create_approval_log"):
+                return transaction_object.create_approval_log(**kw)
+            kw.update(
+                transaction_id=transaction_object.id,
+                transaction_model_name=transaction_object._name,
+            )
+        return self.env['approval.audit.log'].create_audit_log(**kw)
+
+    def create_approval_audit_log_approved(self, **kwargs):
+        kw = dict(kwargs)
+        kw['action_type'] = 'approve'
+        kw.setdefault('name', 'Approve')
+        return self.create_approval_audit_log(**kw)
+
+    def create_approval_audit_log_rejected(self, **kwargs):
+        kw = dict(kwargs)
+        kw['action_type'] = 'reject'
+        kw.setdefault('name', 'Reject')
+        return self.create_approval_audit_log(**kw)
+
+    def create_approval_audit_log_canceled(self, **kwargs):
+        kw = dict(kwargs)
+        kw['action_type'] = 'cancel'
+        kw.setdefault('name', 'Cancel')
+        return self.create_approval_audit_log(**kw)
+
+    def create_approval_audit_log_reset(self, **kwargs):
+        kw = dict(kwargs)
+        kw['action_type'] = 'reset'
+        kw.setdefault('name', 'Reset')
+        return self.create_approval_audit_log(**kw)

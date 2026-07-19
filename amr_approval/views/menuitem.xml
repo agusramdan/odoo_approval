@@ -36,6 +36,9 @@
     <menuitem id="menu_approval_template" name="Approval Template" parent="main_management_configuration"
               action="action_approval_template" sequence="1" groups="base.user_admin"
     />
+    <menuitem id="menu_approval_template_line" name="Approval Template Lines" parent="main_management_configuration"
+        action="action_approval_template_line" sequence="10"  groups="base.user_admin"
+    />
     <menuitem id="menu_approval_matrix_rule" name="Approval Matrix" parent="main_management_configuration"
               action="action_approval_matrix_rule" sequence="20" groups="base.user_admin"
     />
@@ -62,6 +65,9 @@
     />
     <menuitem id="approval_template_menu" name="Approval Template" sequence="20"
               action="action_approval_template" parent="base_approval_menu"
+    />
+    <menuitem id="approval_template_line_menu" name="Approval Template Lines" parent="base_approval_menu"
+        action="action_approval_template_line" sequence="25"  groups="base.user_admin"
     />
     <menuitem id="approval_instance_menu" name="Approval Instance" sequence="30"
               action="action_approval_instance" parent="base_approval_menu"

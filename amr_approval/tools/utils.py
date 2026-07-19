@@ -12,7 +12,7 @@ _logger = logging.getLogger(__name__)
 
 
 def have_method(obj, method):
-    return hasattr(obj, method) and callable(getattr(obj, method))
+    return method and isinstance(method, str) and hasattr(obj, method) and callable(getattr(obj, method))
 
 
 def save_call_method(obj, method_name, **kw):
@@ -59,18 +59,18 @@ def safe_call_method(obj, method_name, args=None, kwargs=None):
     args = list(args or [])
     for name, p in params.items():
         if p.kind in (
-            inspect.Parameter.POSITIONAL_ONLY,
-            inspect.Parameter.POSITIONAL_OR_KEYWORD
+                inspect.Parameter.POSITIONAL_ONLY,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD
         ):
             if args:
                 final_args.append(args[0])
                 args = args[1:]
             elif name in kwargs:
                 final_args.append(kwargs[name])
-                #_logger.info(f"index {len(final_args)} from {name}")
+                # _logger.info(f"index {len(final_args)} from {name}")
                 kwargs.pop(name)
             elif p.default is not inspect.Parameter.empty:
-                #_logger.info(f"index {len(final_args)} default {p.default}")
+                # _logger.info(f"index {len(final_args)} default {p.default}")
                 final_args.append(p.default)
             else:
                 raise TypeError(f"Missing required argument: {name}")

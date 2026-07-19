@@ -441,7 +441,8 @@ class ApprovalTask(models.Model):
             limit=1,
         )
 
-    def approval_setup(self, transaction_id, transaction_model_name, reset_request_approval_task_date=True, reset_reminder=True, **kwargs):
+    def approval_setup(self, transaction_id, transaction_model_name, reset_request_approval_task_date=True,
+                       reset_reminder=True, **kwargs):
         approval_task = self.get_approval_task(transaction_id, transaction_model_name)
         prepare_dict = dict(kwargs)
         prepare_dict.update(
@@ -453,27 +454,48 @@ class ApprovalTask(models.Model):
             self.transaction_model_name, self.transaction_id
         )
         approval_template = kwargs.get('approval_template') or approval_instance.approval_template_id
+        approval_template_line = kwargs.get('approval_template_line') or approval_template.approval_template_line_id
         prepare_dict['approval_template'] = approval_template
         prepare_dict['approval_instance'] = approval_instance
-        if not prepare_dict.get('user_ids') and not prepare_dict.get('group_ids'):
-            prepare_dict['approval_task_line'] = approval_task_line = approval_template.get_next_approval_task_line(
+        prepare_dict['approval_template_line'] = approval_template_line
+        approval_task_line = kwargs.get('approval_task_line')
+        if not approval_task_line and approval_template_line:
+            approval_task_line = approval_template_line.get_next_approval_task_line(**prepare_dict)
+
+        if not approval_task_line and approval_template:
+            approval_task_line = approval_template.get_next_approval_task_line(
                 **prepare_dict
             )
+        if approval_task_line:
+            prepare_dict['approval_task_line'] = approval_task_line
+
+        if isinstance(approval_task_line, models.BaseModel):
+            prepare_dict['approval_model'] = approval_task_line._name
+            prepare_dict['approval_res_id'] = approval_task_line.id
+
+        if not prepare_dict.get('user_ids') and not prepare_dict.get('group_ids'):
             if have_method(approval_task_line, "prepare_approval_task_dict"):
                 prepare_dict.update(approval_task_line.prepare_approval_task_dict() or {})
-            else:
-                prepare_dict.update(approval_template.get_approval_groups_or_users(**prepare_dict) or {})
+            elif approval_template_line:
+                prepare_dict.update(approval_template_line.get_approver_data(**prepare_dict) or {})
+            elif approval_template:
+                prepare_dict.update(approval_template.get_approver_data(**prepare_dict) or {})
 
         if reset_request_approval_task_date or reset_reminder:
             reset_reminder = True
             prepare_dict['request_approval_task_date'] = fields.Datetime.now()
 
         if reset_reminder:
+            if approval_template.reminder_interval_number > 0:
+                reminder_next_datetime = approval_template.get_next_reminder_datetime()
+            else:
+                # jika 0 maka remainder disable
+                reminder_next_datetime = False
             prepare_dict.update(
                 request_approval_task_date=fields.Datetime.now(),
                 reminder_count=0,
                 reminder_last_datetime=False,
-                reminder_next_datetime=approval_template.get_next_reminder_datetime()
+                reminder_next_datetime=reminder_next_datetime
             )
 
         if approval_task:
@@ -485,10 +507,8 @@ class ApprovalTask(models.Model):
         if not kwargs.get('skip_send_notification'):
             approval_task.send_notification(**kwargs)
 
-        if not approval_task.reminder_next_datetime and approval_template.reminder_interval_number:
-            approval_task.sudo().write({
-                'reminder_next_datetime': approval_template.get_next_reminder_datetime(approval_task.request_approval_task_date)
-            })
+        prepare_dict['approval_task'] = approval_task
+        approval_template_line.start_waiting_approval(**prepare_dict)
 
         return approval_task
 
@@ -618,3 +638,12 @@ class ApprovalTask(models.Model):
             return self.env[self.approval_model].browse(self.approval_res_id).action_assignment()
         else:
             raise UserError("Assignment not available for this task")
+
+    def get_approval_task_line(self):
+        return self.env[self.approval_model].browse(self.approval_res_id)
+
+    def get_approval_template_line(self, **kwargs):
+        return (
+                kwargs.get('approval_template_line') or
+                self.env['approval.template.line'].search_template_line_by_model(self.approval_model)
+        )

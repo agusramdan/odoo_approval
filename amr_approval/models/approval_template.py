@@ -4,10 +4,9 @@ import base64
 import logging
 
 from lxml import etree
-from pytz import timezone
 from dateutil.relativedelta import relativedelta
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import float_compare
 from odoo.tools.safe_eval import safe_eval, test_python_expr
@@ -23,6 +22,12 @@ _intervalTypes = {
     'months': lambda interval: relativedelta(months=interval),
     'minutes': lambda interval: relativedelta(minutes=interval),
 }
+DEFAULT_CODE = """
+# Available variables:
+#  - transaction_object 
+#----------------------
+result = transaction_object.id>0
+"""
 
 DEFAULT_PYTHON_CODE = """
 # Available variables:
@@ -34,6 +39,7 @@ DEFAULT_PYTHON_CODE = """
 #  - Command: x2Many commands namespace
 #  - approval_instance
 #  - approval_template
+#  - transaction_object 
 # To return an response, assign: response = {...}
 
 \n\n\n\n
@@ -86,16 +92,17 @@ class ApprovalTemplateMixin(models.AbstractModel):
     description = fields.Char("Description")
     model_id = fields.Many2one('ir.model')
     model = fields.Char(related='model_id.model')
+    generate_field_approval_task_line = fields.Boolean()
+    generate_field_approval_task_line_id = fields.Many2one(
+        'ir.model.fields',
+        'Generate x_approval_task_line_',
+        readonly=True, ondelete='set null',
+    )
 
-    available_action_request_approval = fields.Boolean()
-    available_action_approve = fields.Boolean()
-    available_action_reject = fields.Boolean()
-    available_action_cancel = fields.Boolean()
-    available_action_reset_draft = fields.Boolean()
     generate_view_id = fields.Many2one(
         'ir.ui.view',
         'Generate Form',
-        readonly=True
+        readonly=True, ondelete='set null',
     )
     view_id = fields.Many2one(
         'ir.ui.view',
@@ -114,12 +121,16 @@ class ApprovalTemplateMixin(models.AbstractModel):
         ondelete='set null',
     )
     # approval.matrix.mixin
+    approval_task_line_editable = fields.Boolean(
+        help='Akan menampilkan button untuk menampilkan form yang bisa edit approval task list. '
+             'Sehinggar requester bisa secara custom menentukan siapa saja yang akan menjadi approval nya.'
+    )
     approval_mode = fields.Selection([
         ('matrix', 'Approval Matrix'),
         ('model', 'By Model'),
-    ], required=True, default='matrix')
+    ])
     approval_matrix_id = fields.Many2one(
-        "approval.matrix.rule.mixin", string="Approval Matrix"
+        "approval.matrix.rule.mixin", string="Approval Matrix", ondelete='set null',
     )
     approval_matrix_model = fields.Char()
     approval_matrix_model_id = fields.Many2one('ir.model', string="Target Model", ondelete='set null', )
@@ -128,53 +139,88 @@ class ApprovalTemplateMixin(models.AbstractModel):
     approval_task_line_model = fields.Char(
         related='approval_task_line_model_id.model'
     )
+    approval_task_line_page = fields.Boolean("Approval Page")
+    approval_task_line_field = fields.Char('Line Field')
+
+    approval_template_line_id = fields.Many2one(
+        'approval.template.line', compute='compute_approval_template_line_id',
+    )
     # approval.status.mixin
     auto_register_approval_task = fields.Boolean()
-    approval_task_line_parent_filed = fields.Char(
-        help="parent field for approval task line."
-    )
-    approval_task_line_state_field = fields.Char(
-        help='status_approval'
-    )
-    approval_task_line_state_cancel = fields.Char(
-        help="State when cancel"
-    )
-    approval_task_line_state_reject = fields.Char(
-        help="State when reject"
-    )
-    approval_task_line_state_approved = fields.Char(
-        help="State when approved. Leve blank when not need update"
-    )
-    approval_task_line_state_waiting_approvals = fields.Char(
-        help="Waiting Approval for approval_line"
-    )
-    approval_task_line_users_mode = fields.Selection([
+    #
+    # approval_task_line_parent_filed = fields.Char(
+    #     help="parent field for approval task line."
+    # )
+    # approval_task_line_state_field = fields.Char(
+    #     help='status_approval'
+    # )
+    # approval_task_line_state_cancel = fields.Char(
+    #     help="State when cancel"
+    # )
+    # approval_task_line_state_reject = fields.Char(
+    #     help="State when reject"
+    # )
+    # approval_task_line_state_approved = fields.Char(
+    #     help="State when approved. Leve blank when not need update"
+    # )
+    # approval_task_line_state_waiting_approvals = fields.Char(
+    #     help="Waiting Approval for approval_line"
+    # )
+    # approval_task_line_users_mode = fields.Selection([
+    #     ('function', 'Function'),
+    #     ('users_field', 'User Field'),
+    #     ('group_field', 'Group Field'),
+    # ])
+    #
+    # approval_task_line_users_params = fields.Char()
+    # deprecated end
+    # approval_task_auto_register = fields.Boolean("Auto Register")
+
+    need_approval_mode = fields.Selection([
+        ('field', 'Field'),
         ('function', 'Function'),
-        ('users_field', 'User Field'),
-        ('group_field', 'Group Field'),
+        ('code', 'Code'),
     ])
-
-    approval_task_line_users_params = fields.Char()
-
-    approval_task_auto_register = fields.Boolean("Auto Register")
-
     need_approval_field = fields.Char(
         help="Filed document boolean for need approval."
     )
+    need_approval_function = fields.Char(
+        help="Code document boolean for need approval."
+    )
+    need_approval_code = fields.Text(
+        default=DEFAULT_CODE,
+        help="Code document boolean for need approval."
+    )
+    requestor_field = fields.Char()
     state_field = fields.Char()
-    state_request_approval = fields.Char(
+    state_request_approvals = fields.Char(
         default='draft',
         help="State when need approval button",
     )
-    state_reject = fields.Char(help="State when reject")
-    state_approved = fields.Char(help="State when approved. Leve blank when not need update")
-    state_canceled = fields.Char(help="State when canceled. Leve blank when not need update")
-    state_waiting_approvals = fields.Char(help="Waiting Approval for approval_line")
+    state_rejected = fields.Char(
+        help="State when reject"
+    )
+    # state_reject = fields.Char(help="State when reject")
+    state_approved = fields.Char(
+        help="State when approved. Leve blank when not need update"
+    )
+    state_canceled = fields.Char(
+        help="State when canceled. Leve blank when not need update")
+    state_reset_to_draft = fields.Char(
+        help="State when state_reset_to_draft. Leve blank when not need update"
+    )
+    state_waiting_approvals = fields.Char(
+        help="Waiting Approval for approval_line"
+    )
 
+    # action
+    available_action_request_approval = fields.Boolean()
     invoke_validate_request_approval = fields.Char()
     invoke_approval_start = fields.Char()
     invoke_approval_done = fields.Char()
 
+    available_action_approve = fields.Boolean()
+    invoke_validate_approve = fields.Char()
     approve_action_type = fields.Selection([
         ('window_action', 'Window Action'),
         ('server_action', 'Server Action'),
@@ -185,7 +231,10 @@ class ApprovalTemplateMixin(models.AbstractModel):
     invoke_method_approve = fields.Char()
     invoke_before_approve = fields.Char()
     invoke_after_approve = fields.Char()
+    notes_chatter_approved = fields.Boolean("Note Chatter Approve")
 
+    available_action_reject = fields.Boolean()
+    invoke_validate_reject = fields.Char()
     reject_action_type = fields.Selection([
         ('window_action', 'Window Action'),
         ('server_action', 'Server Action'),
@@ -196,9 +245,35 @@ class ApprovalTemplateMixin(models.AbstractModel):
     invoke_method_reject = fields.Char()
     invoke_before_reject = fields.Char()
     invoke_after_reject = fields.Char()
-
-    notes_chatter_approved = fields.Boolean("Note Chatter Approve")
     notes_chatter_rejected = fields.Boolean("Note Chatter Rejected")
+
+    available_action_cancel = fields.Boolean()
+    invoke_validate_cancel = fields.Char()
+    cancel_action_type = fields.Selection([
+        ('window_action', 'Window Action'),
+        ('server_action', 'Server Action'),
+        ('method', 'Method'),
+    ])
+    cancel_window_action_id = fields.Many2one('ir.actions.act_window')
+    cancel_server_action_id = fields.Many2one('ir.actions.server')
+    invoke_method_cancel = fields.Char()
+    invoke_before_cancel = fields.Char()
+    invoke_after_cancel = fields.Char()
+    notes_chatter_cancel = fields.Boolean("Note Chatter Cancel")
+
+    available_action_reset_to_draft = fields.Boolean()
+    invoke_validate_reset_to_draft = fields.Char()
+    reset_to_draft_action_type = fields.Selection([
+        ('window_action', 'Window Action'),
+        ('server_action', 'Server Action'),
+        ('method', 'Method'),
+    ])
+    reset_to_draft_window_action_id = fields.Many2one('ir.actions.act_window')
+    reset_to_draft_server_action_id = fields.Many2one('ir.actions.server')
+    invoke_method_reset_to_draft = fields.Char()
+    invoke_before_reset_to_draft = fields.Char()
+    invoke_after_reset_to_draft = fields.Char()
+    notes_chatter_reset_to_draft = fields.Boolean("Note Chatter To Draft")
 
     reminder_interval_number = fields.Integer(default=1, help="Repeat every x.")
     reminder_interval_type = fields.Selection(
@@ -216,17 +291,34 @@ class ApprovalTemplateMixin(models.AbstractModel):
         ondelete='set null',
         help="Notification template used for approval notifications."
     )
-
-    notification_rejection_id = fields.Many2one(
+    notification_cancel_approver_id = fields.Many2one(
         'notification.template',
+        'Notification Cancel To Approver',
         ondelete='set null',
-        help="Notification template used for reject notifications."
+        help="Notification Set to Draft To Approver when requester ."
+    )
+    notification_reset_to_draft_approver_id = fields.Many2one(
+        'notification.template',
+        'Notification Set to Draft To Approver',
+        ondelete='set null',
+        help="Notification Set to Draft To Approver when requester ."
     )
     notification_approved_id = fields.Many2one(
         'notification.template',
         ondelete='set null',
         help="Notification template used for reject notifications."
     )
+    notification_rejection_id = fields.Many2one(
+        'notification.template',
+        ondelete='set null',
+        help="Notification template used for reject notifications."
+    )
+    notification_rejection_to_approver_id = fields.Many2one(
+        'notification.template',
+        ondelete='set null',
+        help="Notification template used for reject notifications."
+    )
+
     code = fields.Text(
         string='Python Code',
         default=DEFAULT_PYTHON_CODE,
@@ -253,6 +345,13 @@ class ApprovalTemplateMixin(models.AbstractModel):
     )
     invoke_get_pdf_document = fields.Char()
 
+    @api.depends('approval_task_line_model_id')
+    def compute_approval_template_line_id(self):
+        for rec in self:
+            rec.approval_template_line_id = self.approval_template_line_id.search(
+                [('model_id', '=', rec.approval_task_line_model_id.id)], limit=1
+            ) or None
+
     def action_generate_view(self):
         for template in self:
             template._create_or_update_view()
@@ -262,6 +361,10 @@ class ApprovalTemplateMixin(models.AbstractModel):
         if self.generate_view_id:
             self.generate_view_id.unlink()
             self.generate_view_id = False
+        self.generate_field_approval_task_line = False
+        if self.generate_field_approval_task_line_id:
+            self.generate_field_approval_task_line_id.unlink()
+            self.generate_field_approval_task_line_id = False
 
     def _create_or_update_view(self):
         self.ensure_one()
@@ -292,12 +395,31 @@ class ApprovalTemplateMixin(models.AbstractModel):
         xpath.set("position", "inside")
 
         self._generate_buttons(xpath)
+        if self.approval_task_line_page and self.approval_task_line_field:
+            xpath = etree.SubElement(root, "xpath")
+            xpath.set("expr", "//notebook")
+            xpath.set("position", "inside")
+            self._generate_approval_page(xpath)
 
         return etree.tostring(
             root,
             pretty_print=True,
             encoding="unicode",
         )
+
+    def _generate_approval_page(self, parent):
+        page = etree.SubElement(parent, "page")
+        page.set("name", "page_approval_task_line")
+        page.set("string", "Approval")
+        page.set("type", "object")
+
+        field = etree.SubElement(page, "field")
+        if self.generate_field_approval_task_line and self.generate_field_approval_task_line_id:
+            field.set("name", self.generate_field_approval_task_line_id.name)
+        else:
+            field.set("name", self.approval_task_line_field)
+        # field.set("invisible", "1")
+        # button.set("context", "{'approval_action':'%s'}" % button_def["action"]
 
     def _generate_buttons(self, parent):
         """
@@ -335,6 +457,28 @@ class ApprovalTemplateMixin(models.AbstractModel):
                 % button_def["access_field"]
             )
 
+    def _generate_field_compute(self):
+        field_name = f"x_approval_task_line_{self.id}"
+        compute = """
+for rec in self:
+    rec['%s'] = rec.approval_template_line_id.get_all_approval_task_line(transaction_object=rec)
+""" % field_name
+        vals = {
+            "name": field_name,
+            "field_description": "Approval Task Line",
+            "model_id": self.model_id.id,
+            "model": self.model,
+            "ttype": "many2many",
+            "relation": self.approval_task_line_model,
+            "state": "manual",
+            "depends": "approval_template_line_id",
+            "compute": compute,
+        }
+        if self.generate_field_approval_task_line_id:
+            self.generate_field_approval_task_line_id.write(vals)
+        else:
+            self.generate_field_approval_task_line_id = self.env['ir.model.fields'].create(vals)
+
     def write(self, vals):
         res = super().write(vals)
 
@@ -344,10 +488,15 @@ class ApprovalTemplateMixin(models.AbstractModel):
             'available_action_approve',
             'available_action_reject',
             'available_action_cancel',
-            'available_action_reset_draft',
+            'available_action_reset_to_draft',
+            'approval_task_line_field',
+            'approval_task_line_page',
+            'generate_field_approval_task_line',
         }
 
         if trigger_fields.intersection(vals):
+            if self.generate_field_approval_task_line:
+                self._generate_field_compute()
             self.action_generate_view()
 
         return res
@@ -355,6 +504,7 @@ class ApprovalTemplateMixin(models.AbstractModel):
     def unlink(self):
         for rec in self:
             rec.remove_generated_view()
+
         return super().unlink()
 
     def invoke_method(self, transaction_object, method_name, kwargs=None, raise_exceptions=False):
@@ -368,6 +518,12 @@ class ApprovalTemplateMixin(models.AbstractModel):
             _logger.info("%s object_method_name %s not found.", transaction_object, object_method_name)
             return None
 
+    def get_state_request_approvals(self):
+        if self.state_request_approvals:
+            return self.state_request_approvals.split(',')
+        else:
+            return ['waiting_approval']
+
     def get_state_waiting_approvals(self):
         if self.state_waiting_approvals:
             return self.state_waiting_approvals.split(',')
@@ -380,8 +536,8 @@ class ApprovalTemplateMixin(models.AbstractModel):
             return state_field
         return self.state_field or state_field
 
-    def get_state_reject(self):
-        return self.state_reject
+    def get_state_rejected(self):
+        return self.state_rejected
 
     def get_state_approved(self):
         return self.state_approved
@@ -393,6 +549,43 @@ class ApprovalTemplateMixin(models.AbstractModel):
         rec = self.ensure_one()
         state_field = rec.get_state_field()
         return transaction and getattr(transaction, state_field)
+
+    def get_user_requestor(self, transaction):
+        rec = self.ensure_one()
+        requestor = rec.requestor_field or 'create_uid'
+        return getattr(transaction, requestor) or transaction.create_uid
+
+    def is_model_need_approval(self, transaction):
+        if not self:
+            return False
+
+        rec = self.ensure_one()
+        if rec.need_approval_mode == 'field':
+            return transaction and getattr(transaction, rec.need_approval_field)
+        if rec.need_approval_function == 'field':
+            try:
+                return safe_call_method(transaction, rec.need_approval_function)
+            except:
+                _logger.exception("Error")
+                return False
+        if rec.need_approval_mode == 'code':
+            try:
+                localdict = {
+                    'result': False,
+                    'transaction_object': transaction,
+                }
+                safe_eval(rec.need_approval_code, localdict, mode="exec", nocopy=True)
+                return "result" in localdict and localdict["result"] or False
+            except:
+                _logger.exception("Error")
+                return False
+        return True
+
+    def is_status_request_approval(self, transaction):
+        rec = self.ensure_one()
+        state_field = rec.get_state_field()
+        state_request_approvals = rec.get_state_request_approvals()
+        return transaction and getattr(transaction, state_field) in state_request_approvals
 
     def is_status_waiting_approval(self, transaction):
         rec = self.ensure_one()
@@ -509,6 +702,15 @@ class ApprovalTemplateMixin(models.AbstractModel):
             return approval_instance
         return None
 
+    @api.model
+    def get_approval_template_line(self, **kwargs):
+        if self:
+            approval_template_line = self[0].approval_template_line_id
+        else:
+            approval_template_line = self.approval_template_line_id.browse()
+
+        return approval_template_line
+
     def get_transaction_object(self, **kwargs):
         transaction_object = kwargs.get('transaction_object')
         if (
@@ -541,6 +743,14 @@ class ApprovalTemplateMixin(models.AbstractModel):
                 return self.env[approval_template.model]
         return None
 
+    def get_company(self, **kwargs):
+        company = kwargs.get('company')
+        if company and isinstance(company, models.Model):
+            return company
+
+        transaction_object = self.get_transaction_object(**kwargs)
+        return getattr(transaction_object, 'company_id', None)
+
     def get_domain_waiting_status(self, **kwargs):
         if not self:
             return []
@@ -551,93 +761,13 @@ class ApprovalTemplateMixin(models.AbstractModel):
             domain = [(approval_template.state_field, 'in', waiting_status)]
         return domain
 
-    @api.model
-    def get_approval_task_line_transaction_id(self, approval_task_line, **kwargs):
-        transaction_object = self.get_transaction_object(approval_task_line=approval_task_line, **kwargs)
-        if transaction_object:
-            return transaction_object.id
-        return None
-
-    def get_approval_task_line_state_waiting_approvals(self, **kwargs):
-        if self.approval_task_line_state_waiting_approvals:
-            return self.approval_task_line_state_waiting_approvals.split(',')
-        else:
-            return ['waiting_approval']
-
-    def get_approval_task_line_domain_waiting_status(self, approval_task_line, **kwargs):
-        if not self:
-            return None
-        self.ensure_one()
-        domain_waiting_status = []
-        transaction_id = self.get_approval_task_line_transaction_id(approval_task_line, **kwargs)
-        if self.approval_task_line_parent_filed:
-            domain = [(self.approval_task_line_parent_filed, '=', transaction_id)]
-        else:
-            domain = [('transaction_id', '=', transaction_id), ('transaction_model_name', '=', self.model_id.model)]
-
-        waiting_status = self.get_approval_task_line_state_waiting_approvals(
+    def get_next_approval_task_line(self, approval_task_line=None, **kwargs):
+        approval_template_line = self.get_approval_template_line(
             approval_task_line=approval_task_line, **kwargs
         )
-        if waiting_status and self.approval_task_line_state_field:
-            domain_waiting_status = [(self.approval_task_line_state_field, 'in', waiting_status)]
-        domain.extend(domain_waiting_status)
-        return domain
-
-    def get_approval_template_from_approval_task_line(self, approval_task_line, **kwargs):
-        approval_template = None
-        if approval_task_line:
-            if have_method(approval_task_line, 'get_approval_template'):
-                approval_template = safe_call_method(approval_task_line, 'get_approval_template', kwargs=kwargs)
-            if not approval_template and have_method(approval_task_line, 'get_transaction_object'):
-                transaction_object = safe_call_method(approval_task_line, 'get_transaction_object', kwargs=kwargs)
-                approval_template = self.search_template(transaction_object)
-        else:
-            if self:
-                approval_template = self[0]
-            else:
-                approval_template = self.browse()
-
-        if not approval_template and isinstance(approval_task_line, models.BaseModel):
-            return self.search(
-                [('get_approval_template_from_approval_task_line.model', '=', approval_task_line._name)],
-                limit=1
-            )
-        return approval_template or self.browse()
-
-    def lookup_approval_template(self, **kwargs):
-        approval_template = kwargs.get('approval_template')
-        if approval_template and isinstance(approval_template, models.BaseModel):
-            return approval_template
-
-        approval_task_line = kwargs.pop('approval_task_line')
-        approval_template = self.get_approval_template_from_approval_task_line(
-            approval_task_line, **kwargs
-        )
-        if not approval_template:
-            transaction_object = kwargs.pop('transaction_object')
-            if transaction_object:
-                return self.search_template(
-                    transaction=transaction_object,
-                    transaction_model_name=kwargs.get('transaction_model_name')
-                )
-
-        if not approval_template:
-            return self.browse()
-        # transaction_object = approval_template.get_approval_task_line_transaction_object(
-        #     approval_task_line, **kwargs
-        # )
-
-        return approval_template
-
-    def get_next_approval_task_line(self, approval_task_line=None, **kwargs):
-        approval_template = kwargs.get('approval_template') or self
-        if not approval_template and len(approval_template) > 1:
-            approval_template = approval_template[0]
-        if not isinstance(approval_task_line, models.BaseModel) and approval_template:
-            approval_task_line = self.env[approval_template.approval_task_line_model]
-        if not approval_template and not self:
-            approval_template = self.get_approval_template_from_approval_task_line(approval_task_line)
-        domain = approval_template.get_approval_task_line_domain_waiting_status(approval_task_line, **kwargs)
+        domain = approval_template_line.get_domain_waiting_status(approval_task_line, **kwargs)
+        if not isinstance(approval_task_line, models.BaseModel):
+            approval_task_line = self.env[approval_template_line.model]
         return approval_task_line.search(domain, limit=1)
 
     def search_template_by_model(self, transaction_model_name):
@@ -650,238 +780,356 @@ class ApprovalTemplateMixin(models.AbstractModel):
             self.browse()
         return self.search([('approval_task_line_model_id.model', '=', model_name)], limit=1)
 
-    def get_approval_groups_or_users(self, **kwargs):
-        approval_dict = {}
-        approval_task_line = kwargs.get('approval_task_line')
-        if approval_task_line:
-            if self.approval_task_line_users_mode == 'function':
-                approval_dict['user_ids'] = safe_call_method(
-                    approval_task_line, self.approval_task_line_users_params, kwargs=kwargs
-                )
-            elif self.approval_task_line_users_mode == 'users_field':
-                approval_dict['user_ids'] = getattr(
-                    approval_task_line, self.approval_task_line_users_params, None
-                )
-            elif self.approval_task_line_users_mode == 'group_field':
-                approval_dict['group_ids'] = getattr(
-                    approval_task_line, self.approval_task_line_users_params, None
-                )
-        else:
-            _logger.info("get_approval_groups_or_users")
+    def get_approver_data(self, **kwargs):
+        approval_template_line = self.get_approval_template_line(**kwargs)
+        return approval_template_line.get_approver_data(**kwargs) or {}
 
-        return approval_dict
+    def get_approval_groups_or_users(self, **kwargs):
+        return self.get_approver_data(**kwargs)
 
     def get_users(self, **kwargs):
-        user_ids = self.env['res.users']
-        approval_task_line = kwargs.get('approval_task_line')
-        if approval_task_line:
-            if self.approval_task_line_users_mode == 'function':
-                user_ids = safe_call_method(
-                    approval_task_line, self.approval_task_line_users_params, kwargs=kwargs
-                ) or user_ids
-            elif self.approval_task_line_users_mode == 'users_field':
-                user_ids = getattr(
-                    approval_task_line, self.approval_task_line_users_params, user_ids
-                )
-            elif self.approval_task_line_users_mode == 'group_field':
-                group_ids = getattr(
-                    approval_task_line, self.approval_task_line_users_params, None
-                )
-                if group_ids:
-                    user_ids = group_ids.users
-        else:
-            _logger.info("get_users")
-
-        return user_ids
+        approval_template_line = self.get_approval_template_line(**kwargs)
+        return approval_template_line.get_users(**kwargs) or self.env['res.users'].browse()
 
     def get_access_approval(self, **kwargs):
-        approval_task_line = kwargs.get('approval_task_line')
-        company = getattr(approval_task_line, 'company_id', None)
+        company = self.get_company(**kwargs)
         users = self.get_users(**kwargs).get_users_for_approval(company=company)
         return bool(self.env.user in users)
 
-    def set_waiting_status_approval_task_line(self, approval_task_line, kwargs):
-        if approval_task_line and self.approval_task_line_state_field and self.approval_task_line_state_waiting_approvals:
+    def set_waiting_approval_status(self, transaction_object):
+        if transaction_object and self.state_field and self.state_waiting_approvals:
             wa = self.get_state_waiting_approvals()
-            approval_task_line.write({
-                self.approval_task_line_state_field: wa[0]
+            transaction_object.write({
+                self.state_field: wa[0]
             })
         else:
             raise UserError("Invalid configuration approval")
 
-    def set_approved_status_approval_task_line(self, approval_task_line, kwargs):
-        if approval_task_line and self.approval_task_line_state_field and self.approval_task_line_state_approved:
-            approval_task_line.write({
-                self.approval_task_line_state_field: self.approval_task_line_state_approved
-            })
+    def set_approved_status(self, transaction_object, **kwargs):
+        if transaction_object and self.state_field and self.state_approved:
+            data = dict(kwargs)
+            if self.state_field not in data:
+                data[self.state_field] = self.state_approved
+            else:
+                _logger.info("Update %s -> %s | %s ", self.state_field, data.get(self.state_field), self.state_approved)
+            transaction_object.write(data)
         else:
             raise UserError("Invalid configuration approval")
 
-    def set_rejected_status_approval_task_line(self, approval_task_line, kwargs):
-        if approval_task_line and self.approval_task_line_state_field and self.approval_task_line_state_reject:
-            approval_task_line.write({
-                self.approval_task_line_state_field: self.approval_task_line_state_reject
+    def set_rejected_status(self, transaction_object, **kwargs):
+        if transaction_object and self.state_field and self.state_reject:
+            data = dict(kwargs)
+            if self.state_field not in data:
+                data[self.state_field] = self.state_rejected
+            else:
+                _logger.info("Update %s -> %s | %s ", self.state_field, data.get(self.state_field), self.state_rejected)
+            transaction_object.write(data)
+        else:
+            raise UserError("Invalid configuration rejected_status")
+
+    def set_reset_to_draft(self, transaction_object, **kwargs):
+        if transaction_object and self.state_field and self.state_reset_to_draft:
+            transaction_object.write({
+                self.state_field: self.state_reset_to_draft
             })
         else:
-            raise UserError("Invalid configuration approval")
+            raise UserError("Invalid configuration reset_to_draft")
 
-    def do_approve(self, approval_task_line, kwargs):
-        rec = self.ensure_one()
+    def set_cancel(self, transaction_object):
+        if transaction_object and self.state_field and self.state_reject:
+            transaction_object.write({
+                self.state_field: self.state_canceled
+            })
+        else:
+            raise UserError("Invalid configuration reset_to_draft")
+    def do_approve(self, approval_task_line=None, **kw):
+        kw['approval_template'] = self.ensure_one()
+        return self.approval_template_line_id.do_approve(approval_task_line, kw)
+
+    def before_approve(self, **kw):
+        approval_template = self.ensure_one()
+        transaction_object = approval_template.get_transaction_object(**kw)
+        approval_template.invoke_method(transaction_object, 'after_approve', kw)
+        return kw
+
+    def after_approve(self, **kwargs):
+        approval_template = self.ensure_one()
+        approval_instance = approval_template.get_approval_instance(**kwargs)
+        transaction_object = approval_template.get_transaction_object(**kwargs)
         kw = dict(kwargs)
-        approval_task_line = approval_task_line.with_context(
-            __skip_create_approval_audit_log=True,
-            __skip_approval_task_line_status=True,
-            __skip_auto_register_approval_task_line_status=True,
-        )
-        kw['approval_template'] = approval_template = rec
-        kw['approval_task_line'] = approval_task_line
-        kw['transaction_object'] = transaction_object = self.get_transaction_object(**kw)
-        kw['approval_instance'] = approval_instance = self.get_approval_instance(**kw)
+        kw['skip_send_notification'] = True
+        kw['approval_instance'] = approval_instance
+        kw['approval_template'] = approval_template
+        is_approval_done = kwargs.get('is_approval_done')
+        trx_update_value = kwargs.get('transaction_update_value') or {}
+        approval_template.invoke_method(transaction_object, 'after_approve', kw)
 
-        if not approval_instance.access_approval:
-            raise UserError("User not allow to approve")
-
-        approval_instance.before_approve(**kw)
-        if approval_task_line:
-            if approval_template.approve_action_type == 'method':
-                method = approval_template.invoke_method_approve
-            else:
-                method = 'set_approved_status'
-            if not have_method(approval_task_line, method):
-                result = safe_call_method(approval_task_line, method, kwargs=kw)
-            else:
-                rec.set_approved_status_approval_task_line(approval_task_line)
-                result = approval_task_line
-        else:
-            result = None
-        rec.create_approval_audit_log_approved(**kw)
-        approval_task_line_next = rec.get_next_approval_task_line(**kw)
-        kw['approval_task_line_next'] = approval_task_line_next
-        kw['is_approval_done'] = not approval_task_line_next
-        approval_instance.after_approve(**kw)
-        return result
-
-    def do_reject(self, approval_task_line, kwargs):
-        rec = self.ensure_one()
-        kw = dict(kwargs)
-        approval_task_line = approval_task_line.with_context(
-            __skip_create_approval_audit_log=True,
-            __skip_approval_task_line_status=True,
-            __skip_auto_register_approval_task_line_status=True,
-        )
-        kw['approval_template'] = approval_template = rec
-        kw['approval_task_line'] = approval_task_line
-        kw['transaction_object'] = transaction_object = self.get_transaction_object(**kw)
-        kw['approval_instance'] = approval_instance = self.get_approval_instance(**kw)
-
-        if not approval_instance.access_approval:
-            raise UserError("User not allow to reject")
-
-        approval_instance.before_reject(**kw)
-        is_approval_done = False
-        approval_task_line_next = None
-        approval_task_line_between = None
-
-        reject_to_method = getattr(approval_task_line, 'reject_to_method', 'to_requestor')
-        if reject_to_method == 'to_requestor':
-            is_approval_done = True
-            approval_task_line_between = safe_call_method(approval_task_line, 'get_approval_start_task')
-        else:
-            if reject_to_method == 'to_task_line':
-                approval_task_line_next = safe_call_method(approval_task_line, 'get_reject_to_task_line')
-                approval_task_line_between = safe_call_method(
-                    approval_task_line, 'get_approval_start_task',
-                    kwargs={'start_task': approval_task_line_next})
-                # self.get_approval_start_task(approval_task_line_next)
-            elif reject_to_method == 'to_previous':
-                # approval_task_line_next = self.get_previous_approval_task_line()
-                approval_task_line_next = safe_call_method(approval_task_line, 'get_previous_approval_task_line')
-            elif reject_to_method == 'legacy':
-                legacy = safe_call_method(approval_task_line, 'reject_method_legacy', kwargs=kw)
-                if legacy:
-                    approval_task_line_next = legacy[0]
-                    approval_task_line_between = legacy[1]
-                # approval_task_line_next, approval_task_line_between = self.reject_method_legacy(reason, **kwargs)
-            else:
-                approval_task_line_next = kwargs.get('approval_task_line_next')
-                approval_task_line_between = kwargs.get(
-                    'approve_task_line_between'
-                ) or safe_call_method(
-                    approval_task_line, 'get_approval_start_task',
-                    kwargs={'start_task': approval_task_line_next})
-            is_approval_done = not approval_task_line_next
         if is_approval_done:
+            kw['is_approved'] = True
+            trx_update_value.update(kwargs.get('update_value') or {})
+            approval_template.set_approved_status(transaction_object, **trx_update_value)
+            # state_field = approval_template.get_state_field()
+            # state_approved = approval_template.get_state_approved()
+            # if state_approved and state_field not in trx_update_value:
+            #     trx_update_value[state_field] = state_approved
+        elif trx_update_value:
+            _logger.info("Info Update state %s ", trx_update_value)
+            transaction_object.write(trx_update_value)
+
+        if is_approval_done or not approval_template.is_status_waiting_approval(transaction_object):
+            kw['is_approval_done'] = True
+            kw['is_approved'] = True
+            approval_template.done_approval(**kw)
+        else:
+            kw['is_approval_done'] = False
+            kw['skip_send_notification'] = False
+            kw['request_approval_task_date'] = fields.Datetime.now()
+            approval_instance.register_approval_task_line(**kw)
+
+        kw_approved = dict(kwargs)
+        kw_approved.update(
+            skip_send_notification=False,
+            approval_template=approval_template,
+            approval_instance=approval_instance,
+            transaction_id=approval_instance.transaction_id,
+            transaction_model_name=approval_instance.transaction_model_name,
+        )
+
+        notes_chatter = False
+        notification = self.notification_approved_id
+        if notification:
+            requestor = self.get_user_requestor()
+            notification.send_notification_to_users(requestor, transaction_object.id, **kw_approved)
+            notes_chatter = notification.notes_chatter
+
+        if not notes_chatter and self.notes_chatter_approved:
+            if have_method(transaction_object, 'get_approved_message'):
+                approved_message = safe_call_method(
+                    transaction_object, "get_approved_message", kwargs=kw_approved
+                )
+            else:
+                approved_message = self.get_approved_message(**kw)
+            approved_message and self.notification_approved_id.send_message_post(approved_message)
+        return kw
+
+    def get_approved_message(self, **kwargs):
+        return _("%s has approved this request") % (self.env.user.name)
+
+    def do_reject(self, approval_task_line=None, **kw):
+        kw['approval_template'] = self.ensure_one()
+        return self.approval_template_line_id.do_reject(approval_task_line, kw)
+
+    def before_reject(self, **kw):
+        approval_template = self.ensure_one()
+        transaction_object = approval_template.get_transaction_object(**kw)
+        approval_template.invoke_method(transaction_object, 'before_reject', kw)
+        return kw
+
+    def after_reject(self, **kwargs):
+        if not self:
+            _logger.warning("No Instance for After Reject")
+            return self
+        approval_template = self.ensure_one()
+        approval_instance = approval_template.get_approval_instance(**kwargs)
+        transaction_object = approval_template.get_transaction_object(**kwargs)
+        kw = dict(kwargs)
+        kw['skip_send_notification'] = True
+        kw['approval_instance'] = approval_instance
+        kw['approval_template'] = approval_template
+        # kw['notification_template'] = notification_template
+        # transaction_object = approval_instance.get_transaction_object()
+        is_approval_done = kwargs.get('is_approval_done')
+        trx_update_value = kwargs.get('transaction_update_value') or {}
+
+        approval_template.invoke_method(transaction_object, 'after_reject', kw)
+        approval_task_line = kwargs.get('approval_task_line') or kwargs.get('approval_transaction')
+        if is_approval_done:
+            kw['is_rejected'] = True
+            trx_update_value.update(kwargs.get('update_value') or {})
+            approval_template.set_rejected_status(transaction_object, **trx_update_value)
+            # state_field = approval_instance.get_state_field()
+            # state_rejected = approval_instance.get_state_rejected()
+            # if state_rejected and state_field not in trx_update_value:
+            #     trx_update_value[state_field] = state_rejected
+        elif trx_update_value:
+            transaction_object.write(trx_update_value)
+            _logger.info("No update state %s", trx_update_value)
+
+        if is_approval_done or not approval_template.is_status_waiting_approval(transaction_object):
             kw['is_approval_done'] = True
             kw['is_rejected'] = True
+            approval_template.done_approval(**kw)
         else:
-            kw['approval_task_line_next'] = approval_task_line_next
-        kw['approve_task_task_between'] = approval_task_line_between
-        kw['approve_task_line'] = kw['approve_task_line_reject'] = approval_task_line
+            kw['is_approval_done'] = False
+            kw['skip_send_notification'] = False
+            kw['request_approval_task_date'] = fields.Datetime.now()
+            kw['approval_task_line'] = kw.get(
+                'approval_task_line_next') or approval_template.get_next_approval_task_line()
+            approval_instance.register_approval_task_line(**kw)
 
-        if approval_task_line:
-            if approval_template.reject_action_type == 'method':
-                method = approval_template.invoke_method_approve
-            else:
-                method = 'set_rejected_status'
-            if not have_method(approval_task_line, method):
-                result = safe_call_method(approval_task_line, method, kwargs=kw)
-            else:
-                rec.set_rejected_status_approval_task_line(approval_task_line)
-                result = approval_task_line
-        else:
-            result = None
-
-        self.create_approval_audit_log_rejected(**kw)
+        kw_rejected = dict(kwargs)
+        kw_rejected.update(
+            approval_template=approval_template,
+            approval_instance=approval_instance,
+            transaction_id=approval_instance.transaction_id,
+            transaction_model_name=approval_instance.transaction_model_name,
+        )
+        approval_instance = self.get_approval_instance(**kw)
         approval_instance.after_reject(**kw)
-        if not is_approval_done and approval_task_line_next:
-            # todo bila set waiting status tidak ada
-            safe_call_method(approval_task_line_next, 'set_waiting_status', kwargs=kw)
-            # approval_task_line_next.set_waiting_status(**kw)
-            if approval_task_line_between:
-                # todo bila set waiting status tidak ada
-                safe_call_method(approval_task_line_next, 'set_waiting_status', kwargs=kw)
-                # approval_task_line_between.set_waiting_status(**kw)
-        return result
+        notes_chatter = False
+        notification = self.notification_rejection_id
+        if notification:
+            requestor = self.get_user_requestor()
+            notification.send_notification_to_users(requestor, transaction_object.id, **kw_rejected)
+            notes_chatter = notification.notes_chatter
+        if not notes_chatter and self.notes_chatter_approved:
+            if have_method(transaction_object, 'get_rejected_message'):
+                rejected_message = safe_call_method(
+                    transaction_object, "get_rejected_message", kwargs=kw_rejected
+                )
+            else:
+                rejected_message = self.get_rejected_message(**kw)
+            rejected_message and self._mail_message_approve(rejected_message)
 
-    # def before_reject(self, **kwargs):
-    #     rec = self
-    #     kw = dict(kwargs)
-    #     kw['approval_task_line'] = rec
-    #     approval_instance = kwargs.get('approval_instance') or rec.get_approval_instance()
-    #     approval_instance and approval_instance.before_reject(**kw)
-    #
-    # def after_reject(self, **kwargs):
-    #     rec = self
-    #     kw = dict(kwargs)
-    #     kw['approval_task_line'] = rec
-    #     approval_instance = kwargs.get('approval_instance') or rec.get_approval_instance()
-    #     approval_instance and approval_instance.after_reject(**kw)
+        approval_task_task_between = kw.get('approval_task_task_between')
+        notification = self.notification_rejection_to_approver_id
+        if self.notification_rejection_to_approver_id and approval_task_task_between:
+            approval_template_line = self.get_approval_template_line(**kwargs)
+            user_ids = approval_template_line.get_user_execution(approval_task_task_between)
+            notification.send_notification_to_users(user_ids, transaction_object.id, **kw_rejected)
 
-    def _create_approval_audit_log(self, **kwargs):
-        if self.env.context.get('__skip_create_approval_audit_log'):
-            return None
+        return kw
 
-        self.ensure_one()
-        transaction_object = kwargs.get('transaction_object')
+    def do_cancel(self, **kw):
+        kw['approval_template'] = self.ensure_one()
+        kw['approval_template_line'] = approval_template_line = self.get_approval_template_line(**kw)
+        kw['transaction_object'] = transaction_object = self.get_transaction_object(**kw)
+        self.before_cancel(*kw)
+        state_approved = approval_template_line.get_state_approved()
+        kw['approval_task_line_approved'] = approval_template_line.get_all_approval_task_line(state_approved, **kw)
+
+        if self.cancel_action_type == 'method':
+            safe_call_method(transaction_object, self.invoke_method_cancel, kwargs=kw)
+        else:
+            self.set_cancel(transaction_object)
+        kw['is_cancel'] = True
+        kw['is_approval_done'] = True
+        self.after_cancel(*kw)
+        audit_log = dict(kw)
+        self.env['approval.audit.log'].create_approval_audit_log_canceled(**audit_log)
+        return kw
+
+    def before_cancel(self, **kw):
+        approval_template = self.ensure_one()
+        transaction_object = approval_template.get_transaction_object(**kw)
+        approval_template.invoke_method(transaction_object, 'before_cancel', kw)
+        return kw
+
+    def after_cancel(self, **kw):
+        transaction_object = self.get_transaction_object(**kw)
+        notes_chatter = False
+        notification = self.notification_cancel_approver_id
+        if notification:
+            approval_template_line = self.get_approval_template_line(**kw)
+            kwr = dict(kw)
+            approval_task_line_approved = kw.get('approval_task_line_approved')
+            kwr['approval_task_line'] = approval_task_line_approved
+            users_ids = approval_template_line.get_user_execution(**kwr)
+            notification.send_notification_to_users(users_ids, transaction_object.id, **kw)
+            notes_chatter = notification.notes_chatter
+        if not notes_chatter and self.notes_chatter_approved:
+            pass
+        self.done_approval(**kw)
+
+        # approval_instance = self.get_approval_instance(**kw)
+        notes_chatter = False
+        # approval_instance.after_cancel(**kw)
+        notification = self.notification_cancel_approver_id
+        if notification:
+            notes_chatter = notification.notes_chatter
+            pass
+        if not notes_chatter and self.notes_chatter_approved:
+            pass
+
+        return kw
+
+    def do_reset_to_draft(self, **kw):
+        kw['approval_template'] = self.ensure_one()
+        kw['approval_template_line'] = approval_template_line = self.get_approval_template_line(**kw)
+        kw['transaction_object'] = transaction_object = self.get_transaction_object(**kw)
+        self.before_reset_to_draft(**kw)
+        state_approved = approval_template_line.get_state_approved()
+        kw['approval_task_line_approved'] = approval_template_line.get_all_approval_task_line(state_approved, **kw)
+        if self.cancel_action_type == 'method':
+            safe_call_method(transaction_object, self.invoke_method_reset_to_draft, kwargs=kw)
+        else:
+            self.set_reset_to_draft(transaction_object)
+        kw['is_reset_to_draft'] = True
+        self.after_reset_to_draft(**kw)
+        audit_log = dict(kw)
+        self.env['approval.audit.log'].create_approval_audit_log_reset(**audit_log)
+        return kw
+
+    @api.model
+    def before_reset_to_draft(self, **kw):
+        approval_template = self.ensure_one()
+        transaction_object = approval_template.get_transaction_object(**kw)
+        approval_template.invoke_method(transaction_object, 'before_reset_to_draft', kw)
+        # approval_instance = self.get_approval_instance(**kw)
+        # approval_instance.before_reset_to_draft(**kw)
+        return kw
+
+    def after_reset_to_draft(self, **kw):
+        transaction_object = self.get_transaction_object(**kw)
+        notes_chatter = False
+        notification = self.notification_reset_to_draft_approver_id
+        approval_template_line = self.get_approval_template_line(**kw)
+        if notification:
+            kwr = dict(kw)
+            approval_task_line_approved = kw.get('approval_task_line_approved')
+            kwr['approval_task_line'] = approval_task_line_approved
+            users_ids = approval_template_line.get_user_execution(**kwr)
+            notification.send_notification_to_users(users_ids, transaction_object.id)
+            notes_chatter = notification.notes_chatter
+        if not notes_chatter and self.notes_chatter_approved:
+            pass
+        self.done_approval(**kw)
+        return kw
+
+    @api.model
+    def get_rejected_message(self, **kwargs):
+        reason = kwargs.get('reason')
+        return _('Note Reject => %s') % reason
+
+    def done_approval(self, **kwargs):
+        if not self:
+            _logger.warning("No Template for done Approval")
+            return self
+
+        approval_template = self.ensure_one()
+        approval_instance = self.get_approval_instance(**kwargs)
         kw = dict(kwargs)
-        if transaction_object and isinstance(transaction_object, models.BaseModel):
-            if have_method(transaction_object, "create_approval_log"):
-                return transaction_object.create_approval_log(**kw)
-            kw.update(
-                transaction_id=transaction_object.id,
-                transaction_model_name=transaction_object._name,
-            )
-        return self.env['approval.audit.log'].create_audit_log(**kw)
+        transaction_object = self.get_transaction_object(**kw)
+        safe_call_method(transaction_object, approval_template.invoke_approval_done, kwargs=kw)
+        approval_instance.unregister_approval_task_line(**kwargs)
+        if approval_template.is_status_waiting_approval(transaction_object):
+            if kwargs.get('is_approved'):
+                _logger.warning("Status is waiting_approval try force set done")
+                approval_template.set_approved_status(transaction_object)
+            elif kwargs.get('is_reset_to_draft'):
+                approval_template.set_reset_to_draft(transaction_object)
 
-    def create_approval_audit_log_approved(self, **kwargs):
-        kw = dict(kwargs)
-        kw['action_type'] = 'approve'
-        return self._create_approval_audit_log(**kw)
-
-    def create_approval_audit_log_rejected(self, **kwargs):
-        kw = dict(kwargs)
-        kw['action_type'] = 'reject'
-        return self._create_approval_audit_log(**kw)
+    def clear_approval(self, **kwargs):
+        if not self:
+            _logger.warning("No Template for celar Approval")
+            return self
+        rec = self.ensure_one()
+        approval_template_line = rec.get_approval_template_line(**kwargs)
+        if not approval_template_line:
+            _logger.warning("No Template Line for celar Approval")
+            return self
+        approval_template_line.clear_approval(**kwargs)
+        return self
 
 
 class ApprovalTemplate(models.Model):
@@ -916,14 +1164,25 @@ class ApprovalTemplate(models.Model):
                             reset_reminder=reset_reminder,
                             reset_request_approval_task_date=reset_request_approval_task_date,
                         )
+
                         transaction_ids.append(rec.transaction_id)
                         approval_audit_log = env['approval.audit.log'].search([
                             ('create_date', '>', rec.request_approval_task_date),
                             ('transaction_model_name', '=', rec.transaction_model_name),
                             ('transaction_id', '=', rec.transaction_id),
-                        ], limit=1)
+                        ], limit=1, order='create_date desc')
+                        # chek jika ada action yang tecatat
                         if approval_audit_log:
                             rec.sudo().write({'request_approval_task_date': approval_audit_log.create_date})
+                        if template.reminder_interval_number > 0:
+                            if not rec.reminder_next_datetime:
+                                reminder_next_datetime = template.get_next_reminder_datetime(
+                                    rec.reminder_last_datetime or rec.request_approval_task_date
+                                )
+                                rec.sudo().write({'reminder_next_datetime': reminder_next_datetime})
+                        else:
+                            # jika 0 maka remainder disable
+                            rec.reminder_next_datetime = False
                         # chek last action
                     else:
                         approval_instance.unregister_approval_task_line()
@@ -950,3 +1209,10 @@ class ApprovalTemplate(models.Model):
                     _logger.exception("register_approval_task_line 2")
                     if raise_exception:
                         raise
+            # remove not active instance
+            # instances = env['approval.instance'].search(
+            #     [('transaction_model_name', '=', model), ('id', 'not in', transaction_ids)]
+            # )
+            # for instance in instances:
+            #     if instance.id in transaction_ids:
+            #         instance.unlink()
