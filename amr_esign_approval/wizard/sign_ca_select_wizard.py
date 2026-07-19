@@ -28,4 +28,5 @@ class UserCaDataWizard(models.TransientModel):
                 and self.env.context.get('approval_task_line_model') == 'pdf.sign'
         ):
             res['pdf_sign_id'] = self.env.context['approval_task_line_id']
+        res['user_ca_id'] = self.user_ca_id.search([('user_id', '=', self.env.user.id)], limit=1).id
         return res

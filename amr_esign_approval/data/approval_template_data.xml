@@ -4,87 +4,112 @@
         <record id="approval_template" model="approval.template">
 <!--            <field name="is_primary" eval="True"/>-->
             <field name="model_id" ref="amr_esign_pdf.model_pdf_document"/>
-
             <field name="approval_task_line_model_id" ref="amr_esign_pdf.model_pdf_sign"/>
-            <field name="approval_task_line_users_mode">users_field</field>
-            <field name="approval_task_line_users_params">user_id</field>
-            <field name="approval_task_line_parent_filed">pdf_document_id</field>
-            <field name="approval_task_line_state_field">state</field>
-<!--            <field name="approval_task_line_state_cancel">cancel</field>-->
-<!--            <field name="approval_task_line_state_reject">reject</field>-->
-            <field name="approval_task_line_state_approved">signed</field>
-            <field name="approval_task_line_state_waiting_approvals">request,draft</field>
+<!--            <field name="approval_task_line_field">approval_task_line</field>-->
 
             <field name="menu_id" ref="amr_esign_approval.menu_to_approve"/>
             <field name="view_id" ref="amr_esign_approval.view_approval_form"/>
             <field name="action_id" ref="amr_esign_approval.action_to_approve"/>
 
-            <field name="auto_register_approval_task" eval="True"/>
+            <!-- field, function, code-->
+<!--            <field name="need_approval_mode">user_id</field>-->
+<!--            <field name="need_approval_field">state</field>-->
+<!--            <field name="need_approval_function">signed</field>-->
+<!--            <field name="need_approval_code">signed</field>-->
+            <field name="requestor_field">user_id</field>
             <field name="state_field">state</field>
-            <field name="state_approved">signed</field>
-            <field name="state_canceled">cancel</field>
-            <field name="state_reject">reject</field>
             <field name="state_waiting_approvals">request</field>
+            <field name="state_approved">signed</field>
+            <field name="state_rejected">reject</field>
+            <field name="state_canceled">cancel</field>
+            <field name="state_reset_to_draft">draft</field>
 
-            <!-- reject and approve status will handle in event_approval_done to draft or approved,-->
-            <field name="state_reject" eval="False"/>
-            <field name="state_approved" eval="False"/>
-            <field name="notes_chatter_rejected" eval="True"/>
-            <field name="notification_approval_id" ref="approval_notification_template"/>
             <field name="type_approval_default">multi_group</field>
             <field name="groups_approval_default_ids" eval="[(6,0,[ref('base.group_erp_manager')])]"/>
 <!--            <field name="users_approval_default_ids" />-->
+            <!-- code configurasi untuk membuat approval_task_list -->
             <field name="code">
 # skip task line
-transaction_requester = transaction_object.users_id
-transaction_company = transaction_object.company_id
+#transaction_requester = transaction_object.user_id
+#transaction_company = transaction_object.company_id
 response['skip_create_approval_task_line'] = True
 #response['transaction_value'] = transaction_object.total_cost
 #response['transaction_currency'] = transaction_object.currency_id
-response['transaction_company'] = transaction_company
-response['transaction_requester'] = transaction_requester
+#response['transaction_company'] = transaction_company
+#response['transaction_requester'] = transaction_requester
             </field>
+
+            <field name="available_action_request_approval" eval="False"/>
 <!--            <field name="invoke_validate_request_approval">validate_request_approval</field>-->
 <!--            <field name="invoke_approval_start">event_approval_start</field>-->
-<!--            <field name="invoke_after_approve">event_after_approve</field>-->
 <!--            <field name="invoke_approval_done">event_approval_done</field>-->
+            <field name="notification_approval_id" ref="approval_notification_template"/>
+
+
+            <field name="available_action_approve" eval="True"/>
+            <!-- window_action, server_action, method-->
+<!--            <field name="approve_action_type">approved</field>-->
+<!--            <field name="approve_window_action_id" ref=""/>-->
+<!--            <field name="approve_server_action_id" ref=""/>-->
+<!--            <field name="invoke_method_approve">waiting_approval,waiting</field>-->
+<!--            <field name="invoke_before_approve">event_before_approve</field>-->
+<!--            <field name="invoke_after_approve">event_after_approve</field>-->
+<!--            <field name="notes_chatter_approved" eval="True"/>-->
+<!--            <field name="notification_approved_id" ref="approval_notification_template"/>-->
+
+            <field name="available_action_reject" eval="True"/>
+            <!-- window_action, server_action, method-->
+<!--            <field name="reject_action_type">approved</field>-->
+<!--            <field name="reject_window_action_id" ref=""/>-->
+<!--            <field name="reject_server_action_id" ref=""/>-->
+<!--            <field name="invoke_method_reject">waiting_approval,waiting</field>-->
+<!--            <field name="invoke_before_reject">approved</field>-->
+<!--            <field name="invoke_after_reject">cancel</field>-->
+<!--            <field name="notes_chatter_rejected" eval="True"/>-->
+<!--            <field name="notification_rejection_id" ref="approval_notification_template"/>-->
+<!--            <field name="notification_rejection_to_approver_id" ref="approval_notification_template"/>-->
+
+            <field name="available_action_cancel" eval="True"/>
+            <!-- window_action, server_action, method-->
+<!--            <field name="cancel_action_type">approved</field>-->
+<!--            <field name="cancel_window_action_id" ref=""/>-->
+<!--            <field name="cancel_server_action_id" ref=""/>-->
+<!--            <field name="invoke_method_cancel">cancel</field>-->
+<!--            <field name="invoke_before_cancel">waiting_approval,waiting</field>-->
+<!--            <field name="invoke_after_cancel">approved</field>-->
+<!--            <field name="notes_chatter_cancel" eval="True"/>-->
+<!--            <field name="notification_cancel_approver_id" ref="approval_notification_template"/>-->
+
+            <field name="available_action_reset_to_draft" eval="True"/>
+            <!-- window_action, server_action, method-->
+<!--            <field name="reset_to_draft_action_type">approved</field>-->
+<!--            <field name="reset_to_draft_window_action_id" ref=""/>-->
+<!--            <field name="reset_to_draft_server_action_id" ref=""/>-->
+<!--            <field name="invoke_method_reset_to_draft">cancel</field>-->
+<!--            <field name="invoke_before_reset_to_draft">waiting_approval,waiting</field>-->
+<!--            <field name="invoke_after_reset_to_draft">approved</field>-->
+<!--            <field name="notes_chatter_reset_to_draft" eval="True"/>-->
+<!--            <field name="notification_set_to_draft_approver_id" ref="approval_notification_template"/>-->
+
         </record>
 
         <record id="approval_template_line" model="approval.template.line">
             <field name="model_id" ref="amr_esign_pdf.model_pdf_sign"/>
             <field name="approval_template_id" ref="approval_template"/>
-            <field name="users_mode">field</field>
-            <field name="users_params">user_id</field>
+<!--            <field name="users_mode">field</field>-->
+<!--            <field name="users_params">user_id</field>-->
+            <field name="approval_mode">fields</field>
+            <field name="approval_mode_function" eval="False"/>
+            <field name="approval_mode_fields">user_id</field>
             <field name="parent_filed">pdf_document_id</field>
             <field name="state_field">state</field>
             <field name="state_canceled">cancel</field>
-            <field name="state_reject">reject</field>
+            <field name="state_rejected">reject</field>
             <field name="state_approved">signed</field>
             <field name="state_waiting_approvals">request</field>
             <field name="auto_register_approval_task" eval="True"/>
-<!--            <field name="invoke_validate_request_approval">validate_request_approval</field>-->
-<!--            <field name="invoke_approval_start">event_approval_start</field>-->
-            <!--
-            ('window_action', 'Window Action'),
-            ('server_action', 'Server Action'),
-            ('method', 'Method'),
-        -->
 
-<!--            <field name="approve_action_type">method</field>-->
-<!--            <field name="approve_window_action_id" ref=""/>-->
-<!--            <field name="approve_server_action_id" ref=""/>-->
-<!--            <field name="invoke_method_approve">do_approve</field>-->
-
-<!--            <field name="reject_action_type">method</field>-->
-<!--            <field name="reject_window_action_id">event_after_approve</field>-->
-<!--            <field name="reject_server_action_id">event_approval_done</field>-->
-<!--            <field name="invoke_method_reject">do_reject</field>-->
-
-<!--            <field name="cancel_action_type">method</field>-->
-<!--            <field name="cancel_window_action_id">validate_request_approval</field>-->
-<!--            <field name="cancel_server_action_id">event_approval_start</field>-->
-<!--            <field name="invoke_method_cancel">do_cancel</field>-->
-
+            <field name="field_user_execution">user_id</field>
         </record>
     </data>
 </odoo>
