@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="approval_notification_template" model="notification.template">
+            <field name="name">Approval Notification</field>
+            <field name="model_id" ref="model_purchase_order"/>
+            <field name="send_email" eval="True"/>
+            <field name="send_chat" eval="True"/>
+            <field name="send_firebase" eval="True"/>
+<!--            <field name="template_email" ref="approval_mail_template"/>-->
+            <field name="title">Approval ${object.name}</field>
+            <field name="body"><![CDATA[Hai ${ctx.get('notification_to_user').name} Document ${object.name} dari ${object.user_id.name} butuh approval anda sebagai Approver ${object.get_internal_url() | safe} ]]></field>
+            <!--            <field name="image">Todo send url image</field>-->
+            <field name="code">originator = record.user_id or user
+data.update(
+                url=record.get_internal_url(),
+                source_number=record.name,
+                source_document=record.get_internal_description(),
+                source_originator_name=originator.name,
+)
+            </field>
+        </record>
+    </data>
+</odoo>
