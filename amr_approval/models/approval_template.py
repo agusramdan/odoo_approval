@@ -316,7 +316,7 @@ class ApprovalTemplateMixin(models.AbstractModel):
     notification_rejection_to_approver_id = fields.Many2one(
         'notification.template',
         ondelete='set null',
-        help="Notification template used for reject notifications."
+        help="Notification template used aproved accept notification for reject."
     )
 
     code = fields.Text(
@@ -393,6 +393,26 @@ class ApprovalTemplateMixin(models.AbstractModel):
         xpath = etree.SubElement(root, "xpath")
         xpath.set("expr", "//header")
         xpath.set("position", "inside")
+
+        field = etree.SubElement(xpath, "field")
+        field.set("name", "approval_template_id")
+        field.set("invisible", "1")
+
+        field = etree.SubElement(xpath, "field")
+        field.set("name", "approval_template_line_id")
+        field.set("invisible", "1")
+
+        field = etree.SubElement(xpath, "field")
+        field.set("name", "approval_instance_id")
+        field.set("invisible", "1")
+
+        field = etree.SubElement(xpath, "field")
+        field.set("name", "access_requester")
+        field.set("invisible", "1")
+
+        field = etree.SubElement(xpath, "field")
+        field.set("name", "access_approval")
+        field.set("invisible", "1")
 
         self._generate_buttons(xpath)
         if self.approval_task_line_page and self.approval_task_line_field:
@@ -479,7 +499,18 @@ for rec in self:
         else:
             self.generate_field_approval_task_line_id = self.env['ir.model.fields'].create(vals)
 
+    @api.model_create_multi
+    @api.returns('self', lambda value: value.id)
+    def create(self, vals_list):
+        for vals in vals_list:
+            if 'state_reject' in vals:
+                vals['state_rejected'] = vals.pop('state_reject')
+
+        return super().create(vals_list)
+
     def write(self, vals):
+        if 'state_reject' in vals:
+            vals['state_rejected'] = vals.pop('state_reject')
         res = super().write(vals)
 
         trigger_fields = {
@@ -817,7 +848,7 @@ for rec in self:
             raise UserError("Invalid configuration approval")
 
     def set_rejected_status(self, transaction_object, **kwargs):
-        if transaction_object and self.state_field and self.state_reject:
+        if transaction_object and self.state_field and self.state_rejected:
             data = dict(kwargs)
             if self.state_field not in data:
                 data[self.state_field] = self.state_rejected
@@ -909,7 +940,7 @@ for rec in self:
                 )
             else:
                 approved_message = self.get_approved_message(**kw)
-            approved_message and self.notification_approved_id.send_message_post(approved_message)
+            approved_message and self.notification_approved_id.send_message_post(transaction_object,approved_message)
         return kw
 
     def get_approved_message(self, **kwargs):
@@ -942,7 +973,6 @@ for rec in self:
         trx_update_value = kwargs.get('transaction_update_value') or {}
 
         approval_template.invoke_method(transaction_object, 'after_reject', kw)
-        approval_task_line = kwargs.get('approval_task_line') or kwargs.get('approval_transaction')
         if is_approval_done:
             kw['is_rejected'] = True
             trx_update_value.update(kwargs.get('update_value') or {})
@@ -974,8 +1004,6 @@ for rec in self:
             transaction_id=approval_instance.transaction_id,
             transaction_model_name=approval_instance.transaction_model_name,
         )
-        approval_instance = self.get_approval_instance(**kw)
-        approval_instance.after_reject(**kw)
         notes_chatter = False
         notification = self.notification_rejection_id
         if notification:

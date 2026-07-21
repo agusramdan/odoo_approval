@@ -38,6 +38,7 @@ class ApprovalTaskLineMixin(models.AbstractModel):
     )
     started_task_time = fields.Datetime('Started Task Time')
     date_execution = fields.Datetime('Date Execution')
+    reject_reason = fields.Text('Reject Reason')
     sign_title = fields.Char("Sign Title")
     approval_user_ids = fields.Many2many(
         'res.users', compute='_compute_approval_user_ids', compute_sudo=True
@@ -711,7 +712,7 @@ class ApprovalTaskLine(models.Model):
         'approval.access.mixin',
         'approval.transaction.able.mixin',
     ]
-    _description = 'This is Approval Task Line for Approval helper waiting approval'
+    _description = 'Approval Task Line'
     _order = 'id'
 
     name = fields.Char()

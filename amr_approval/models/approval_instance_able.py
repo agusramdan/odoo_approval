@@ -43,8 +43,8 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
         compute="_compute_waiting_approval",
         help="status is waiting approval"
     )
-    is_status_request_approval = fields.Boolean(
-        compute="_compute_status_request_approval",
+    is_request_approval = fields.Boolean(
+        compute="_compute_request_approval",
         help="status is waiting approval"
     )
     # is_user_requestor = fields.Boolean(
@@ -343,66 +343,52 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
             rec.is_need_approval = is_need_approval
 
     @api.depends_context("uid")
-    @api.depends('approval_instance_id')
+    @api.depends('approval_instance_id', 'approval_template_id')
     def _compute_waiting_approval(self):
         for rec in self:
             is_status_waiting_approval = rec.is_status_waiting_approval()
             rec.is_waiting_approval = is_status_waiting_approval
 
-    # @api.depends_context("uid")
-    # @api.depends('approval_instance_id')
-    # def _compute_user_requestor(self):
-    #     for rec in self:
-    #         user_id = rec.get_requester_id()
-    #         rec.is_user_requestor = user_id == self.env.user.id
-
-    # @api.depends_context("uid")
-    # @api.depends('approval_instance_id', 'is_user_requestor', 'is_waiting_approval')
-    # def compute_access_reset_to_draft_action(self):
-    #     for rec in self:
-    #         is_satus_waiting_approval = rec.is_waiting_approval
-    #         # requestor have access to draft
-    #         access_user_requestor = rec.is_user_requestor
-    #         # and satatus in is_waiting
-    #         # is_waiting_approval = rec.is_status_waiting_approval()
-    #         rec.access_reset_to_draft_action = access_user_requestor and is_satus_waiting_approval
-
     @api.depends_context("uid")
     @api.depends('approval_template_id')
-    def _compute_status_request_approval(self):
+    def _compute_request_approval(self):
         for rec in self:
-            rec.is_status_request_approval = rec.approval_template_id.is_status_request_approval(rec)
+            rec.is_request_approval = rec.approval_template_id.is_status_request_approval(rec)
 
     @api.depends_context("uid")
-    @api.depends('access_requester', 'is_need_approval')
+    @api.depends('access_requester', 'is_need_approval', 'is_request_approval')
     def compute_access_request_approval_action(self):
         for rec in self:
             rec.access_request_approval_action = (
-                    rec.is_status_request_approval and rec.access_requester and rec.is_need_approval
+                    rec.is_request_approval and rec.access_requester and rec.is_need_approval
             )
 
     @api.depends_context("uid")
-    @api.depends('approval_instance_id', 'is_waiting_approval')
+    @api.depends('approval_instance_id', 'approval_template_id', 'is_waiting_approval')
     def _compute_access_approval(self):
         for rec in self:
-            if not rec.is_waiting_approval or not rec.approval_instance_id:
+            if not rec.is_waiting_approval or not rec.approval_template_id or not rec.approval_instance_id:
                 rec.access_approval = False
                 rec.access_approve_action = False
                 rec.access_reject_action = False
                 continue
-            access_approval = rec.approval_instance_id and rec.approval_instance_id.access_approval
+            access_approval = rec.approval_instance_id.access_approval
             rec.access_approval = access_approval
             rec.access_approve_action = access_approval
             rec.access_reject_action = access_approval
 
     @api.depends_context("uid")
-    @api.depends('approval_template_id')
+    @api.depends('approval_template_id', 'is_request_approval', 'is_waiting_approval')
     def _compute_access_requester(self):
         for rec in self:
             access_requester = rec.approval_template_id.get_user_requestor(rec) == self.env.user
             rec.access_requester = access_requester
-            rec.access_cancel_action = access_requester
-            rec.access_reset_to_draft_action = access_requester
+            if not access_requester:
+                rec.access_cancel_action = False
+                rec.access_reset_to_draft_action = False
+
+            rec.access_cancel_action = rec.is_waiting_approval and access_requester
+            rec.access_reset_to_draft_action = rec.is_waiting_approval and access_requester
 
     @api.model
     def search_filter_access_approval(self, operator, value):
@@ -489,12 +475,6 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
             notification_template.send_notification_to_users(users, rec.id, **kwargs)
 
     def is_model_need_approval(self):
-        if not self:
-            return False
-        rec = self.ensure_one()
-        return rec.approval_template_id.is_model_need_approval(rec)
-
-    def is_status_request_approval(self):
         if not self:
             return False
         rec = self.ensure_one()

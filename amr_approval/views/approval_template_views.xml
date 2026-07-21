@@ -7,7 +7,7 @@
             <tree string="Approval Template" default_order="model_id">
                 <field name="model_id"/>
                 <field name="model" string="Model Name"/>
-                <field name="view_name"/>
+                <field name="approval_template_line_id"/>
             </tree>
         </field>
     </record>
@@ -30,9 +30,9 @@
                         </group>
                         <group>
                             <field name="generate_view_id"/>
-                            <field name="view_id" />
-                            <field name="action_id"/>
-                            <field name="menu_id"/>
+                            <field name="view_id" options="{'no_create': True}"/>
+                            <field name="action_id" options="{'no_create': True}"/>
+                            <field name="menu_id" options="{'no_create': True}"/>
                         </group>
                     </group>
                     <notebook>
@@ -74,8 +74,12 @@
                                     <field name="approval_template_line_id" string="Line Template" />
                                     <field name="approval_task_line_model_id" string="Approval Line" />
                                     <field name="approval_task_line_page" />
-                                    <field name="generate_field_approval_task_line" attrs="{'invisible':[('approval_task_line_page', '=', False)]}" />
-                                    <field name="approval_task_line_field"
+                                    <field name="generate_field_approval_task_line"  string="Generate"
+                                           attrs="{'invisible':[('approval_task_line_page', '=', False)]}" />
+                                    <field name="generate_field_approval_task_line_id" string="Generated"
+                                           attrs="{'invisible':['|',('approval_task_line_page', '=', False),('generate_field_approval_task_line', '=', False)]}"
+                                    />
+                                    <field name="approval_task_line_field" string="Field Name"
                                            attrs="{'invisible':['|',('approval_task_line_page', '=', False),('generate_field_approval_task_line', '=', True)]}"
                                     />
                                 </group>
@@ -118,49 +122,13 @@
                                 </group>
                             </group>
                         </page>
-                        <page string="Event">
+                        <page string="Event Requester">
                             <group>
                                 <group string="Request Approval">
                                     <field name="available_action_request_approval" string="Request Approval"/>
                                     <field name="invoke_validate_request_approval" string="Validate"/>
                                     <field name="invoke_approval_start" string="Start"/>
                                     <field name="invoke_approval_done" string="Done"/>
-                                </group>
-                                <group string="Approve">
-                                    <field name="available_action_approve" />
-                                    <field name="invoke_validate_approve" string="Validate"/>
-                                    <field name="approve_action_type" string="Action"/>
-                                    <field name="approve_window_action_id" string="Window"
-                                           attrs="{'invisible':[('approve_action_type', '!=', 'window_action')]}"
-                                           domain="[('target', '=', 'new')]"
-                                    />
-                                    <field name="approve_server_action_id" string="Server"
-                                           attrs="{'invisible':[('approve_action_type', '!=', 'server_action')]}"
-                                    />
-                                    <field name="invoke_method_approve" string="Method"
-                                           attrs="{'invisible':[('approve_action_type', '!=', 'method')]}"
-                                    />
-                                    <field name="invoke_before_approve" string="Before"/>
-                                    <field name="invoke_after_approve" string="After"/>
-                                    <field name="notes_chatter_approved" string="Note Chatter"/>
-                                </group>
-                                <group string="Reject">
-                                    <field name="available_action_reject" />
-                                    <field name="invoke_validate_reject" string="Validate"/>
-                                    <field name="reject_action_type" string="Action"/>
-                                    <field name="reject_window_action_id" string="Window"
-                                           attrs="{'invisible':[('reject_action_type', '!=', 'window_action')]}"
-                                           domain="[('target', '=', 'new')]"
-                                    />
-                                    <field name="reject_server_action_id" string="Server"
-                                           attrs="{'invisible':[('reject_action_type', '!=', 'server_action')]}"
-                                    />
-                                    <field name="invoke_method_reject" string="Method"
-                                           attrs="{'invisible':[('approve_action_type', '!=', 'method')]}"
-                                    />
-                                    <field name="invoke_before_reject" string="Before"/>
-                                    <field name="invoke_after_reject" string="After"/>
-                                    <field name="notes_chatter_rejected" string="Note Chatter"/>
                                 </group>
                                 <group string="Cancel">
                                     <field name="available_action_cancel" />
@@ -200,12 +168,53 @@
                                 </group>
                             </group>
                         </page>
+                        <page string="Event Approver">
+                            <group>
+                                <group string="Approve">
+                                    <field name="available_action_approve" />
+                                    <field name="invoke_validate_approve" string="Validate"/>
+                                    <field name="approve_action_type" string="Action"/>
+                                    <field name="approve_window_action_id" string="Window"
+                                           attrs="{'invisible':[('approve_action_type', '!=', 'window_action')]}"
+                                           domain="[('target', '=', 'new')]"
+                                    />
+                                    <field name="approve_server_action_id" string="Server"
+                                           attrs="{'invisible':[('approve_action_type', '!=', 'server_action')]}"
+                                    />
+                                    <field name="invoke_method_approve" string="Method"
+                                           attrs="{'invisible':[('approve_action_type', '!=', 'method')]}"
+                                    />
+                                    <field name="invoke_before_approve" string="Before"/>
+                                    <field name="invoke_after_approve" string="After"/>
+                                    <field name="notes_chatter_approved" string="Note Chatter"/>
+                                </group>
+                                <group string="Reject">
+                                    <field name="available_action_reject" />
+                                    <field name="invoke_validate_reject" string="Validate"/>
+                                    <field name="reject_action_type" string="Action"/>
+                                    <field name="reject_window_action_id" string="Window"
+                                           attrs="{'invisible':[('reject_action_type', '!=', 'window_action')]}"
+                                           domain="[('target', '=', 'new')]"
+                                    />
+                                    <field name="reject_server_action_id" string="Server"
+                                           attrs="{'invisible':[('reject_action_type', '!=', 'server_action')]}"
+                                    />
+                                    <field name="invoke_method_reject" string="Method"
+                                           attrs="{'invisible':[('approve_action_type', '!=', 'method')]}"
+                                    />
+                                    <field name="invoke_before_reject" string="Before"/>
+                                    <field name="invoke_after_reject" string="After"/>
+                                    <field name="notes_chatter_rejected" string="Note Chatter"/>
+                                </group>
+                            </group>
+                        </page>
+
                         <page string="Template Notification">
                             <group>
-                                <group string="Request Approval">
+                                <group string="To Approver">
                                     <field name="notification_approval_id"
                                            domain="[('model_id.model','=',model)]"
-                                           string="To Approval"
+                                           string="Request Approval"
                                     />
                                     <field name="notification_reminder_id"
                                            domain="[('model_id.model','=',model)]"
@@ -216,8 +225,6 @@
                                         <field name="reminder_interval_number" class="oe_inline"/>
                                         <field name="reminder_interval_type" class="oe_inline"/>
                                     </div>
-                                </group>
-                                <group string="To Approval">
                                     <field
                                             name="notification_reset_to_draft_approver_id"
                                             domain="[('model_id.model','=',model)]"
@@ -228,24 +235,23 @@
                                             domain="[('model_id.model','=',model)]"
                                             string="Cancel"
                                     />
-                                </group>
-                                <group string="Rejected">
-                                    <field
-                                            name="notification_rejection_id"
-                                            domain="[('model_id.model','=',model)]"
-                                            string="To Requester"
-                                    />
                                     <field
                                             name="notification_rejection_to_approver_id"
                                             domain="[('model_id.model','=',model)]"
-                                            string="To Approvar"
+                                            string="Reject"
                                     />
                                 </group>
-                                <group string="Approved">
+
+                                <group string="To Requester">
+                                    <field
+                                            name="notification_rejection_id"
+                                            domain="[('model_id.model','=',model)]"
+                                            string="Rejected"
+                                    />
                                     <field
                                             name="notification_approved_id"
                                             domain="[('model_id.model','=',model)]"
-                                            string="To Requester"
+                                            string="Approved"
                                     />
                                 </group>
 

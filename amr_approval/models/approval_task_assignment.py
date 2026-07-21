@@ -39,9 +39,13 @@ class ApprovalMassAssignmentCommand(models.Model):
     ], default='immediate')
 
     scheduled_at = fields.Datetime()
-    task_line_model = fields.Char(required=True)
-    old_user_id = fields.Many2one('res.users', required=True)
-    new_user_id = fields.Many2one('res.users', required=True)
+
+    mode = fields.Selection([('responsible', 'Responsible'), ('user', 'User')])
+    responsible_model = fields.Char('Responsible Model')
+    responsible_res_id = fields.Integer('Responsible ID')
+
+    old_user_id = fields.Many2one('res.users')
+    new_user_id = fields.Many2one('res.users')
 
     state = fields.Selection([
         ('draft', 'Draft'),
@@ -72,13 +76,22 @@ class ApprovalMassAssignmentCommand(models.Model):
                     continue
 
             try:
-                task_lines = self.env[command.task_line_model].search_responsible_user(command.old_user_id)
-                for line in task_lines:
-                    line.do_assignment(
-                        new_user_id=command.new_user_id.id,
-                        reason=f"Mass assignment: {command.name}",
-                    )
+                if command.mode == 'user':
+                    task_lines = self.env['approval.task'].search([('responsible_user_id', '=', command.old_user_id)])
+                    for line in task_lines:
+                        line.do_assignment(
+                            new_user_id=command.new_user_id.id,
+                            reason=f"Mass assignment: {command.name}",
+                        )
 
+                elif command.mode == 'responsible':
+                    task_lines = self.env['approval.task'].search([
+                        ('responsible_model', '=', command.responsible_model),
+                        ('responsible_res_id', '=', command.responsible_res_id)
+                    ])
+
+                    for line in task_lines:
+                        line.action_responsible_assignment()
                 command.state = 'done'
                 command.executed_at = fields.Datetime.now()
 

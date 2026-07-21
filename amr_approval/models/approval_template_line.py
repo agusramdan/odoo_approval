@@ -21,7 +21,7 @@ class ApprovalTemplateLineMixin(models.AbstractModel):
     parent_mode = fields.Selection([
         ('agnostic', 'Agnostic'),
         ('specific', 'Specific'),
-    ])
+    ],default='specific')
     # when parent mode specific parent model mandatory
     approval_template_id = fields.Many2one('approval.template', ondelete='set null', )
     parent_model_id = fields.Many2one('ir.model', related='approval_template_id.model_id')
@@ -36,7 +36,7 @@ class ApprovalTemplateLineMixin(models.AbstractModel):
         help='status_approval'
     )
     state_canceled = fields.Char(
-        help="State when cancel"
+        help="State when cancel by Requester"
     )
     state_rejected = fields.Char(
         help="State when reject"
@@ -47,13 +47,21 @@ class ApprovalTemplateLineMixin(models.AbstractModel):
     state_waiting_approvals = fields.Char(
         help="Waiting Approval for approval_line"
     )
-    state_reset = fields.Char()
+    state_reset = fields.Char(
+        help="Reset by Requester"
+    )
     approval_mode = fields.Selection([
         ('function', 'Function'),
-        ('fields', 'Field'),
-    ])
+        ('fields', 'Fields'),
+    ],help="""
+Mode user mengambil Approval task Assign
+Assign task bisa bedasarkan group, user atau employee atau kombinasi.
+Data ini akan di kirim ke approval.task agar bisa menentukan user mana yang bisa melakukan approal
+- Fields : System akan mencari bedasarkan field. untuk multiple fields dengan comma dilimter
+- Fuction : System akan memangil fungsi itu untuk mendapatak groups atau user    
+    """)
     approval_mode_function = fields.Char()
-    approval_mode_fields = fields.Char()
+    approval_mode_fields = fields.Char(default='user_id')
 
     field_user_execution = fields.Char()
     field_date_execution = fields.Char()

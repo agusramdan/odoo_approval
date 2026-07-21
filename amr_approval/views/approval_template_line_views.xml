@@ -39,42 +39,47 @@
                     <group>
                         <group string="General Configuration">
                             <field name="model_id"/>
-                            <field name="auto_register_approval_task"/>
+                            <field name="auto_register_approval_task" string="Auto Register"/>
                             <field name="parent_mode"/>
                             <field name="approval_template_id"
                                    attrs="{'invisible':[('parent_mode','=','agnostic')],
                                            'required':[('parent_mode','=','specific')]}"/>
-                            <field name="parent_model_id" readonly="1"/>
+                            <field name="parent_model_id" readonly="1"
+                                   attrs="{'invisible':[('parent_mode','=','agnostic')],}"
+                            />
                             <field name="parent_filed"
                                    attrs="{'invisible':[('parent_mode','=','agnostic')],
                                            'required':[('parent_mode','=','specific')]}"
                             />
                             <field name="approval_mode"/>
-                                <field name="approval_mode_function"
+                            <field name="approval_mode_function" string="Function"
                                        attrs="{'invisible':[('approval_mode','!=','function')]}"/>
-                                <field name="approval_mode_fields"
+                            <field name="approval_mode_fields" string="Field"
                                        attrs="{'invisible':[('approval_mode','!=','fields')]}"/>
                         </group>
-                        <group string="Approval Field" >
-                            <field name="field_user_execution"/>
-                            <field name="field_date_execution"/>
-                            <field name="field_user_delegation"/>
-                            <field name="field_started_task_time"/>
-                        </group>
+
                         <group string="Approval State Mapping">
                             <field name="state_field"/>
-                            <field name="state_waiting_approvals"/>
+                            <field name="state_waiting_approvals" string="Waiting Approval"/>
                             <field name="state_approved"/>
-                            <field name="state_rejected"/>
-                            <field name="state_canceled"/>
+                            <field name="state_rejected" string="Waiting Approval"/>
+                            <field name="state_canceled" string="Canceled"/>
                         </group>
-                        <group string="Approval Method>" >
-                            <field name="method_start_task"/>
-                            <field name="method_set_waiting_approval_state"/>
-                            <field name="method_set_approved_state"/>
-                            <field name="method_set_rejected_state"/>
-                            <field name="method_set_canceled_state"/>
-                            <field name="method_set_to_draft_state"/>
+                    </group>
+                    <group>
+                        <group string="Approval Field" >
+                            <field name="field_user_execution" string="User Execution"/>
+                            <field name="field_date_execution" string="Date Execution"/>
+                            <field name="field_user_delegation" string="Delegation"/>
+                            <field name="field_started_task_time" string="Started Time"/>
+                        </group>
+                        <group string="Approval Method To Set" >
+                            <field name="method_start_task" string="Started Time"/>
+                            <field name="method_set_waiting_approval_state" string="Waiting Approval"/>
+                            <field name="method_set_approved_state" string="Approved"/>
+                            <field name="method_set_rejected_state" string="Reject"/>
+                            <field name="method_set_canceled_state" string="Canceled"/>
+<!--                            <field name="method_set_to_draft_state" string="Set To Draft"/>-->
                         </group>
                     </group>
                 </sheet>

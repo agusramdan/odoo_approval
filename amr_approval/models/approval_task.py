@@ -57,11 +57,15 @@ class ApprovalTask(models.Model):
         'res.groups', 'approval_task_groups_rel', 'approval_task_id', 'group_id',
         help="Groups of users who can approve this task"
     )
+    # See approval.responsible for maping detail
     responsible_user_id = fields.Many2one(
         'res.users', 'Responsible',
         ondelete='set null',
-        help="User who take Responsible the approval."
+        help="User who take Responsible the approval. Related with respnsible model. "
+             "ex: Department have manager when manager change responsible change to. "
     )
+    responsible_model = fields.Char('Responsible Model')
+    responsible_res_id = fields.Integer('Responsible ID')
     requester_id = fields.Many2one(
         'res.users', 'Requester',
         default=lambda self: self.env.user,
@@ -149,51 +153,61 @@ class ApprovalTask(models.Model):
 
     def send_reminder(self, **kwargs):
         self.ensure_one()
-        approval_instance = kwargs.get('approval_instance') or self.approval_instance_id.get_instance_for_transaction(
-            self.transaction_model_name, self.transaction_id
-        )
-        approval_template = kwargs.get('approval_template') or approval_instance.approval_template_id
-        kwargs['reminder_count'] = reminder_count = self.reminder_count + 1
+        try:
+            approval_instance = kwargs.get('approval_instance') or self.approval_instance_id.get_instance_for_transaction(
+                self.transaction_model_name, self.transaction_id
+            )
+            approval_template = kwargs.get('approval_template') or approval_instance.approval_template_id
+            kwargs['reminder_count'] = reminder_count = self.reminder_count + 1
 
-        notification_approval = kwargs.get("notification_approval")
-        if "notification_approval_id" in kwargs:
-            notification_approval = self.env['notification.template'].browse(kwargs.get("notification_approval_id"))
+            notification_approval = kwargs.get("notification_approval")
+            if "notification_approval_id" in kwargs:
+                notification_approval = self.env['notification.template'].browse(kwargs.get("notification_approval_id"))
 
-        if not notification_approval:
-            notification_approval = self.notification_reminder_id or approval_template.notification_reminder_id
+            if not notification_approval:
+                notification_approval = self.notification_reminder_id or approval_template.notification_reminder_id
 
-        if not notification_approval:
-            notification_approval = self.notification_approval_id or approval_template.notification_approval_id
+            if not notification_approval:
+                notification_approval = self.notification_approval_id or approval_template.notification_approval_id
 
-        notification_log = None
-        kwargs['approval_task_id'] = self.id
-        if notification_approval:
-            res_id, model_name = self.get_res_id_for_notification(notification_approval, **kwargs)
-            if res_id:
-                self.write({
+            notification_log = None
+            kwargs['approval_task_id'] = self.id
+            if notification_approval:
+                res_id, model_name = self.get_res_id_for_notification(notification_approval, **kwargs)
+                if res_id:
+                    self.write({
+                        'reminder_count': reminder_count,
+                        'reminder_last_datetime': fields.Datetime.now(),
+                        'reminder_next_datetime': approval_template.get_next_reminder_datetime(),
+                    })
+                    users = self.get_users_for_notification(**kwargs)
+                    if self.requester_id:
+                        notification_approval = notification_approval.with_user(self.requester_id)
+                    notification_log = notification_approval.send_notification_to_users(
+                        users, res_id, **kwargs
+                    )
+
+            if notification_log:
+                reminder_datetime = fields.Datetime.now()
+                reminders = [{
+                    'user_id': self.requester_id.id or self.env.user.id,
+                    'transaction_id': self.transaction_id,
+                    'transaction_model_name': self.transaction_model_name,
+                    'request_approval_task_date': self.request_approval_task_date,
+                    'reminder_datetime': reminder_datetime,
                     'reminder_count': reminder_count,
-                    'reminder_last_datetime': fields.Datetime.now(),
-                    'reminder_next_datetime': approval_template.get_next_reminder_datetime(),
-                })
-                users = self.get_users_for_notification(**kwargs)
-                notification_log = notification_approval.send_notification_to_users(
-                    users, res_id, **kwargs
-                )
+                    'receiver_id': notif.receiver_id.id,
+                    'notification_log_id': notif.id
+                } for notif in notification_log]
+                self.env["reminder.log"].sudo().create(reminders)
+            elif reminder_count:
+                self.write({'reminder_count': reminder_count - 1, })
+        except Exception:
+            _logger.exception("skip error")
 
-        if notification_log:
-            reminder_datetime = fields.Datetime.now()
-            reminders = [{
-                'transaction_id': self.transaction_id,
-                'transaction_model_name': self.transaction_model_name,
-                'request_approval_task_date': self.request_approval_task_date,
-                'reminder_datetime': reminder_datetime,
-                'reminder_count': reminder_count,
-                'receiver_id': notif.receiver_id.id,
-                'notification_log_id': notif.id
-            } for notif in notification_log]
-            self.env["reminder.log"].sudo().create(reminders)
-        elif reminder_count:
-            self.write({'reminder_count': reminder_count - 1, })
+        finally:
+            _logger.info("Send Reminder done")
+
 
     def _compute_approval_user_ids(self):
         for rec in self:
@@ -506,7 +520,7 @@ class ApprovalTask(models.Model):
             approval_task = self.sudo().create(create_dict)
         if not kwargs.get('skip_send_notification'):
             approval_task.send_notification(**kwargs)
-
+        approval_task.send_bus_notification(**kwargs)
         prepare_dict['approval_task'] = approval_task
         approval_template_line.start_waiting_approval(**prepare_dict)
 
@@ -568,27 +582,37 @@ class ApprovalTask(models.Model):
 
     def send_notification(self, **kwargs):
         self.ensure_one()
-        approval_instance = kwargs.get('approval_instance') or self.approval_instance_id.get_instance_for_transaction(
-            self.transaction_model_name, self.transaction_id
-        )
-        approval_template = kwargs.get('approval_template') or approval_instance.approval_template_id
-        notification_approval = kwargs.get("notification_approval")
-        if "notification_approval_id" in kwargs:
-            notification_approval = self.env['notification.template'].browse(kwargs.get("notification_approval_id"))
-
-        if not notification_approval:
-            notification_approval = self.notification_approval_id or approval_template.notification_approval_id
-
         notification_log = None
-        kwargs['approval_task_id'] = self.id
-        if notification_approval:
-            res_id, model_name = self.get_res_id_for_notification(notification_approval, **kwargs)
-            if res_id:
-                users = self.get_users_for_notification(**kwargs)
-                notification_log = notification_approval.send_notification_to_users(
-                    users, res_id, approval_task_id=self.id
-                )
+        try:
+            approval_instance = kwargs.get('approval_instance') or self.approval_instance_id.get_instance_for_transaction(
+                self.transaction_model_name, self.transaction_id
+            )
+            approval_template = kwargs.get('approval_template') or approval_instance.approval_template_id
+            notification_approval = kwargs.get("notification_approval")
+            if "notification_approval_id" in kwargs:
+                notification_approval = self.env['notification.template'].browse(kwargs.get("notification_approval_id"))
+
+            if not notification_approval:
+                notification_approval = self.notification_approval_id or approval_template.notification_approval_id
+
+            kwargs['approval_task_id'] = self.id
+            if notification_approval:
+                res_id, model_name = self.get_res_id_for_notification(notification_approval, **kwargs)
+                if res_id:
+                    users = self.get_users_for_notification(**kwargs)
+                    if self.requester_id:
+                        notification_approval = notification_approval.with_user(self.requester_id)
+                    notification_log = notification_approval.send_notification_to_users(
+                        users, res_id, approval_task_id=self.id
+                    )
+        except Exception:
+            _logger.exception("skip error")
+        finally:
+            _logger.info("Send Notification done")
         return notification_log
+
+    def send_bus_notification(self, **kwargs):
+        pass
 
     def check_approval_task_status(self):
         if not self:

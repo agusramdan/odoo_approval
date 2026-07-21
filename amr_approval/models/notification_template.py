@@ -96,17 +96,22 @@ class NotificationTemplate(models.Model):
         if not users or not res_id:
             return
         self.ensure_one()
+        data = self.env[self.model].browse(res_id)
+        if not data:
+            _logger.warning("data remove %s , %s.", self.model, data.id)
+            return
         notification_log = self.env['notification.log'].browse()
         for notification_to_user in users:
             notif_log = {}
             notif_log = self.send_notification_to_user(notification_to_user, res_id, notif_log, **kwargs)
             if notif_log:
                 notif_log["res_id"] = res_id
+                notif_log["user_id"] = self.env.user.id
                 notif_log["receiver_id"] = notification_to_user.id
                 notif_log["notification_template_id"] = self.id
                 notif_log["transaction_id"] = kwargs.get("transaction_id")
                 notif_log["transaction_model_name"] = kwargs.get("transaction_model_name")
-                notification_log |= self.env['notification.log'].create(notif_log)
+                notification_log |= self.env['notification.log'].sudo().create(notif_log)
         return notification_log
 
     def send_notification_to_user(self, notification_to_user, res_id, notif_log, **kwargs):
@@ -116,9 +121,6 @@ class NotificationTemplate(models.Model):
         notif_log = notif_log or {}
         payload = self.get_notification_payload(notification_to_user, res_id, **kwargs)
         notif_log['payload'] = json.dumps(payload)
-        if self.send_email and kwargs.get('send_notification_email', True):
-            result = self.send_notification_email(notification_to_user, payload, notif_log, res_id=res_id, **kwargs)
-            notif_log.update(result or {})
         self.send_notification_payload(notification_to_user, payload, notif_log, **kwargs)
 
         return notif_log
@@ -128,12 +130,16 @@ class NotificationTemplate(models.Model):
         return data
 
     def get_notification_payload(self, notification_to_user, res_id, **kwargs):
+        if not res_id or not self.env[self.model].sudo().browse(res_id):
+            _logger.warning("data %s and %s",self.model,res_id)
+            return {}
         template = self.ensure_one()
-        Template = self.env['mail.template'].with_context(notification_to_user=notification_to_user)
+        Template = self.env['mail.template'].sudo().with_context(notification_to_user=notification_to_user)
         fields = ['title', 'body', 'image', 'body_html', 'body_chat', 'body_whatsapp', 'body_telegram']
-        phone_number = notification_to_user.get_phone_number(),
+        phone_number = notification_to_user.get_phone_number()
         email = notification_to_user.email
         request = {
+            'res_id': res_id,
             'send_email': self.send_email,
             'send_chat': self.send_chat,
             'send_mobile': self.send_mobile,
@@ -146,7 +152,6 @@ class NotificationTemplate(models.Model):
             'notification_to_user_id': notification_to_user.id,
             'notification_to_email': email
         }
-
         request = self.prepare_data_eval_context(request, notification_to_user, res_id, **kwargs) or request
         for field in fields:
             Template = Template.with_context(safe=field in {'title'})
@@ -179,9 +184,9 @@ class NotificationTemplate(models.Model):
         return data
 
     def send_notification_payload(self, notification_to_user, payload, notif_log, **kwargs):
-        self.send_notification_email(notification_to_user, payload, notif_log, **kwargs)
-        self.send_notification_chat(notification_to_user, payload, notif_log, **kwargs)
-        self.send_notification_mobile(notification_to_user, payload, notif_log, **kwargs)
+        payload.get('send_email') and self.send_notification_email(notification_to_user, payload, notif_log, **kwargs)
+        payload.get('send_chat') and self.send_notification_chat(notification_to_user, payload, notif_log, **kwargs)
+        payload.get('send_mobile') and self.send_notification_mobile(notification_to_user, payload, notif_log, **kwargs)
         if payload.get('title'):
             notif_log['name'] = payload.get('title')
         _logger.info("notif_log %s", notif_log)
@@ -189,7 +194,7 @@ class NotificationTemplate(models.Model):
 
     @api.model
     def get_email_fields(self):
-        return ['subject', 'body_html', 'reply_to', 'auto_delete', 'scheduled_date']
+        return ['subject', 'body_html', 'auto_delete', 'scheduled_date']
         # return['subject', 'body_html',
         # 'email_from',
         # 'email_cc', 'email_to', 'partner_to', 'reply_to',
@@ -206,27 +211,37 @@ class NotificationTemplate(models.Model):
     def send_notification_email(self, notification_to_user, payload, notif_log, **kwargs):
         # payload is firebase format notification
         if self.template_email:
-            res_id = kwargs.get('res_id') or payload.get('res_id')
-            template = self.template_email.with_context(notification_to_user=notification_to_user)
-            values = template.generate_email([res_id], self.get_email_fields())[res_id]
-        else:
+            try:
+                template = self.template_email.with_context(notification_to_user=notification_to_user)
+                values = template.generate_email([res_id], self.get_email_fields())[res_id]
+            except Exception:
+                _logger.exception("process %s , %s",self.model,res_id)
+        if not values:
             values = {
                 'subject': payload.get('title', None),
-                'body_html': payload.get('body_html', None) or payload.get('body', None),
+                'body_html': payload.get('body_email', None) or payload.get('body_html', None) or payload.get('body', None),
                 'body': payload.get('body', None),
                 'auto_delete': self.auto_delete,
             }
         self.setup_email_values(values)
-        values['recipient_ids']: [(4, notification_to_user.partner_id.id)]
+        values['recipient_ids']= [(4, notification_to_user.partner_id.id)]
         # supaya tidak di tulis di chatter res_id di hapus
+        # remove default_res_id context
         values.pop('res_id', None)
-        result = self.env['mail.mail'].sudo().create(values)
+        if 'default_res_id' in self.env.context:
+            ctx = dict(self.env.context)
+            ctx.pop('default_res_id', None)
+            result = self.env['mail.mail'].with_context(ctx).sudo().create(values)
+        else:
+            result = self.env['mail.mail'].sudo().create(values)
         notif_log['mail_id'] = result.id
         notif_log['mail_model'] = 'mail.mail'
         return notif_log
 
     @api.model
     def send_notification_chat(self, notification_to_user, payload, notif_log, **kwargs):
+        if not self.send_chat:
+            return notif_log
         # payload is firebase format notification
         body_chat = payload.pop('body_chat', None) or payload.get('body_html') or payload.get('body')
         chat = notification_to_user.send_odoobot_message(
@@ -239,6 +254,9 @@ class NotificationTemplate(models.Model):
 
     @api.model
     def send_notification_mobile(self, notification_to_user, payload, notif_log, **kwargs):
+        if not self.send_mobile:
+            return notif_log
+
         if 'mobile.notification.client' in self.env:
             mobile_notification_client = self.env['mobile.notification.client']
             notif = mobile_notification_client.create_payload(to_user_id=notification_to_user.id, **payload)
