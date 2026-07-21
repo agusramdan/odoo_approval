@@ -10,7 +10,7 @@ _logger = logging.getLogger(__name__)
 class ApprovalTask(models.Model):
     _inherit = "approval.task"
 
-    def send_notification(self, **kwargs):
+    def send_bus_notification(self, **kwargs):
         self.ensure_one()
         users = self.get_users_for_notification(**kwargs)
         kwargs['users'] = users
@@ -28,4 +28,4 @@ class ApprovalTask(models.Model):
                 payload,
             )
 
-        super(ApprovalTask, self).send_notification(**kwargs)
+        super(ApprovalTask, self).send_bus_notification(**kwargs)
