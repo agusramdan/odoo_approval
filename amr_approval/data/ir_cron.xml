@@ -10,7 +10,7 @@
         <field name="interval_type">minutes</field>
         <field name="nextcall" eval="DateTime.now().strftime('%Y-%m-%d %H:05:00')" />
         <field name="numbercall">-1</field>
-        <field name="active">True</field>
+        <field name="active">False</field>
     </record>
 
     <record model="ir.cron" id="user_delegate_cron">
@@ -23,6 +23,6 @@
         <field name="interval_type">hours</field>
         <field name="nextcall" eval="DateTime.now().strftime('%Y-%m-%d %H:05:00')" />
         <field name="numbercall">-1</field>
-        <field name="active">True</field>
+        <field name="active">False</field>
     </record>
 </odoo>

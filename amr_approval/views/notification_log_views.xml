@@ -77,6 +77,32 @@
             </field>
         </record>
 
+        <record id="view_notification_log_search" model="ir.ui.view">
+            <field name="name">notification.log.search</field>
+            <field name="model">notification.log</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="name"/>
+                    <separator/>
+
+                    <filter string="My Request" name="filter_my_sender"
+                            domain="[('user_id','=',uid)]"/>
+
+                    <filter string="To Me" name="filter_to_me"
+                            domain="[('receiver_id','=',uid)]"/>
+
+
+                    <group expand="0" string="Group By">
+                        <filter string="Sender" name="group_by_user_id"
+                                context="{'group_by':'user_id'}"/>
+                        <filter string="Receiver" name="group_by_receiver"
+                                context="{'group_by':'receiver_id'}"/>
+                    </group>
+                </search>
+
+            </field>
+        </record>
+
         <record model="ir.actions.act_window" id="notification_log_action">
             <field name="name">Notification Log</field>
             <field name="type">ir.actions.act_window</field>

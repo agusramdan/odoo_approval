@@ -17,4 +17,4 @@ class ReminderLog(models.Model):
     reminder_count = fields.Integer()
     reminder_datetime = fields.Datetime('Reminder Datetime')
     receiver_id = fields.Many2one('res.users', ondelete="set null", )
-
+    user_id = fields.Many2one('res.users', default=lambda self: self.env.user, ondelete="set null", )

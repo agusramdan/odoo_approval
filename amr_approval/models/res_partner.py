@@ -14,8 +14,12 @@ class ResPartner(models.Model):
     def format_phone_number(self, phone):
         if not phone:
             return False
+        try:
+            phone = re.sub(r'\D', '', phone)
+        except Exception:
+            _logger.exception('Error removing non-digit characters from phone number %s', phone)
+            return False
 
-        phone = re.sub(r'\D', '', phone)
         if phone.startswith('0'):
             phone = '62' + phone[1:]
         elif phone.startswith('62'):
@@ -29,11 +33,8 @@ class ResPartner(models.Model):
             return None
         return (
                 self.format_phone_number(self.mobile) or
-                self.format_phone_number(self.phone) or
-                self.mobile or
-                self.phone
+                self.format_phone_number(self.phone)
         )
-
 
     def send_odoobot_message(self, message):
         """Kirim pesan lewat OdooBot ke user ini"""

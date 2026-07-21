@@ -40,9 +40,7 @@ class ResUsers(models.Model):
         return self._has_group_id(group_id)
 
     def get_users_for_notification(self, company=None):
-        if not self:
-            return
-        if self.env.context.get("__user_with_delegatee_notification"):
+        if not self or self.env.context.get("__user_with_delegatee_notification"):
             return self
         if company:
             result = self.browse()
@@ -126,7 +124,7 @@ class ResUsers(models.Model):
         if uid and uid != self._uid:
             self = self.with_user(uid)
 
-        return self.env['user.delegation'].get_notification_user_ids(user_ids=[self._uid], company_id=company_id)
+        return self.env['user.delegation'].get_notification_user_ids(delegator_ids=[self._uid], company_id=company_id)
 
     def send_odoobot_message(self, message):
         result = None
@@ -142,18 +140,6 @@ class ResUsers(models.Model):
             except Exception:
                 _logger.info('User #%i %s error chanel.', user.id, user.name)
         return result
-        # self.ensure_one()
-        # user_root = self.env.ref('base.user_root')
-        # MailChannel = self.env['mail.channel'].with_user(user_root)
-        # channel_info = MailChannel.channel_get([self.partner_id.id])
-        # channel = MailChannel.browse(channel_info['id'])
-        # result = channel.message_post(
-        #     body=message,
-        #     author_id=user_root.partner_id.id,
-        #     message_type="comment",
-        #     subtype="mail.mt_comment"
-        # )
-        # return result
 
     def prepare_dict_approval_task_line(self, **kwargs):
         if not self:

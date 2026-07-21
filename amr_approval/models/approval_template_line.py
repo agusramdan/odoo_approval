@@ -21,7 +21,7 @@ class ApprovalTemplateLineMixin(models.AbstractModel):
     parent_mode = fields.Selection([
         ('agnostic', 'Agnostic'),
         ('specific', 'Specific'),
-    ])
+    ],default='specific')
     # when parent mode specific parent model mandatory
     approval_template_id = fields.Many2one('approval.template', ondelete='set null', )
     parent_model_id = fields.Many2one('ir.model', related='approval_template_id.model_id')
@@ -36,7 +36,7 @@ class ApprovalTemplateLineMixin(models.AbstractModel):
         help='status_approval'
     )
     state_canceled = fields.Char(
-        help="State when cancel"
+        help="State when cancel by Requester"
     )
     state_rejected = fields.Char(
         help="State when reject"
@@ -47,13 +47,21 @@ class ApprovalTemplateLineMixin(models.AbstractModel):
     state_waiting_approvals = fields.Char(
         help="Waiting Approval for approval_line"
     )
-    state_reset = fields.Char()
+    state_reset = fields.Char(
+        help="Reset by Requester"
+    )
     approval_mode = fields.Selection([
         ('function', 'Function'),
-        ('fields', 'Field'),
-    ])
+        ('fields', 'Fields'),
+    ],help="""
+Mode user mengambil Approval task Assign
+Assign task bisa bedasarkan group, user atau employee atau kombinasi.
+Data ini akan di kirim ke approval.task agar bisa menentukan user mana yang bisa melakukan approal
+- Fields : System akan mencari bedasarkan field. untuk multiple fields dengan comma dilimter
+- Fuction : System akan memangil fungsi itu untuk mendapatak groups atau user    
+    """)
     approval_mode_function = fields.Char()
-    approval_mode_fields = fields.Char()
+    approval_mode_fields = fields.Char(default='user_id')
 
     field_user_execution = fields.Char()
     field_date_execution = fields.Char()
@@ -359,7 +367,7 @@ class ApprovalTemplateLineMixin(models.AbstractModel):
                 write[self.field_user_delegation] = False
             approval_task_line.write(write)
         else:
-            raise UserError("Invalid configuration approval")
+            raise UserError("Invalid configuration set_waiting_approval_status field %s , value %s "%(self.state_field, self.state_waiting_approvals))
 
     def set_approved_status(self, approval_task_line=None, **kwargs):
         if approval_task_line and self.state_field and self.state_approved:
@@ -378,7 +386,7 @@ class ApprovalTemplateLineMixin(models.AbstractModel):
             approval_task_line.write(write)
             return kwargs
         else:
-            raise UserError("Invalid configuration approval")
+            raise UserError("Invalid configuration approval set_approved_status field %s , value %s "%(self.state_field, self.state_approved))
 
     def set_rejected_status(self, approval_task_line=None, **kwargs):
         if approval_task_line and self.state_field and self.state_rejected:
@@ -397,7 +405,7 @@ class ApprovalTemplateLineMixin(models.AbstractModel):
             approval_task_line.write(write)
             return kwargs
         else:
-            raise UserError("Invalid configuration approval")
+            raise UserError("Invalid configuration approval field set_rejected_status %s , value %s "%(self.state_field, self.state_rejected))
 
     def set_canceled_status(self, approval_task_line=None, **kwargs):
         if approval_task_line and self.state_field and self.state_canceled:
@@ -417,7 +425,7 @@ class ApprovalTemplateLineMixin(models.AbstractModel):
 
             return kwargs
         else:
-            raise UserError("Invalid configuration approval")
+            raise UserError("Invalid configuration approval  field %s , value %s "%(self.state_field, self.state_canceled))
 
     # def get_user_delegation(self):
     #     return
@@ -444,7 +452,7 @@ class ApprovalTemplateLineMixin(models.AbstractModel):
         return kw
 
     def start_waiting_approval(self, approval_task_line=None, **kwargs):
-        if not approval_task_line:
+        if not approval_task_line or not self:
             return
         approval_task = kwargs.get('approval_task')
         if approval_task.request_approval_task_date:

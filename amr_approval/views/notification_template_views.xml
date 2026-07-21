@@ -35,7 +35,6 @@
                                 <field name="send_email" />
                                 <field name="send_firebase" />
                                 <field name="send_whatsapp" />
-                                <field name="send_telegram" />
                             </group>
                             <group>
                                 <field name="model_id" />
@@ -61,9 +60,7 @@
                             <page string="Whatsapp">
                                 <field name="body_whatsapp" />
                             </page>
-                            <page string="Telegram">
-                                <field name="body_telegram" />
-                            </page>
+
                             <page string="Python Code" name="code" autofocus="autofocus" >
                                 <field name="code" widget="ace" options="{'mode': 'python'}"
                                        placeholder="Enter Python code here. Help about Python expression is available in the help tab of this document."

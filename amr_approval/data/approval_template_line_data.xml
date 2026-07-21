@@ -5,7 +5,7 @@
 <!--            <field name="is_primary" eval="True"/>-->
             <field name="model_id" ref="model_approval_task_line"/>
             <!-- agnostic -->
-
+            <field name="parent_mode">agnostic</field>
             <field name="auto_register_approval_task" eval="True"/>
             <field name="state_field">status_approval</field>
             <field name="state_approved">approved</field>

@@ -9,6 +9,46 @@ from ..tools.utils import have_method
 _logger = logging.getLogger(__name__)
 
 
+class ApprovalResponsibleMixin(models.AbstractModel):
+    _name = "approval.responsible.mixin"
+
+    responsible_user_id = fields.Many2one(
+        'res.users', 'Responsible',
+        ondelete='set null',
+        help="User who take Responsible to approve. Related with responsible model. "
+             "ex: Department have manager when manager change responsible change to. "
+    )
+    responsible_model = fields.Char('Responsible Model')
+    responsible_res_id = fields.Integer('Responsible ID')
+    responsible_rule_id = fields.Many2one('approval.responsible')
+
+    def do_assignment(self, new_user_id=None, reason=None, task_line_id=None, task_line_model=None):
+        from_user_ids = self.responsible_user_id
+        self.responsible_user_id = new_user_id
+        if reason:
+            self.env['approval.task.assignment.history'].create({
+                'task_line_id': task_line_id or self.id,
+                'task_line_model': task_line_model or self._name,
+                'from_user_ids': from_user_ids,
+                'new_user_id': new_user_id,
+                'reason': reason
+            })
+
+    def get_approval_responsible_user(self, raise_exception=True):
+        return self.env['approval.responsible'].get_user_representative(
+            self.env[self.responsible_model].browse(self.responsible_res_id),
+            raise_exception=raise_exception
+        )
+
+    def action_responsible_assignment(self):
+        self.do_assignment(
+            new_user_id=self.env['approval.responsible'].get_user(
+                self.env[self.responsible_model].browse(self.responsible_res_id),
+                raise_exception=True
+            )
+        )
+
+
 class ApprovalAutoRegisterMixin(models.AbstractModel):
     _name = "approval.auto.register.mixin"
 
@@ -16,7 +56,7 @@ class ApprovalAutoRegisterMixin(models.AbstractModel):
         return self.env['approval.template'].search_template_by_model(self._name)
 
     def write(self, vals):
-        if self.env.context.get('__skip_approval_status'):
+        if self.env.context.get('__skip_approval_status') or hasattr(self, '_approval_auto_register_handle'):
             return super().write(vals)
         approval_template = self.get_approval_template()
         state_field = None
@@ -31,8 +71,10 @@ class ApprovalAutoRegisterMixin(models.AbstractModel):
             state_waiting_approvals = approval_template.get_state_waiting_approvals()
             for transaction_object in self:
                 state_approval = getattr(transaction_object, state_field)
-                if old[
-                    transaction_object.id] in state_waiting_approvals and state_approval not in state_waiting_approvals:
+                if (
+                        old[transaction_object.id] in state_waiting_approvals and
+                        state_approval not in state_waiting_approvals
+                ):
                     _logger.info(f"Exit waiting_approval {transaction_object.id}")
                     if have_method(transaction_object, 'unregister_approval_task'):
                         transaction_object.unregister_approval_task(skip_create_approval_log=True)
@@ -98,8 +140,11 @@ class ApprovalLineAutoRegisterMixin(models.AbstractModel):
         return al
 
     def write(self, vals):
-        global state_field
-        if self.env.context.get('__skip_approval_task_line_status'):
+        state_field = None
+        if (
+                self.env.context.get('__skip_approval_task_line_status') or
+                hasattr(self, '_approval_auto_register_line_handle')
+        ):
             return super().write(vals)
         old = None
         approval_template_line = self.get_approval_template_line()
