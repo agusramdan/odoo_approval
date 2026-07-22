@@ -62,6 +62,9 @@ class ApprovalTaskLineBaseMixin(models.AbstractModel):
     def get_approval_template_line(self):
         return self.env['approval.template.line'].search_template_line_by_model(self._name)
 
+    def get_approval_template(self):
+        return self.env['approval.template'].search_template_by_model(self._name)
+
     def _is_excluded(self):
         return is_excluded(self._name)
 
@@ -91,27 +94,82 @@ class ApprovalTaskLineBaseMixin(models.AbstractModel):
         return al
 
     def write(self, vals):
-        if self.is_transient() or self._is_excluded() or self.env.context.get(
-                '__skip_approval_task_line_status') or self.is_transient():
+        if (
+                self.is_transient() or self._is_excluded() or
+                self.env.context.get('__skip_approval_task_line_status') or
+                self.env.context.get('__skip_approval_transaction_status')
+        ):
             return super().write(vals)
         approval_template_line = self.get_approval_template_line()
+
+        approval_template = None
         if not approval_template_line:
-            return super().write(vals)
+            approval_template = self.get_approval_template()
+            if not approval_template:
+                return super().write(vals)
+
+        old = None
+        state_field = None
+        if approval_template_line and approval_template_line.state_field:
+            state_field = approval_template_line.state_field
+        if approval_template and approval_template.state_field:
+            state_field = approval_template.state_field
+        if state_field and state_field in vals:
+            old = {r.id: getattr(r, state_field, None) for r in self}
+        res = super().write(vals)
+
+        if approval_template_line:
+            self.approval_template_line_handle(old, approval_template_line)
+        else:
+            self._approval_auto_register_handle(old, approval_template)
+        return res
+
+    def _approval_auto_register_handle(self, old, approval_template):
+        if old:
+            state_field = approval_template.state_field
+            state_waiting_approvals = approval_template.get_state_waiting_approvals()
+            for transaction_object in self:
+                state_approval = getattr(transaction_object, state_field)
+                if (
+                        old[transaction_object.id] in state_waiting_approvals and
+                        state_approval not in state_waiting_approvals
+                ):
+                    _logger.info(f"Exit waiting_approval {transaction_object.id}")
+                    if have_method(transaction_object, 'unregister_approval_task'):
+                        transaction_object.unregister_approval_task(skip_create_approval_log=True)
+                    else:
+                        approval_instance = self.env['approval.instance'].create_or_get(transaction_object)
+                        if approval_instance:
+                            approval_instance.unregister_approval_task_line()
+                elif (approval_template.auto_register_approval_task
+                      and not self.env.context.get('__skip_auto_register_approval_task_line_status')
+                      and old[transaction_object.id] not in state_waiting_approvals
+                      and state_approval in state_waiting_approvals
+                ):
+                    _logger.info(f"Register waiting_approval {transaction_object.id}")
+                    if have_method(transaction_object, 'register_to_approval_task'):
+                        transaction_object.register_to_approval_task(
+                            approval_template=approval_template,
+                        )
+                    else:
+                        approval_instance = self.env['approval.instance'].create_or_get(transaction_object)
+                        approval_instance.register_approval_task_line(
+                            transaction_object=transaction_object,
+                            approval_template=approval_template,
+                        )
+
+    def _approval_auto_register_line_handle(self, old, approval_template_line):
+        trx_change = {}
         approval_template = approval_template_line.approval_template_id
         if not approval_template:
             approval_template = self.env['approval.template'].get_approval_template(
                 approval_task_line=self, approval_template_line=approval_template_line
             )
-        old = None
-        state_field = None
-        trx_change = {}
-
-        if approval_template_line and approval_template_line.state_field:
-            state_field = approval_template_line.state_field
-            if state_field in vals:
-                old = {r.id: getattr(r, state_field, None) for r in self}
-        res = super().write(vals)
         if old:
+            state_field = approval_template_line.state_field
+            approval_template = self.env['approval.template'].get_approval_template(
+                approval_task_line=self, approval_template_line=approval_template_line
+            )
             state_waiting_approvals = approval_template_line.get_state_waiting_approvals()
             for rec in self:
                 state_approval = getattr(rec, state_field)
