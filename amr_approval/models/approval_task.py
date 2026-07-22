@@ -154,7 +154,8 @@ class ApprovalTask(models.Model):
     def send_reminder(self, **kwargs):
         self.ensure_one()
         try:
-            approval_instance = kwargs.get('approval_instance') or self.approval_instance_id.get_instance_for_transaction(
+            approval_instance = kwargs.get(
+                'approval_instance') or self.approval_instance_id.get_instance_for_transaction(
                 self.transaction_model_name, self.transaction_id
             )
             approval_template = kwargs.get('approval_template') or approval_instance.approval_template_id
@@ -207,7 +208,6 @@ class ApprovalTask(models.Model):
 
         finally:
             _logger.info("Send Reminder done")
-
 
     def _compute_approval_user_ids(self):
         for rec in self:
@@ -378,9 +378,12 @@ class ApprovalTask(models.Model):
         if transaction_object:
             if 'name' not in kw and have_method(transaction_object, 'get_internal_number'):
                 kw['name'] = transaction_object.get_internal_number()
-
+            if not kw.get('name'):
+                kw['name'] = getattr(transaction_object, 'name', "no name")
             if not kw.get('document') and have_method(transaction_object, 'get_internal_document'):
                 kw['document'] = transaction_object.get_internal_document()
+            if not kw.get('name'):
+                kw['document'] = getattr(transaction_object, '_name', "no desc")
 
             if not kw.get('description') and have_method(transaction_object, 'get_internal_description'):
                 kw['description'] = transaction_object.get_internal_description()
@@ -584,7 +587,8 @@ class ApprovalTask(models.Model):
         self.ensure_one()
         notification_log = None
         try:
-            approval_instance = kwargs.get('approval_instance') or self.approval_instance_id.get_instance_for_transaction(
+            approval_instance = kwargs.get(
+                'approval_instance') or self.approval_instance_id.get_instance_for_transaction(
                 self.transaction_model_name, self.transaction_id
             )
             approval_template = kwargs.get('approval_template') or approval_instance.approval_template_id

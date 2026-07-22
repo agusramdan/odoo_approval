@@ -55,7 +55,7 @@ class ApprovalAutoRegisterMixin(models.AbstractModel):
         return self.env['approval.template'].search_template_by_model(self._name)
 
     def write(self, vals):
-        if self.env.context.get('__skip_approval_status'):
+        if self.env.context.get('__skip_approval_status') or hasattr(self, '_approval_auto_register_handle'):
             return super().write(vals)
         approval_template = self.get_approval_template()
         state_field = None
@@ -70,8 +70,10 @@ class ApprovalAutoRegisterMixin(models.AbstractModel):
             state_waiting_approvals = approval_template.get_state_waiting_approvals()
             for transaction_object in self:
                 state_approval = getattr(transaction_object, state_field)
-                if old[
-                    transaction_object.id] in state_waiting_approvals and state_approval not in state_waiting_approvals:
+                if (
+                        old[transaction_object.id] in state_waiting_approvals and
+                        state_approval not in state_waiting_approvals
+                ):
                     _logger.info(f"Exit waiting_approval {transaction_object.id}")
                     if have_method(transaction_object, 'unregister_approval_task'):
                         transaction_object.unregister_approval_task(skip_create_approval_log=True)
@@ -138,7 +140,10 @@ class ApprovalLineAutoRegisterMixin(models.AbstractModel):
 
     def write(self, vals):
         state_field = None
-        if self.env.context.get('__skip_approval_task_line_status'):
+        if (
+                self.env.context.get('__skip_approval_task_line_status') or
+                hasattr(self, '_approval_auto_register_line_handle')
+        ):
             return super().write(vals)
         old = None
         approval_template_line = self.get_approval_template_line()

@@ -378,21 +378,29 @@ class ApprovalInstanceMixin(models.AbstractModel):
                 config_approval_task_line.get('skip_create_approval_task_line')
                 or config_approval_task_line.get('skip_create_approval_line')
         ):
-            return
+            approval_task_line = approval_instance.get_next_approval_task_line()
+            return self.do_approval_start(
+                approval_instance=approval_instance,
+                approval_template=approval_template,
+                transaction_object=transaction_object,
+                approval_task_line=approval_task_line,
+            )
 
         approval_instance.configure_approval_task_line(**config_approval_task_line)
         approval_task_line = approval_instance.register_approval_task_line(**config_approval_task_line)
-        approval_template.invoke_method(
-            transaction_object,
-            'approval_start',
-            dict(
-                approval_instance=approval_instance,
-                approval_template=approval_template,
-                approval_task_line=approval_task_line,
-                approval_task_line_next=approval_task_line,
-                next_approval_task_line=approval_task_line,
-            ),
+        return self.do_approval_start(
+            approval_instance=approval_instance,
+            approval_template=approval_template,
+            transaction_object=transaction_object,
+            approval_task_line=approval_task_line,
         )
+
+    def do_approval_start(self,**kwargs):
+        approval_instance = kwargs.get('approval_instance') or self.ensure_one()
+        approval_template = kwargs.get('approval_template') or approval_instance.approval_template_id
+        transaction_object = kwargs.get('transaction_object') or approval_instance.get_transaction_object()
+        approval_task_line = kwargs.get('approval_task_line') or approval_instance.get_next_approval_task_line()
+        approval_template.invoke_method(transaction_object, 'approval_start', kwargs)
         if approval_instance.pdf_sign not in [False, 'none']:
             approval_instance.submit_pdf_document(
                 transaction_object=transaction_object,
@@ -555,6 +563,19 @@ class ApprovalInstanceMixin(models.AbstractModel):
                 return approval_template.approve_server_action_id.with_context(
                     self.get_context_action(check_approval),
                 ).run()
+        elif approve_action_type == "method":
+            approval_instance = self
+            transaction_object = approval_instance.get_transaction_object()
+            return approval_template.invoke_method(
+                transaction_object, 'method_approve',
+                dict(
+                    approval_instance=approval_instance,
+                    approval_template=approval_template,
+                    approval_task_line=check_approval,
+                    transaction_object=transaction_object,
+                )
+                ,raise_exceptions=True
+            )
 
         transaction_object = self.get_transaction_object()
         return self.do_approve(
@@ -567,8 +588,8 @@ class ApprovalInstanceMixin(models.AbstractModel):
     def action_reject(self):
         approval_template = self.approval_template_id
         action_type = approval_template.reject_action_type
+        check_approval = self.get_next_approval_task_line()
         if action_type in ['window_action', 'server_action']:
-            check_approval = self.get_next_approval_task_line()
             approval_template_line = approval_template.approval_template_line_id
             approval_template_line.check_action_right(check_approval, {})
             if action_type == 'window_action' and approval_template.reject_window_action_id:
@@ -580,7 +601,19 @@ class ApprovalInstanceMixin(models.AbstractModel):
                 return approval_template.reject_server_action_id.with_context(
                     self.get_context_action(check_approval),
                 ).run()
-
+        elif action_type == "method":
+            approval_instance = self
+            transaction_object = approval_instance.get_transaction_object()
+            return approval_template.invoke_method(
+                transaction_object, 'method_reject',
+                dict(
+                    approval_instance=approval_instance,
+                    approval_template=approval_template,
+                    approval_task_line=check_approval,
+                    transaction_object=transaction_object,
+                )
+                ,raise_exceptions=True
+            )
         # if have_method(check_approval, 'action_reject'):
         #     return safe_call_method(check_approval, 'action_reject', kwargs=kwargs)
         return self.do_reject()
@@ -599,6 +632,7 @@ class ApprovalInstanceMixin(models.AbstractModel):
             raise UserError("Only Requester")
         check_approval = self.get_next_approval_task_line()
         approval_template = self.approval_template_id
+        transaction_object = self.get_transaction_object()
         approve_action_type = approval_template.approve_action_type
         if approve_action_type in ['window_action', 'server_action']:
             if approve_action_type == 'window_action' and approval_template.approve_window_action_id:
@@ -610,8 +644,19 @@ class ApprovalInstanceMixin(models.AbstractModel):
                 return approval_template.approve_server_action_id.with_context(
                     self.get_context_action(None),
                 ).run()
+        elif approve_action_type == "method":
+            approval_instance = self
+            return approval_template.invoke_method(
+                transaction_object, 'method_cancel',
+                dict(
+                    approval_instance=approval_instance,
+                    approval_template=approval_template,
+                    approval_task_line=check_approval,
+                    transaction_object=transaction_object,
+                )
+                ,raise_exceptions=True
+            )
 
-        transaction_object = self.get_transaction_object()
         return self.do_cancel(
             approval_instance=self,
             approval_template=approval_template,
@@ -628,7 +673,7 @@ class ApprovalInstanceMixin(models.AbstractModel):
         transaction_object = approval_instance.get_transaction_object()
         if not transaction_object:
             raise UserError("Transaction not Available")
-        approval_template.invoke_method(
+        return approval_template.invoke_method(
             transaction_object, 'validate_reset_to_draft',
             dict(
                 approval_instance=approval_instance,
@@ -650,6 +695,19 @@ class ApprovalInstanceMixin(models.AbstractModel):
                     self.get_context_action(None),
                 ).run()
 
+        elif action_type == "method":
+            approval_instance = self
+            # transaction_object = approval_instance.get_transaction_object()
+            return approval_template.invoke_method(
+                transaction_object, 'method_reset_to_draft',
+                dict(
+                    approval_instance=approval_instance,
+                    approval_template=approval_template,
+                    approval_task_line=check_approval,
+                    transaction_object=transaction_object,
+                )
+                ,raise_exceptions=True
+            )
         # if have_method(check_approval, 'action_reject'):
         #     return safe_call_method(check_approval, 'action_reject', kwargs=kwargs)
         return self.do_reset_to_draft(

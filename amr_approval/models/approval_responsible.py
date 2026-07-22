@@ -49,10 +49,11 @@ class ApprovalResponsible(models.AbstractModel):
         help="Code document boolean for need approval."
     )
 
-    def get_user(self, responsible_object, raise_exception=False):
+    def get_user(self, responsible_object, raise_exception=False, **kwargs):
         if not isinstance(responsible_object, models.Model):
             if raise_exception:
                 raise ValueError("Invalid Responsible Object")
+            return False
         model_name = responsible_object._name
         rec = self.search([('model_id.model', '=', model_name)])
         if not rec:
@@ -73,6 +74,7 @@ class ApprovalResponsible(models.AbstractModel):
                 localdict = {
                     'result': False,
                     'responsible_object': responsible_object,
+                    'kwargs': kwargs,
                 }
                 safe_eval(rec.user_code, localdict, mode="exec", nocopy=True)
                 return "result" in localdict and localdict["result"] or False
@@ -81,4 +83,4 @@ class ApprovalResponsible(models.AbstractModel):
                     raise
                 _logger.exception("Error")
                 return False
-        return True
+        return False

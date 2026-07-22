@@ -87,9 +87,24 @@
                                     <field name="type_approval_default"/>
                                     <field name="groups_approval_default_ids"
                                            attrs="{'invisible':[('type_approval_default', '!=', 'multi_group')]}"
+                                           widget="many2many_tags" options="{'no_create': True}"
                                     />
                                     <field name="users_approval_default_ids"
                                            attrs="{'invisible':[('type_approval_default', '!=', 'multi_user')]}"
+                                           widget="many2many_tags" options="{'no_create': True}"
+                                    />
+                                </group>
+                                <group string="Custom Get Approvar">
+                                    <field name="custom_approvar_mode" string="Custom Approvar"/>
+                                    <field name="custom_approvar_field" string="Field"
+                                           attrs="{'invisible':[('custom_approvar_mode', '!=', 'field')]}"
+                                    />
+                                    <field name="custom_approvar_function" string="Function"
+                                           attrs="{'invisible':[('custom_approvar_mode', '!=', 'function')]}"
+                                    />
+                                    <field name="custom_approvar_code" string="Code"
+                                           widget="ace" options="{'mode': 'python'}"
+                                           attrs="{'invisible':[('custom_approvar_mode', '!=', 'code')]}"
                                     />
                                 </group>
                             </group>
@@ -133,38 +148,38 @@
                                 <group string="Cancel">
                                     <field name="available_action_cancel" />
                                     <field name="invoke_validate_cancel" string="Validate"/>
-                                    <field name="reject_action_type" string="Action"/>
-                                    <field name="reject_window_action_id" string="Window"
-                                           attrs="{'invisible':[('reject_action_type', '!=', 'window_action')]}"
+                                    <field name="cancel_action_type" string="Action"/>
+                                    <field name="cancel_window_action_id" string="Window"
+                                           attrs="{'invisible':[('cancel_action_type', '!=', 'window_action')]}"
                                            domain="[('target', '=', 'new')]"
                                     />
-                                    <field name="reject_server_action_id" string="Server"
-                                           attrs="{'invisible':[('reject_action_type', '!=', 'server_action')]}"
+                                    <field name="cancel_server_action_id" string="Server"
+                                           attrs="{'invisible':[('cancel_action_type', '!=', 'server_action')]}"
                                     />
                                     <field name="invoke_method_cancel" string="Method"
                                            attrs="{'invisible':[('approve_action_type', '!=', 'method')]}"
                                     />
                                     <field name="invoke_before_cancel" string="Before"/>
                                     <field name="invoke_after_cancel" string="After"/>
-<!--                                    <field name="notes_chatter_rejected" string="Note Chatter"/>-->
+                                    <field name="notes_chatter_cancel" string="Note Chatter"/>
                                 </group>
                                 <group string="Reset to Draft">
                                     <field name="available_action_reset_to_draft" />
                                     <field name="invoke_validate_reset_to_draft" string="Validate"/>
-                                    <field name="reject_action_type" string="Action"/>
-                                    <field name="reject_window_action_id" string="Window"
-                                           attrs="{'invisible':[('reject_action_type', '!=', 'window_action')]}"
+                                    <field name="reset_to_draft_action_type" string="Action"/>
+                                    <field name="reset_to_draft_window_action_id" string="Window"
+                                           attrs="{'invisible':[('reset_to_draft_action_type', '!=', 'window_action')]}"
                                            domain="[('target', '=', 'new')]"
                                     />
-                                    <field name="reject_server_action_id" string="Server"
-                                           attrs="{'invisible':[('reject_action_type', '!=', 'server_action')]}"
+                                    <field name="reset_to_draft_server_action_id" string="Server"
+                                           attrs="{'invisible':[('reset_to_draft_action_type', '!=', 'server_action')]}"
                                     />
                                     <field name="invoke_method_reset_to_draft" string="Method"
                                            attrs="{'invisible':[('approve_action_type', '!=', 'method')]}"
                                     />
                                     <field name="invoke_before_reset_to_draft" string="Before"/>
                                     <field name="invoke_after_reset_to_draft" string="After"/>
-<!--                                    <field name="notes_chatter_rejected" string="Note Chatter"/>-->
+                                    <field name="notes_chatter_reset_to_draft" string="Note Chatter"/>
                                 </group>
                             </group>
                         </page>
@@ -208,7 +223,6 @@
                                 </group>
                             </group>
                         </page>
-
                         <page string="Template Notification">
                             <group>
                                 <group string="To Approver">

@@ -29,6 +29,13 @@ DEFAULT_CODE = """
 result = transaction_object.id>0
 """
 
+DEFAULT_GET_APPROVAL_CODE = """
+# Available variables:
+#  - transaction_object 
+#----------------------
+result = transaction_object.users
+"""
+
 DEFAULT_PYTHON_CODE = """
 # Available variables:
 #  - env: Odoo Environment on which the action is triggered
@@ -44,11 +51,6 @@ DEFAULT_PYTHON_CODE = """
 
 \n\n\n\n
 """
-# access_request_approval_action
-# access_approve_action
-# access_reject_action
-# access_cancel_approval_action
-# access_reset_to_draft_action
 
 APPROVAL_BUTTONS = [
     {
@@ -147,34 +149,6 @@ class ApprovalTemplateMixin(models.AbstractModel):
     )
     # approval.status.mixin
     auto_register_approval_task = fields.Boolean()
-    #
-    # approval_task_line_parent_filed = fields.Char(
-    #     help="parent field for approval task line."
-    # )
-    # approval_task_line_state_field = fields.Char(
-    #     help='status_approval'
-    # )
-    # approval_task_line_state_cancel = fields.Char(
-    #     help="State when cancel"
-    # )
-    # approval_task_line_state_reject = fields.Char(
-    #     help="State when reject"
-    # )
-    # approval_task_line_state_approved = fields.Char(
-    #     help="State when approved. Leve blank when not need update"
-    # )
-    # approval_task_line_state_waiting_approvals = fields.Char(
-    #     help="Waiting Approval for approval_line"
-    # )
-    # approval_task_line_users_mode = fields.Selection([
-    #     ('function', 'Function'),
-    #     ('users_field', 'User Field'),
-    #     ('group_field', 'Group Field'),
-    # ])
-    #
-    # approval_task_line_users_params = fields.Char()
-    # deprecated end
-    # approval_task_auto_register = fields.Boolean("Auto Register")
 
     need_approval_mode = fields.Selection([
         ('field', 'Field'),
@@ -191,6 +165,22 @@ class ApprovalTemplateMixin(models.AbstractModel):
         default=DEFAULT_CODE,
         help="Code document boolean for need approval."
     )
+    custom_approvar_mode = fields.Selection([
+        ('field', 'Field'),
+        ('function', 'Function'),
+        ('code', 'Code'),
+    ])
+    custom_approvar_field = fields.Char(
+        help="Filed return records user or group or approval responsible model."
+    )
+    custom_approvar_function = fields.Char(
+        help="Function return records user or group or approval responsible model."
+    )
+    custom_approvar_code = fields.Text(
+        default=DEFAULT_GET_APPROVAL_CODE,
+        help="Code return records user or group or approval responsible model."
+    )
+
     requestor_field = fields.Char()
     state_field = fields.Char()
     state_request_approvals = fields.Char(
@@ -612,6 +602,52 @@ for rec in self:
                 return False
         return True
 
+    def get_custom_approvar_data(self, **kwargs):
+        # return group users or approval responsible object
+        if not self:
+            return {}
+
+        def to_dict(records, result_dict):
+            result_dict = result_dict or {}
+            if records and isinstance(records, models.Model):
+                if records._name == 'res.users':
+                    records_old = result_dict.get('user_ids') or self.env['res.users'].browse()
+                    records_old |= records
+                    result_dict['user_ids'] = records_old
+                elif records._name == 'res.groups':
+                    records_old = result_dict.get('group_ids') or self.env['res.groups'].browse()
+                    records_old |= records
+                    result_dict['group_ids'] = records_old
+                elif records._name == 'hr.employee':
+                    records_old = result_dict.get('user_ids') or self.env['res.users'].browse()
+                    records_old |= records.user_id
+                    result_dict['user_ids'] = records_old
+            return result_dict
+
+        result = {}
+        transaction = kwargs.get('transaction_object')
+        rec = self.ensure_one()
+        if rec.custom_approvar_mode == 'field':
+            return to_dict(transaction and getattr(transaction, rec.custom_approvar_field), {})
+        if rec.custom_approvar_function == 'field':
+            try:
+                return to_dict(safe_call_method(transaction, rec.custom_approvar_function), {})
+            except:
+                _logger.exception("Error")
+                return result
+        if rec.custom_approvar_mode == 'code':
+            try:
+                localdict = {
+                    'result': result,
+                    'transaction_object': transaction,
+                }
+                safe_eval(rec.custom_approvar_code, localdict, mode="exec", nocopy=True)
+                return to_dict("result" in localdict and localdict["result"] or result, {})
+            except:
+                _logger.exception("Error")
+                return result
+        return result
+
     def is_status_request_approval(self, transaction):
         rec = self.ensure_one()
         state_field = rec.get_state_field()
@@ -798,7 +834,10 @@ for rec in self:
         )
         domain = approval_template_line.get_domain_waiting_status(approval_task_line, **kwargs)
         if not isinstance(approval_task_line, models.BaseModel):
-            approval_task_line = self.env[approval_template_line.model]
+            if approval_template_line:
+                approval_task_line = self.env[approval_template_line.model]
+            else:
+                return None
         return approval_task_line.search(domain, limit=1)
 
     def search_template_by_model(self, transaction_model_name):
@@ -813,6 +852,8 @@ for rec in self:
 
     def get_approver_data(self, **kwargs):
         approval_template_line = self.get_approval_template_line(**kwargs)
+        if not approval_template_line:
+            return self.get_custom_approvar_data(**kwargs)
         return approval_template_line.get_approver_data(**kwargs) or {}
 
     def get_approval_groups_or_users(self, **kwargs):
@@ -873,6 +914,7 @@ for rec in self:
             })
         else:
             raise UserError("Invalid configuration reset_to_draft")
+
     def do_approve(self, approval_task_line=None, **kw):
         kw['approval_template'] = self.ensure_one()
         return self.approval_template_line_id.do_approve(approval_task_line, kw)
@@ -940,7 +982,7 @@ for rec in self:
                 )
             else:
                 approved_message = self.get_approved_message(**kw)
-            approved_message and self.notification_approved_id.send_message_post(transaction_object,approved_message)
+            approved_message and self.notification_approved_id.send_message_post(transaction_object, approved_message)
         return kw
 
     def get_approved_message(self, **kwargs):
@@ -1017,7 +1059,9 @@ for rec in self:
                 )
             else:
                 rejected_message = self.get_rejected_message(**kw)
-            rejected_message and self._mail_message_approve(rejected_message)
+            rejected_message and self.notification_rejection_id.send_message_post(
+                transaction_object, rejected_message
+            )
 
         approval_task_task_between = kw.get('approval_task_task_between')
         notification = self.notification_rejection_to_approver_id
@@ -1060,9 +1104,13 @@ for rec in self:
         if notification:
             approval_template_line = self.get_approval_template_line(**kw)
             kwr = dict(kw)
+            approval_task_line = kw.get('approval_task_line')
             approval_task_line_approved = kw.get('approval_task_line_approved')
+            # ambil user yang waiting approval
+            users_waiting_approval = approval_task_line.get_users(**kw) or self.env['res.users'].browse()
             kwr['approval_task_line'] = approval_task_line_approved
-            users_ids = approval_template_line.get_user_execution(**kwr)
+            users_approved = approval_template_line.get_user_execution(**kwr) or self.env['res.users'].browse()
+            users_ids = users_approved | users_waiting_approval
             notification.send_notification_to_users(users_ids, transaction_object.id, **kw)
             notes_chatter = notification.notes_chatter
         if not notes_chatter and self.notes_chatter_approved:

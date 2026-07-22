@@ -278,7 +278,7 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
         return self.env['approval.template'].search_template(transaction_model_name=self._name)
 
     def write(self, vals):
-        if self.env.context.get('__skip_approval_status'):
+        if self.env.context.get('__skip_approval_status') or hasattr(self, '_approval_auto_register_handle'):
             return super().write(vals)
         approval_template = self.get_approval_template()
         state_field = None
