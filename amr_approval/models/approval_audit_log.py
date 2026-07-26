@@ -74,6 +74,45 @@ class ApprovalAuditLog(models.Model):
     )
     notification_res_id = fields.Integer()
 
+    # compatible with notification generic requerement
+
+    notification_to_user_id = fields.Many2one(
+        'res.users', string='Notification to User',
+        compute="_compute_notification_to_user_id", compute_sudo=True,
+        help="User who will receive the notification.",
+    )
+    notification_to_partner_id = fields.Many2one(
+        'res.partner', string='Notification to User/Partner',
+        compute="_compute_notification_to_user_id", compute_sudo=True,
+        help="User who will receive the notification.",
+    )
+
+    @api.depends_context('notification_to_user')
+    def _compute_notification_to_user_id(self):
+        for rec in self:
+            notification_to_user = self.env.context.get('notification_to_user', False)
+            if notification_to_user:
+                rec.notification_to_user_id = notification_to_user.id
+                rec.notification_to_partner_id = notification_to_user.partner_id.id
+            else:
+                rec.notification_to_user_id = False
+                rec.notification_to_partner_id = False
+
+    def get_internal_number(self):
+        return self.name
+
+    def get_internal_document(self):
+        return self.document
+
+    def get_internal_description(self):
+        return self.description
+
+    def get_internal_requestor(self):
+        return self.requester_id
+
+    def get_internal_url(self):
+        return self.url
+
     def _compute_transaction_display_name(self):
         for rec in self:
             obj = rec.get_transaction_object()
@@ -204,3 +243,43 @@ class ApprovalAuditLog(models.Model):
         kw['action_type'] = 'reset'
         kw.setdefault('name', 'Reset')
         return self.create_approval_audit_log(**kw)
+
+    def get_res_id_for_notification(self, notification_approval, **kwargs):
+        self.ensure_one()
+        res_id = None
+        model_name = None
+        if notification_approval:
+            model_name = notification_approval.model
+            if model_name:
+                if self.transaction_model_name == model_name:
+                    res_id = self.transaction_id
+                elif self._name == model_name:
+                    res_id = self.id
+
+        return res_id, model_name
+
+    def send_notification(self, **kwargs):
+        self.ensure_one()
+        notification_log = None
+        try:
+            notification_approval = kwargs.get("notification_approval")
+            if not notification_approval:
+                return notification_log
+
+            kwargs['approval_audit_log_id'] = self.id
+            if notification_approval:
+                res_id, model_name = self.get_res_id_for_notification(notification_approval, **kwargs)
+                if res_id:
+                    users = self.get_users_for_notification(**kwargs)
+                    if self.user_id:
+                        notification_approval = notification_approval.with_user(self.user_id)
+                    kwargs.pop('users', None)
+                    kwargs.pop('res_id', None)
+                    notification_log = notification_approval.send_notification_to_users(
+                        users, res_id, **kwargs
+                    )
+        except Exception:
+            _logger.exception("skip error")
+        finally:
+            _logger.info("Send Notification done")
+        return notification_log

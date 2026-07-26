@@ -19,7 +19,8 @@
             <field name="priority" eval="99" />
             <field name="arch" type="xml">
                 <tree>
-                    <field name="user_id" />
+                    <field name="user_id"/>
+                    <field name="write_date"/>
                     <field name="notification_template_id"/>
                     <field name="receiver_id"/>
                     <field name="mail_id" optional="hide"/>
@@ -69,6 +70,15 @@
                         <notebook>
                             <page string="Payload">
                                 <field name="payload" />
+                            </page>
+                            <page string="Log Error">
+                                <group>
+                                    <field name="mail_error" />
+                                    <field name="chat_error" />
+                                    <field name="mobile_error" />
+                                    <field name="payload_error" />
+                                    <field name="notif_error" />
+                                </group>
                             </page>
                         </notebook>
                     </sheet>

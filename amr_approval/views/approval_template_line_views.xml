@@ -67,22 +67,28 @@
                         </group>
                     </group>
                     <group>
-                        <group string="Approval Field" >
-                            <field name="field_user_execution" string="User Execution"/>
-                            <field name="field_date_execution" string="Date Execution"/>
-                            <field name="field_user_delegation" string="Delegation"/>
-                            <field name="field_started_task_time" string="Started Time"/>
+                        <group string="Approval Field Mapping" >
+                            <field name="field_sign_title"/>
+                            <field name="field_type_approval"/>
+                            <field name="field_user_id"/>
+                            <field name="field_group_id"/>
+                            <field name="field_user_ids"/>
+                            <field name="field_group_ids"/>
+                            <field name="field_date_execution"/>
+                            <field name="field_user_execution_id"/>
+                            <field name="field_user_delegation_id"/>
+                            <field name="field_started_task_time"/>
                         </group>
-                        <group string="Responsible Field" >
+                        <group string="Responsible Field Mapping" >
                             <field name="field_responsible_rule_id" string="Responsible Rule"/>
                             <field name="field_responsible_id" string="Responsible ID"/>
-                            <field name="field_responsible_user_id" string="Delegation"/>
+                            <field name="field_responsible_user_id" string="Responsible User"/>
                         </group>
-                        <group string="Reject Field" >
+                        <group string="Reject Field Mapping" >
                             <field name="field_reject_to_method" string="Reject Method"/>
                             <field name="field_reject_to_task_id" string="Reject To Task Method"/>
                             <field name="field_matrix_rule_line_id" string="Reject Rule Line ID"/>
-                            <field name="field_reject_to_matrix_rule_line_id" string="Reject Ru;e To Task"/>
+                            <field name="field_reject_to_matrix_rule_line_id" string="Reject Rule To Task"/>
                         </group>
                         <group string="Approval Method To Set" >
                             <field name="method_start_task" string="Started Time"/>

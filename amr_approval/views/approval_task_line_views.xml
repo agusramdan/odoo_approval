@@ -38,7 +38,6 @@
 
                 <field name="approval_instance_id" readonly="1" optional="hide" groups="base.group_no_one"/>
                 <field name="approval_user_ids" string="Approval User" widget="many2many_tags" optional="hide" groups="base.group_no_one"/>
-
             </tree>
         </field>
     </record>
@@ -75,8 +74,14 @@
                         </group>
                     </group>
                     <notebook>
+                        <page string="Responsible">
+                            <group>
+                                <field name="responsible_rule_id" readonly="1" optional="hide"/>
+                                <field name="responsible_ref" readonly="1" optional="hide"/>
+                                <field name="responsible_user_id" readonly="1" optional="hide"/>
+                            </group>
+                        </page>
                         <page string="Action" >
-                            <field name="responsible_user_id" readonly="1"/>
                             <field name="user_execution_id" readonly="1"/>
                             <field name="user_delegation_id" readonly="1"/>
                         </page>

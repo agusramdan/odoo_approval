@@ -20,11 +20,23 @@
     <menuitem id="manager_waiting_approval_menu" name="Manager Waiting" sequence="2"
               action="view_approval_task_action" parent="main_management_manager" groups="base.user_admin"
     />
+
     <menuitem id="manager_approval_instance_menu" name="Approval Instance" sequence="5"
               action="action_approval_instance" parent="main_management_manager" groups="base.user_admin"
     />
     <menuitem id="manager_approved_menu" name="Manager Approved" sequence="10"
               action="view_approval_audit_log_action" parent="main_management_manager" groups="base.user_admin"
+    />
+    <menuitem id="manager_notification_log_menu" parent="main_management_manager"
+              action="notification_log_action"
+              sequence="3"
+              groups="base.group_system"
+    />
+    <menuitem id="manager_reminder_log_menu"
+              parent="main_management_manager"
+              action="reminder_log_action"
+              sequence="4"
+              groups="base.group_system"
     />
     <menuitem id="base_doa_menu" name="DoA" parent="main_approval" sequence="22" />
     <menuitem id="menu_user_delegation_rules" name="User Delegation" parent="base_doa_menu"
@@ -48,12 +60,17 @@
     <menuitem id="menu_approval_matrix_rule" name="Approval Matrix" parent="main_management_configuration"
               action="action_approval_matrix_rule" sequence="30" groups="base.user_admin"
     />
-
+    <menuitem id="menu_notification_template" name="Notification Template"  parent="main_management_configuration"
+              action="notification_template_action" sequence="35" groups="base.user_admin"
+    />
     <!-- technical -->
-    <menuitem id="base_parent_menu" name="Task Approval" sequence="10"
+    <menuitem id="base_parent_menu" name="Approval" sequence="10"
               parent="base.menu_custom"
     />
     <menuitem id="base_notification_menu" name="Notification" sequence="14"
+              parent="base_parent_menu"
+    />
+    <menuitem id="base_task_approval_menu" name="Task Approval" sequence="16"
               parent="base_parent_menu"
     />
     <menuitem id="notification_template_menu" sequence="1"
@@ -67,31 +84,41 @@
     <menuitem id="base_approval_menu" name="Approval" sequence="16"
               parent="base_parent_menu"
     />
-
-    <!-- Menu -->
     <menuitem id="approval_document_menu" name="Approval Document" sequence="10"
-              action="action_approval_document" parent="base_approval_menu"
+              action="action_approval_document" parent="base_task_approval_menu"
     />
     <menuitem id="approval_responsible_menu" name="Approval Responsible" sequence="20"
-              action="action_approval_responsible" parent="base_approval_menu"
+              action="action_approval_responsible" parent="base_task_approval_menu"
     />
     <menuitem id="approval_template_menu" name="Approval Template" sequence="25"
-              action="action_approval_template" parent="base_approval_menu"
+              action="action_approval_template"
+              parent="base_task_approval_menu"
     />
-    <menuitem id="approval_template_line_menu" name="Approval Template Lines" parent="base_approval_menu"
-        action="action_approval_template_line" sequence="25"  groups="base.user_admin"
+    <menuitem id="approval_template_line_menu" name="Approval Template Lines" sequence="25"
+              action="action_approval_template_line"
+              parent="base_task_approval_menu"
     />
     <menuitem id="approval_instance_menu" name="Approval Instance" sequence="30"
-              action="action_approval_instance" parent="base_approval_menu"
+              action="action_approval_instance"
+              parent="base_task_approval_menu"
     />
     <menuitem id="approval_manager_waiting_approval_menu" name="Manager Waiting" sequence="40"
-              action="view_approval_task_action" parent="base_approval_menu"
+              action="view_approval_task_action"
+              parent="base_task_approval_menu"
     />
     <menuitem id="manager_approved_menu" name="Manager Approved" sequence="50"
-              action="view_approval_audit_log_action" parent="base_approval_menu"
+              action="view_approval_audit_log_action"
+              parent="base_task_approval_menu"
     />
     <menuitem id="approval_task_assignment_history_menu" name="Task Assignment" sequence="50"
-              action="approval_task_assignment_history_action" parent="base_approval_menu"
+              action="approval_task_assignment_history_action"
+              parent="base_task_approval_menu"
     />
-
+    <menuitem id="approval_matrix_rule" name="Approval Matrix" sequence="21"
+              action="action_approval_matrix_rule"  groups="base.user_admin"
+              parent="base_task_approval_menu"
+    />
+    <menuitem id="base_doa_menu" name="DoA" sequence="22"
+                  parent="base_parent_menu"
+    />
 </odoo>

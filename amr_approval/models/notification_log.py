@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-import json
 
+import json
 import logging
 
 from odoo import api, fields, models, _
@@ -22,10 +22,15 @@ class NotificationLog(models.Model):
     payload = fields.Text()
     mail_id = fields.Integer()
     mail_model = fields.Char()
+    mail_error = fields.Text()
     chat_id = fields.Integer()
     chat_model = fields.Char()
+    chat_error = fields.Text()
     mobile_id = fields.Integer()
     mobile_model = fields.Char()
+    mobile_error = fields.Text()
+    payload_error = fields.Text()
+    notif_error = fields.Text()
     res_id = fields.Integer()
 
     def send(self):
@@ -36,7 +41,7 @@ class NotificationLog(models.Model):
         if self.payload:
             payload = json.loads(self.payload)
         elif self.notification_template_id:
-            payload = self.notification_template_id.get_notification_payload( self.receiver_id, self.res_id)
+            payload = self.notification_template_id.get_notification_payload(self.receiver_id, self.res_id)
         else:
             return
 
@@ -74,7 +79,7 @@ class NotificationLog(models.Model):
         payload = json.loads(self.payload)
         result = {}
         result = self.notification_template_id.with_user(self.user_id).send_notification_chat(
-            self.receiver_id,payload, result, res_id=self.res_id,
+            self.receiver_id, payload, result, res_id=self.res_id,
         )
         if result:
             self.write(result)

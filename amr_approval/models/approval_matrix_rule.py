@@ -6,24 +6,67 @@ from odoo import api, fields, models
 
 from ..tools.utils import safe_call_method
 from odoo.tools.safe_eval import safe_eval, test_python_expr
+import base64
+import logging
+
+from lxml import etree
+from dateutil.relativedelta import relativedelta
+
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError, ValidationError
+from odoo.tools import float_compare
+from odoo.tools.safe_eval import safe_eval, test_python_expr
+from pytz import timezone
 
 _logger = logging.getLogger(__name__)
 
 DEFAULT_CODE = """
 # Available variables:
-#  - transaction_object 
+#  - transaction_object
+#  - params
 #----------------------
 result = transaction_object.id>0
 """
 
 DEFAULT_CUSTOM_CODE = """
 # Available variables:
-#  - transaction_object 
 #  - responsible_object 
+#  - responsible_rule 
+#  - params
 #----------------------
 result = []
 
 result.append()
+"""
+
+DEFAULT_PYTHON_CODE = """
+# Available variables:
+#  - env: Odoo Environment on which the action is triggered
+#  - time, datetime, dateutil, timezone: useful Python libraries
+#  - float_compare: Odoo function to compare floats based on specific precisions
+#  - log: log(message, level='info'): logging function to record debug information in ir.logging table
+#  - UserError: Warning Exception to use with raise
+#  - Command: x2Many commands namespace
+#  - approval_instance
+#  - approval_template
+#  - transaction_object 
+# To return an response, assign: response = {...}
+# Sample ensure no duplicate user_id in approval_line
+# stack = approval_line.copy() 
+# seen = set()
+# result = []
+# 
+# while stack:
+#     item = stack.pop()  
+# 
+#     if item["user_id"] in seen:
+#         continue
+# 
+#     seen.add(item["user_id"])
+#     result.append(item)
+# result.reverse()    
+# approval_line = result
+\n\n\n\n
 """
 
 
@@ -42,6 +85,12 @@ class ApprovalMatrixRule(models.Model):
     )
     requester_group_ids = fields.Many2many('res.groups', string="Requester Group")
     note = fields.Text(string="Description")
+    code = fields.Text(
+        string='Python Code',
+        default=DEFAULT_PYTHON_CODE,
+        help="Write Python code that the action will execute. Some variables are "
+             "available for use; help about python expression is given in the help tab."
+    )
 
     # setup when configuration
     def get_approval_matrix_rule(self, **kwargs):
@@ -49,8 +98,12 @@ class ApprovalMatrixRule(models.Model):
         if not approval_matrix_rules:
             approval_matrix_rules = self.search([])
         for rule in approval_matrix_rules:
-            if rule.is_satisfy_condition(kwargs):
-                return rule
+            try:
+                if rule.is_satisfy_condition(kwargs):
+                    return rule
+            except Exception:
+                _logger.exception("Condition error skip test rule %s .", rule)
+
         return self.browse()
 
     def get_approval_task_line(self, **kwargs):
@@ -64,12 +117,47 @@ class ApprovalMatrixRule(models.Model):
         prepare_list = []
         for line in self.approval_matrix_rule_line:
             line.is_satisfy_condition(kwargs) and prepare_list.extend(line.prepare_list_approval_task_line(**kwargs))
-        return prepare_list
+
+        eval_context = self._get_eval_context(**kwargs)
+        eval_context['approval_line'] = prepare_list
+        return self._run_action_code_multi(eval_context) or prepare_list
+
+    @api.model
+    def _get_eval_context(self, **kwargs):
+        """ evaluation context to pass to safe_eval """
+        result = dict(kwargs)
+        result.update({
+            'env': self.env,
+            'uid': self._uid,
+            'user': self.env.user,
+            'ref': self.env.ref,
+            'approval_matrix_rule': self,
+            # 'time': tools.safe_eval.time,
+            # 'datetime': tools.safe_eval.datetime,
+            # 'dateutil': tools.safe_eval.dateutil,
+            'timezone': timezone,
+            'float_compare': float_compare,
+            'b64encode': base64.b64encode,
+            'b64decode': base64.b64decode,
+        })
+        return result
+
+    @api.constrains('code')
+    def _check_python_code(self):
+        for action in self.sudo().filtered('code'):
+            msg = test_python_expr(expr=action.code.strip(), mode="exec")
+            if msg:
+                raise ValidationError(msg)
+
+    def _run_action_code_multi(self, eval_context):
+        safe_eval(self.code.strip(), eval_context, mode="exec", nocopy=True)  # nocopy allows to return 'action'
+        return eval_context.get('response')
 
 
 class ApprovalMatrixRuleLine(models.Model):
     _name = "approval.matrix.rule.line"
     _inherit = ['rule.condition.mixin', 'approval.responsible.line.mixin']
+    _order = "sequence,id"
     _description = """
     Mixin : Approval Task Model
     """
@@ -170,7 +258,7 @@ class ApprovalMatrixRuleLine(models.Model):
         elif line.responsible_mode == 'field':
             responsible_object = getattr(
                 transaction_object,
-                line.get_responsible_field,
+                line.responsible_field,
                 None
             )
         elif line.responsible_mode == 'function':

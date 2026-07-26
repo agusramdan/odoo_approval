@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="popup_sign_message" model="ir.ui.view">
+        <field name="name">popup.sign.message.wizard</field>
+        <field name="model">popup.sign.message.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Message">
+                <group>
+                    <group>
+                        <field name="name" />
+                        <field name="signature_pdf"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="button_sign" string="Approve" type="object" class="oe_highlight"/>
+                    <button string="Cancel" special="cancel" />
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_popup_sign_message" model="ir.actions.act_window">
+        <field name="name">Sign Note</field>
+        <field name="res_model">popup.sign.message.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

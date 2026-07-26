@@ -32,6 +32,10 @@ class ResUsers(models.Model):
                          (self._uid, group_id))
         return bool(self._cr.fetchone())
 
+    def user_has_any_group(self, groups):
+        user = self.env.user
+        return any(user.has_group_id(group.id) for group in groups)
+
     def has_group_id(self, group_id):
         uid = self.id
         if uid and uid != self._uid:

@@ -9,6 +9,7 @@ _logger = logging.getLogger(__name__)
 
 class ApprovalInstanceAbleMixin(models.AbstractModel):
     _name = 'approval.instance.able.mixin'
+
     approval_document_id = fields.Many2one(
         'approval.document',
         compute="_compute_approval_document_id"
@@ -61,25 +62,58 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
     # access_requester when state waiting approval
     access_cancel_action = fields.Boolean(compute="_compute_access_requester", )
     access_reset_to_draft_action = fields.Boolean(compute="_compute_access_requester", )
-
-    flag_reject = fields.Boolean()
-    note_reject = fields.Text()
+    access_sign_all_pdf_action = fields.Boolean(store=False)
+    access_show_sign_pdf_action = fields.Boolean(compute="compute_access_request_approval_action")
+    flag_reject = fields.Boolean(related='approval_instance_id.flag_reject')
+    note_reject = fields.Text(related='approval_instance_id.note_reject')
+    flag_reset_to_draft = fields.Boolean(related='approval_instance_id.flag_reset_to_draft')
+    note_reset_to_draft = fields.Text(related='approval_instance_id.note_reset_to_draft')
     approval_line_for_document = fields.Many2many(
         'approval.audit.log',
         string='Approval Line for Document',
         compute='_compute_approval_line_for_document',
         help="Approval line untuk di pakai di dokument lembar pengesahan"
     )
+    # for generic notification template
     notification_to_user_id = fields.Many2one(
         'res.users', string='Notification to User',
-        compute="_compute_notification_to_user_id",
+        compute="_compute_notification_to_user_id", compute_sudo=True,
         help="User who will receive the notification.",
     )
+    notification_to_partner_id = fields.Many2one(
+        'res.partner', string='Notification to User/Partner',
+        compute="_compute_notification_to_user_id", compute_sudo=True,
+        help="User who will receive the notification.",
+    )
+    approval_task_id = fields.Many2many(
+        'approval.task',
+        string='Approval Task',
+        compute='_compute_approval_task',
+        compute_sudo=True,
+    )
+    alert_waiting_approval = fields.Char(compute='_compute_alert_waiting_approval')
+
+    @api.depends('approval_task_id')
+    def _compute_alert_waiting_approval(self):
+        for rec in self:
+            approval_user_ids = rec.approval_task_id.approval_user_ids
+            if approval_user_ids:
+                approver_user = " / ".join([user.name for user in approval_user_ids])
+                approver_name = "Approver ( " + approver_user + " )"
+                rec.alert_waiting_approval = str(approver_name)
+            else:
+                rec.alert_waiting_approval = ""
 
     @api.depends_context('notification_to_user')
     def _compute_notification_to_user_id(self):
         for rec in self:
-            rec.notification_to_user_id = self.env.context.get('notification_to_user', False)
+            notification_to_user = self.env.context.get('notification_to_user', False)
+            if notification_to_user:
+                rec.notification_to_user_id = notification_to_user.id
+                rec.notification_to_partner_id = notification_to_user.partner_id.id
+            else:
+                rec.notification_to_user_id = False
+                rec.notification_to_partner_id = False
 
     def _compute_approval_line_for_document(self):
         for rec in self:
@@ -95,28 +129,50 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
         return self.register_to_approval_task(**kwargs)
 
     def get_internal_number(self):
-        """
-        Default internal description
-        """
-        if self and hasattr(self, 'name') and self.name:
-            return self.name
-        return self.display_name
+        if self:
+            return (
+                    self.approval_document_id.get_internal_number(self) or
+                    getattr(self, 'name', None) or self.display_name
+            )
+        return None
 
     def get_internal_document(self):
-        """
-        Default internal document
-        """
-        if self and hasattr(self, '_description'):
-            return self._description
+        if self:
+            return (
+                    self.approval_document_id.get_internal_document(self) or
+                    self.approval_template_id.document or
+                    getattr(self, '_description', None)
+            )
         return None
 
     def get_internal_description(self):
-        """
-        Default internal description
-        """
-        if self and hasattr(self, '_description') and self._description and hasattr(self, 'name') and self.name:
-            return f"{self._description} {self.name}"
+        if self:
+            return (
+                    self.approval_document_id.get_internal_description(self) or
+                    self.approval_template_id.description or
+                    getattr(self, '_description', None)
+            )
         return None
+
+    def get_internal_requestor(self):
+        if self:
+            return (
+                self.approval_document_id.get_internal_requester(self)
+            )
+        return self.env['res.users'].browse()
+
+    def get_internal_approver(self):
+        user_execution = self.env.context.get('user_execution')
+        if isinstance(user_execution,models.Model):
+            return user_execution
+        _logger.info('user_execution %s ', user_execution)
+        return self.env.user
+
+    def get_internal_reject_reason(self):
+        return self.note_reject or self.env.context.get('reject_reason')
+
+    def get_internal_reset_to_draft_reason(self):
+        return self.note_reset_to_draft or self.env.context.get('reset_to_draft_reason')
 
     def _find_action_id(self, action_xmlid=None):
         if action_xmlid:
@@ -252,10 +308,7 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
         return self.env['approval.task'].get_approval_task(transaction_id, transaction_model_name)
 
     def get_approval_transaction_task(self):
-        return self.env['approval.task'].search([
-            ('transaction_id', '=', self.id),
-            ('transaction_model_name', '=', self._name),
-        ], limit=1)
+        return self.env['approval.task'].get_approval_task(self.id, self._name)
 
     def send_notification_approval(self, **kwargs):
         approval = self.get_approval_transaction_task()
@@ -365,6 +418,7 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
             rec.access_request_approval_action = (
                     rec.is_request_approval and rec.access_requester and rec.is_need_approval
             )
+            rec.access_show_sign_pdf_action = not rec.access_request_approval_action
 
     @api.depends_context("uid")
     @api.depends('approval_instance_id', 'approval_template_id', 'is_waiting_approval')
@@ -501,3 +555,7 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
 
     def get_notification_approval(self):
         return self.approval_template_id.notification_approval_id
+
+    def _compute_approval_task(self):
+        for rec in self:
+            rec.approval_task_id = rec.get_approval_transaction_task()

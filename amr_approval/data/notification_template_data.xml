@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="request_approval_notification_template" model="notification.template">
+            <field name="name">Generic Notification Approval Template</field>
+            <field name="model_id" ref="model_approval_task"/>
+            <field name="notification_type">request_approval</field>
+            <field name="send_email" eval="True"/>
+            <field name="send_whatsapp" eval="True"/>
+            <field name="send_chat" eval="True"/>
+            <field name="send_firebase" eval="True"/>
+            <field name="body_html" type="html">
+                <div style="margin: 0px; padding: 0px;">
+                    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+                        Hi ${object.notification_to_partner_id.name},
+                        <br />
+                        ${object.get_internal_requestor().name} has requested your approval for ${object.get_internal_description()} <b>${object.get_internal_number()}</b>.
+                        <br/>
+                        <a href="${object.get_internal_url()}">Please review and take the appropriate action.</a>
+                    </p>
+                </div></field>
+
+            <field name="title">Approval ${object.get_internal_document()} ${object.get_internal_number()}</field>
+            <field name="body"><![CDATA[Hi ${object.notification_to_partner_id.name}
+${object.get_internal_document()} has requested your approval for ${object.get_internal_description()} - ${object.get_internal_number()} .
+
+Please review and take the appropriate action.
+
+${object.get_internal_url() | safe} ]]></field>
+            <!--            <field name="image">Todo send url image</field>-->
+            <field name="code">
+originator = record.get_internal_requestor() or record.create_uid
+data.update(
+    scope='APPROVAL',
+    ref=record.get_internal_number(),
+    url=record.get_internal_url(),
+    source_number=record.name,
+    source_document=record.get_internal_description(),
+    source_originator_name=originator.name,
+    source_model=record.transaction_model_name,
+    source_res_id=record.transaction_id,
+)
+            </field>
+        </record>
+
+        <record id="reminder_approval_notification_template" model="notification.template">
+            <field name="name">Generic Reminder Approval Template</field>
+            <field name="model_id" ref="model_approval_task"/>
+            <field name="notification_type">reminder_approval</field>
+            <field name="send_email" eval="True"/>
+            <field name="send_whatsapp" eval="True"/>
+            <field name="send_chat" eval="True"/>
+            <field name="send_firebase" eval="True"/>
+            <field name="body_html" type="html">
+                <div style="margin: 0px; padding: 0px;">
+                    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+                        Hi ${object.notification_to_partner_id.name},
+                        <br />
+                        ${object.get_internal_requestor().name} has requested your approval for ${object.get_internal_description()} ${object.get_internal_number()} from ${object.get_internal_requestor().name} need your approval as Approver
+                        <br/>
+                        <a href="${object.get_internal_url()}">Click here for detail</a>
+                    </p>
+                </div></field>
+            <field name="title">Reminder Approval ${object.get_internal_document()} ${object.get_internal_number()}</field>
+            <field name="body"><![CDATA[This is a reminder that ${object.get_internal_description()} "${object.get_internal_number()}" from ${object.get_internal_requestor().name} has been waiting for your approval for ${object.aging} days.
+Please review the request at your earliest convenience.
+${object.get_internal_url() | safe} ]]></field>
+            <!--            <field name="image">Todo send url image</field>-->
+            <field name="code">
+originator = record.get_internal_requestor() or record.create_uid
+data.update(
+    scope='APPROVAL',
+    ref=record.get_internal_number(),
+    url=record.get_internal_url(),
+    source_number=record.name,
+    source_document=record.get_internal_description(),
+    source_originator_name=originator.name,
+    source_model=record.transaction_model_name,
+    source_res_id=record.transaction_id,
+)
+            </field>
+        </record>
+
+        <record id="reset_to_draft_notification_template" model="notification.template">
+            <field name="name">Generic Reset To Draft Approval Template</field>
+            <field name="model_id" ref="model_approval_instance"/>
+            <field name="notification_type">reset</field>
+            <field name="send_email" eval="True"/>
+            <field name="send_whatsapp" eval="True"/>
+            <field name="send_chat" eval="True"/>
+            <field name="send_firebase" eval="True"/>
+            <field name="body_html" type="html">
+                <div style="margin: 0px; padding: 0px;">
+                <p style="margin: 0px; padding: 0px; font-size: 13px;">
+                    Hi ${object.notification_to_partner_id.name},
+                    <br/><br/>
+                ${object.get_internal_requestor().name} has reset the approval document
+                <b>${object.get_internal_number()}</b> to <b>Draft</b>.
+
+                <br/><br/>
+
+                Any pending approval request for this document has been cancelled. The requester may update the document and submit it again for a new approval process.
+
+                <br/><br/>
+            </p>
+</div>
+</field>
+
+            <field name="title">Reset to Draft ${object.get_internal_document()} ${object.get_internal_number()}</field>
+            <field name="body"><![CDATA[Hi ${object.notification_to_partner_id.name},
+
+${object.get_internal_requestor().name} has reset the approval request for ${object.get_internal_description()} ${object.get_internal_number()} to Draft.
+
+Your pending approval request has been cancelled. The requester may update the document and submit it again for a new approval process.
+
+Please review the document if needed:
+${object.get_internal_url()}
+]]></field>
+            <!--            <field name="image">Todo send url image</field>-->
+            <field name="code">
+originator = record.get_internal_requestor() or record.create_uid
+data.update(
+    scope='REST_TO_DRAFT',
+    ref=record.get_internal_number(),
+    url=record.get_internal_url(),
+    source_number=record.name,
+    source_document=record.get_internal_description(),
+    source_originator_name=originator.name,
+    source_model=record.transaction_model_name,
+    source_res_id=record.transaction_id,
+)
+            </field>
+        </record>
+
+    <record id="cancel_notification_template" model="notification.template">
+            <field name="name">Generic Reset To Draft Approval Template</field>
+            <field name="model_id" ref="model_approval_instance"/>
+            <field name="notification_type">cancel</field>
+            <field name="send_email" eval="True"/>
+            <field name="send_whatsapp" eval="True"/>
+            <field name="send_chat" eval="True"/>
+            <field name="send_firebase" eval="True"/>
+            <field name="body_html" type="html">
+                <div style="margin: 0px; padding: 0px;">
+                <p style="margin: 0px; padding: 0px; font-size: 13px;">
+                    Hi ${object.notification_to_partner_id.name},
+                    <br/><br/>
+                ${object.get_internal_requestor().name} has reset the approval document
+                <b>${object.get_internal_number()}</b> to <b>Draft</b>.
+
+                <br/><br/>
+
+                Any pending approval request for this document has been cancelled. The requester may update the document and submit it again for a new approval process.
+
+                <br/><br/>
+            </p>
+</div>
+</field>
+
+            <field name="title">Cancel ${object.get_internal_document} ${object.get_internal_number()}}</field>
+            <field name="body"><![CDATA[Hi ${object.notification_to_partner_id.name},
+
+${object.get_internal_requestor().name} has reset the approval request for ${object.get_internal_description()} ${object.get_internal_number()} to Draft.
+
+Your pending approval request has been cancelled. The requester may update the document and submit it again for a new approval process.
+
+]]></field>
+            <!--            <field name="image">Todo send url image</field>-->
+            <field name="code">
+originator = record.get_internal_requestor() or record.create_uid
+data.update(
+    scope='CANCEL',
+    ref=record.get_internal_number(),
+    url=record.get_internal_url(),
+    source_number=record.name,
+    source_document=record.get_internal_description(),
+    source_originator_name=originator.name,
+    source_model=record.transaction_model_name,
+    source_res_id=record.transaction_id,
+)
+            </field>
+        </record>
+
+    </data>
+</odoo>

@@ -41,3 +41,5 @@ access_notification_log_group_system,access.notification.log group_system,model_
 
 access_reminder_log_user,access.reminder.log user,model_reminder_log,base.group_user,1,0,0,0
 access_reminder_log_group_system,access.reminder.log group_system,model_reminder_log,base.group_system,1,1,1,1
+
+access_approval_demo_user,approval.demo.user,model_approval_demo,base.group_user,1,1,1,1

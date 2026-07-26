@@ -14,13 +14,13 @@ _logger = logging.getLogger(__name__)
 
 class ApprovalTask(models.Model):
     _name = 'approval.task'
-    _inherit = 'approval.transaction.able.mixin'
-    _description = 'This is Approval Task for Approval helper waiting approval'
-    _order = 'request_approval_task_date, create_date desc'
+    _inherit = ['approval.transaction.able.mixin', 'approval.responsible.line.mixin']
+    _description = 'Approval Task'
+    _order = 'request_approval_task_date desc, date desc, create_date desc'
 
-    name = fields.Char('Name')
-    document = fields.Char()
-    description = fields.Char()
+    name = fields.Char('Number')
+    document = fields.Char('Type')
+    description = fields.Char('Description')
     url = fields.Char(string="URL")
     date = fields.Datetime(
         string='Request Date', readonly=True, default=fields.Datetime.now,
@@ -31,6 +31,9 @@ class ApprovalTask(models.Model):
         readonly=True,
         default=fields.Datetime.now,
         help="Waktu yang dicatat ketika Approval Task diberikan pada user atau group tertentu.",
+    )
+    request_task_date = fields.Datetime(
+        related='request_approval_task_date'
     )
     aging = fields.Integer(
         compute="_compute_aging_display",
@@ -57,15 +60,6 @@ class ApprovalTask(models.Model):
         'res.groups', 'approval_task_groups_rel', 'approval_task_id', 'group_id',
         help="Groups of users who can approve this task"
     )
-    # See approval.responsible for maping detail
-    responsible_user_id = fields.Many2one(
-        'res.users', 'Responsible',
-        ondelete='set null',
-        help="User who take Responsible the approval. Related with respnsible model. "
-             "ex: Department have manager when manager change responsible change to. "
-    )
-    responsible_model = fields.Char('Responsible Model')
-    responsible_id = fields.Integer('Responsible ID')
     requester_id = fields.Many2one(
         'res.users', 'Requester',
         default=lambda self: self.env.user,
@@ -92,10 +86,13 @@ class ApprovalTask(models.Model):
         'approval.instance',
         ondelete='set null',
     )
+    approval_document_id = fields.Many2one(
+        'approval.document',
+        ondelete='set null',
+    )
     approval_user_ids = fields.Many2many(
         'res.users', compute='_compute_approval_user_ids', compute_sudo=True
     )
-
     assignment_able = fields.Boolean(
         compute='_compute_assignment_able'
     )
@@ -127,6 +124,45 @@ class ApprovalTask(models.Model):
         compute='_compute_user_delegation'
     )
 
+    # compatible with notification generic requerement
+
+    notification_to_user_id = fields.Many2one(
+        'res.users', string='Notification to User',
+        compute="_compute_notification_to_user_id", compute_sudo=True,
+        help="User who will receive the notification.",
+    )
+    notification_to_partner_id = fields.Many2one(
+        'res.partner', string='Notification to User/Partner',
+        compute="_compute_notification_to_user_id", compute_sudo=True,
+        help="User who will receive the notification.",
+    )
+
+    @api.depends_context('notification_to_user')
+    def _compute_notification_to_user_id(self):
+        for rec in self:
+            notification_to_user = self.env.context.get('notification_to_user', False)
+            if notification_to_user:
+                rec.notification_to_user_id = notification_to_user
+                rec.notification_to_partner_id = notification_to_user.partner_id
+            else:
+                rec.notification_to_user_id = False
+                rec.notification_to_partner_id = False
+
+    def get_internal_number(self):
+        return self.name
+
+    def get_internal_document(self):
+        return self.document
+
+    def get_internal_description(self):
+        return self.description
+
+    def get_internal_requestor(self):
+        return self.requester_id
+
+    def get_internal_url(self):
+        return self.url
+
     @api.depends("request_approval_task_date")
     def _compute_aging_display(self):
         today = fields.Date.context_today(self)
@@ -154,10 +190,13 @@ class ApprovalTask(models.Model):
     def send_reminder(self, **kwargs):
         self.ensure_one()
         try:
-            approval_instance = kwargs.get(
-                'approval_instance') or self.approval_instance_id.get_instance_for_transaction(
-                self.transaction_model_name, self.transaction_id
-            )
+            approval_instance = kwargs.get('approval_instance')
+            if not approval_instance:
+                approval_instance = self.approval_instance_id.get_instance_for_transaction(
+                    self.transaction_model_name, self.transaction_id
+                )
+                kwargs = approval_instance._prepare_action(**kwargs)
+
             approval_template = kwargs.get('approval_template') or approval_instance.approval_template_id
             kwargs['reminder_count'] = reminder_count = self.reminder_count + 1
 
@@ -174,19 +213,20 @@ class ApprovalTask(models.Model):
             notification_log = None
             kwargs['approval_task_id'] = self.id
             if notification_approval:
-                res_id, model_name = self.get_res_id_for_notification(notification_approval, **kwargs)
-                if res_id:
-                    self.write({
-                        'reminder_count': reminder_count,
-                        'reminder_last_datetime': fields.Datetime.now(),
-                        'reminder_next_datetime': approval_template.get_next_reminder_datetime(),
-                    })
-                    users = self.get_users_for_notification(**kwargs)
-                    if self.requester_id:
-                        notification_approval = notification_approval.with_user(self.requester_id)
-                    notification_log = notification_approval.send_notification_to_users(
-                        users, res_id, **kwargs
-                    )
+                # res_id, model_name = self.get_res_id_for_notification(notification_approval, **kwargs)
+                # if res_id:
+                self.write({
+                    'reminder_count': reminder_count,
+                    'reminder_last_datetime': fields.Datetime.now(),
+                    'reminder_next_datetime': approval_template.get_next_reminder_datetime(),
+                })
+                users = self.get_users_for_notification(**kwargs)
+                if self.requester_id:
+                    notification_approval = notification_approval.with_user(self.requester_id)
+                kwargs.pop('users', None)
+                notification_log = notification_approval.send_notification_to_users(
+                    users, **kwargs
+                )
 
             if notification_log:
                 reminder_datetime = fields.Datetime.now()
@@ -308,6 +348,7 @@ class ApprovalTask(models.Model):
         return self.env[self.transaction_model_name].browse()
 
     def approval_done(self, **kwargs):
+        self.done_to_approval_aggregator(**kwargs)
         if self:
             records = self
         else:
@@ -322,14 +363,19 @@ class ApprovalTask(models.Model):
 
     @api.model
     def get_field_prepare(self):
-        return ['name', 'document', 'description', 'url', 'date', 'view_name', 'requester_id', 'company_id',
-                'approval_res_id', 'approval_model', 'approval_instance_id', 'request_approval_task_date',
+        return ['name', 'document', 'description', 'url', 'date', 'requester_id', 'company_id',
+                'approval_res_id', 'approval_model', 'approval_instance_id', 'approval_document_id',
+                'request_approval_task_date',
                 'reminder_count', 'reminder_last_datetime', 'reminder_next_datetime', 'reminder_next_datetime'
                 ]
 
     @api.model
     def prepare_data(self, **kwargs):
         data = dict()
+        transaction_id = kwargs.get('transaction_id')
+        transaction_model_name = kwargs.get('transaction_model_name')
+        transaction_object = kwargs.get('transaction_object') or self.env[transaction_model_name].sudo().browse(
+            transaction_id)
 
         def to_list_for_m2m(values):
             if isinstance(values, BaseModel):
@@ -358,6 +404,10 @@ class ApprovalTask(models.Model):
         if 'approval_instance_id' not in data:
             approval_instance = kwargs.get('approval_instance', 0)
             approval_instance and data.update(approval_instance_id=int(approval_instance))
+        approval_document = kwargs.get('approval_document')
+        if approval_document and isinstance(approval_document, models.BaseModel):
+            if not data.get('approval_document_id'):
+                data['approval_document_id'] = approval_document.id
 
         notification_approval = kwargs.get("notification_approval_id")
         if notification_approval:
@@ -367,36 +417,49 @@ class ApprovalTask(models.Model):
         if notification_reminder:
             data['notification_reminder_id'] = notification_reminder
 
+        if transaction_object:
+            if (
+                    not data.get('name')
+                    and have_method(transaction_object, 'get_internal_number')
+            ):
+                data['name'] = transaction_object.get_internal_number()
+
+            if (
+                    not data.get('document')
+                    and have_method(transaction_object, 'get_internal_document')
+            ):
+                data['document'] = transaction_object.get_internal_document()
+
+            if (
+                    not data.get('description')
+                    and have_method(transaction_object, 'get_internal_description')
+            ):
+                data['description'] = transaction_object.get_internal_description()
+
+            if (
+                    not data.get('requester_id')
+                    and have_method(transaction_object, 'get_internal_requester_id')
+            ):
+                data['requester_id'] = transaction_object.get_internal_requester_id()
+
+            if not data.get('url') and have_method(transaction_object, 'get_internal_url'):
+                data['url'] = transaction_object.get_internal_url()
+
+            if not data.get('company_id') and hasattr(transaction_object, 'company_id'):
+                data['company_id'] = transaction_object.company_id.id
+
         return data
 
     def prepare_create(self, **kwargs):
         transaction_id = kwargs.get('transaction_id')
         transaction_model_name = kwargs.get('transaction_model_name')
-        transaction_object = kwargs.get('transaction_object') or self.env[transaction_model_name].sudo().browse(
-            transaction_id)
+        transaction_object = (
+                kwargs.get('transaction_object') or
+                self.env[transaction_model_name].sudo().browse(transaction_id)
+        )
+        kwargs['transaction_object'] = transaction_object
         kw = self.prepare_data(**kwargs) or {}
         if transaction_object:
-            if 'name' not in kw and have_method(transaction_object, 'get_internal_number'):
-                kw['name'] = transaction_object.get_internal_number()
-            if not kw.get('name'):
-                kw['name'] = getattr(transaction_object, 'name', "no name")
-            if not kw.get('document') and have_method(transaction_object, 'get_internal_document'):
-                kw['document'] = transaction_object.get_internal_document()
-            if not kw.get('document'):
-                kw['document'] = getattr(transaction_object, '_description', "no desc")
-
-            if not kw.get('description') and have_method(transaction_object, 'get_internal_description'):
-                kw['description'] = transaction_object.get_internal_description()
-
-            if not kw.get('requester_id') and have_method(transaction_object, 'get_internal_requester_id'):
-                kw['requester_id'] = transaction_object.get_internal_requester_id()
-
-            if 'url' not in kw and have_method(transaction_object, 'get_internal_url'):
-                kw['url'] = transaction_object.get_internal_url()
-
-            if 'company_id' not in kw and hasattr(transaction_object, 'company_id'):
-                kw['company_id'] = transaction_object.company_id.id
-
             if not kw.get('transaction_id'):
                 kw['transaction_id'] = transaction_object.id
 
@@ -408,42 +471,8 @@ class ApprovalTask(models.Model):
         return kw
 
     def prepare_write(self, **kwargs):
-        transaction_id = kwargs.get('transaction_id')
-        transaction_model_name = kwargs.get('transaction_model_name')
-        transaction_object = kwargs.get('transaction_object') or self.env[transaction_model_name].sudo().browse(
-            transaction_id)
+
         kw = self.prepare_data(**kwargs) or {}
-        if self and transaction_object:
-            rec = self.ensure_one()
-            if not rec.name and 'name' not in kw and have_method(transaction_object, 'get_internal_number'):
-                kw['name'] = transaction_object.get_internal_number()
-
-            if (
-                    not rec.document
-                    and not kw.get('document')
-                    and have_method(transaction_object, 'get_internal_document')
-            ):
-                kw['document'] = transaction_object.get_internal_document()
-
-            if (
-                    not rec.description
-                    and not kw.get('description')
-                    and have_method(transaction_object, 'get_internal_description')
-            ):
-                kw['description'] = transaction_object.get_internal_description()
-
-            if (
-                    not rec.requester_id
-                    and not kw.get('requester_id')
-                    and have_method(transaction_object, 'get_internal_requester_id')
-            ):
-                kw['requester_id'] = transaction_object.get_internal_requester_id()
-
-            if not rec.url and 'url' not in kw and have_method(transaction_object, 'get_internal_url'):
-                kw['url'] = transaction_object.get_internal_url()
-
-            if not rec.company_id and 'company_id' not in kw and hasattr(transaction_object, 'company_id'):
-                kw['company_id'] = transaction_object.company_id.id
 
         if not kw.get('user_ids'):
             kw['user_ids'] = [(5, 0, 0)]
@@ -468,21 +497,23 @@ class ApprovalTask(models.Model):
         )
 
         approval_instance = kwargs.get('approval_instance') or self.approval_instance_id.get_instance_for_transaction(
-            self.transaction_model_name, self.transaction_id
+            transaction_model_name, transaction_id
+        )
+        approval_document = kwargs.get('approval_document') or self.approval_document_id.get_document_for_transaction(
+            transaction_model_name, transaction_id
         )
         approval_template = kwargs.get('approval_template') or approval_instance.approval_template_id
         approval_template_line = kwargs.get('approval_template_line') or approval_template.approval_template_line_id
         prepare_dict['approval_template'] = approval_template
         prepare_dict['approval_instance'] = approval_instance
+        prepare_dict['approval_document'] = approval_document
         prepare_dict['approval_template_line'] = approval_template_line
         approval_task_line = kwargs.get('approval_task_line')
         if not approval_task_line and approval_template_line:
             approval_task_line = approval_template_line.get_next_approval_task_line(**prepare_dict)
 
         if not approval_task_line and approval_template:
-            approval_task_line = approval_template.get_next_approval_task_line(
-                **prepare_dict
-            )
+            approval_task_line = approval_template.get_next_approval_task_line(**prepare_dict)
         if approval_task_line:
             prepare_dict['approval_task_line'] = approval_task_line
 
@@ -490,13 +521,23 @@ class ApprovalTask(models.Model):
             prepare_dict['approval_model'] = approval_task_line._name
             prepare_dict['approval_res_id'] = approval_task_line.id
 
-        if not prepare_dict.get('user_ids') and not prepare_dict.get('group_ids'):
-            if have_method(approval_task_line, "prepare_approval_task_dict"):
-                prepare_dict.update(approval_task_line.prepare_approval_task_dict() or {})
-            elif approval_template_line:
-                prepare_dict.update(approval_template_line.get_approver_data(**prepare_dict) or {})
-            elif approval_template:
-                prepare_dict.update(approval_template.get_approver_data(**prepare_dict) or {})
+        if (
+                not prepare_dict.get('user_ids') and not prepare_dict.get('group_ids') and
+                have_method(approval_task_line, "prepare_approval_task_dict")
+        ):
+            prepare_dict.update(approval_task_line.prepare_approval_task_dict() or {})
+
+        if (
+                not prepare_dict.get('user_ids') and not prepare_dict.get('group_ids') and
+                approval_template_line
+        ):
+            prepare_dict.update(approval_template_line.get_approver_data(**prepare_dict) or {})
+
+        if (
+                not prepare_dict.get('user_ids') and not prepare_dict.get('group_ids') and
+                approval_template
+        ):
+            prepare_dict.update(approval_template.get_approver_data(**prepare_dict) or {})
 
         if reset_request_approval_task_date or reset_reminder:
             reset_reminder = True
@@ -521,11 +562,14 @@ class ApprovalTask(models.Model):
         else:
             create_dict = self.prepare_create(**prepare_dict)
             approval_task = self.sudo().create(create_dict)
+
         if not kwargs.get('skip_send_notification'):
             approval_task.send_notification(**kwargs)
-        approval_task.send_bus_notification(**kwargs)
+
         prepare_dict['approval_task'] = approval_task
-        approval_template_line and approval_template_line.start_waiting_approval(**prepare_dict)
+        approval_template_line.start_waiting_approval(**prepare_dict)
+        approval_task.send_bus_notification(**kwargs)
+        approval_task.send_to_approval_aggregator(**kwargs)
 
         return approval_task
 
@@ -535,7 +579,10 @@ class ApprovalTask(models.Model):
             win_dict = transaction_object.action_approval_transaction()
             if win_dict:
                 return win_dict
-        return super(ApprovalTask, self).action_approval_transaction()
+        win_dict = super(ApprovalTask, self).action_approval_transaction()
+        if self.approval_document_id.view_id:
+            win_dict['view_id'] = self.approval_document_id.view_id.id
+        return win_dict
 
     def _compute_transaction_display_name(self):
         for rec in self:
@@ -569,28 +616,60 @@ class ApprovalTask(models.Model):
     def send_to_mobile_approval(self, **kwargs):
         pass
 
-    def get_res_id_for_notification(self, notification_approval, **kwargs):
-        self.ensure_one()
-        res_id = None
-        model_name = None
-        if notification_approval:
-            model_name = notification_approval.model
-            if model_name:
-                if self.transaction_model_name == model_name:
-                    res_id = self.transaction_id
-                elif self._name == model_name:
-                    res_id = self.id
+    def send_to_approval_aggregator(self, **kwargs):
+        if 'approval.task.aggregator' in self.env:
+            for approval_task in self:
+                users_for_mobile_approval = approval_task.get_users_for_mobile_approval()
+                if users_for_mobile_approval:
+                    self.env['approval.task.aggregator'].create_or_update(
+                        source_number=approval_task.name or approval_task.transaction_display_name or approval_task.display_name,
+                        source_document=approval_task.document,
+                        source_description=approval_task.description,
+                        source_local=True,
+                        requester_id=approval_task.requester_id.id,
+                        source_url=approval_task.url,
+                        request_type='register_approval',
+                        source_model=approval_task.transaction_model_name,
+                        source_res_id=approval_task.transaction_id,
+                        approval_task_line_model_name=approval_task.approval_model,
+                        approval_task_line_id=approval_task.approval_res_id,
+                        user_ids=users_for_mobile_approval,
+                        request_approval_datetime=approval_task.date,
+                        request_approval_task_datetime=approval_task.request_approval_task_date,
+                        company_id=approval_task.company_id.id,
+                    )
+        else:
+            _logger.info("approval.task.request")
 
-        return res_id, model_name
+    def done_to_approval_aggregator(self, **kwargs):
+        if 'approval.task.aggregator' in self.env:
+            for approval_task in self:
+                self.env['approval.task.aggregator'].search(
+                    [('source_local', '=', True),
+                     ('source_model', '=', approval_task.transaction_model_name),
+                     ('source_res_id', '=', approval_task.transaction_id),
+                     ]
+                ).sudo().unlink()
+            if not self:
+                self.env['approval.task.aggregator'].search(
+                    [('source_local', '=', True),
+                     ('source_model', '=', kwargs.get('transaction_model_name')),
+                     ('source_res_id', '=', kwargs.get('transaction_id')),
+                     ]
+                ).sudo().unlink()
+        else:
+            _logger.info("approval.task.request")
 
     def send_notification(self, **kwargs):
         self.ensure_one()
         notification_log = None
         try:
-            approval_instance = kwargs.get(
-                'approval_instance') or self.approval_instance_id.get_instance_for_transaction(
-                self.transaction_model_name, self.transaction_id
-            )
+            approval_instance = kwargs.get('approval_instance')
+            if not approval_instance:
+                approval_instance = self.approval_instance_id.get_instance_for_transaction(
+                    self.transaction_model_name, self.transaction_id
+                )
+                kwargs = approval_instance._prepare_action(**kwargs)
             approval_template = kwargs.get('approval_template') or approval_instance.approval_template_id
             notification_approval = kwargs.get("notification_approval")
             if "notification_approval_id" in kwargs:
@@ -599,22 +678,14 @@ class ApprovalTask(models.Model):
             if not notification_approval:
                 notification_approval = self.notification_approval_id or approval_template.notification_approval_id
 
-            kwargs['approval_task_id'] = self.id
             if notification_approval:
-                res_id, model_name = self.get_res_id_for_notification(notification_approval, **kwargs)
-                if res_id:
-                    users = self.get_users_for_notification(**kwargs)
-                    if self.requester_id:
-                        notification_approval = notification_approval.with_user(self.requester_id)
-                    else:
-                        _logger.info("without requester_id")
-                    notification_log = notification_approval.send_notification_to_users(
-                        users, res_id, approval_task_id=self.id
-                    )
-                else:
-                    _logger.info("res_id not found")
-            else:
-                _logger.info("skip error")
+                # res_id, model_name = self.get_res_id_for_notification(notification_approval, **kwargs)
+                # if res_id:
+                users = self.get_users_for_notification(**kwargs)
+                if self.requester_id:
+                    notification_approval = notification_approval.with_user(self.requester_id)
+                kwargs.pop('users', None)
+                notification_log = notification_approval.send_notification_to_users(users, **kwargs)
         except Exception:
             _logger.exception("skip error")
         finally:

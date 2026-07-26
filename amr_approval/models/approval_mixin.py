@@ -2,51 +2,12 @@
 
 import logging
 
+from odoo.tools.safe_eval import safe_eval, test_python_expr
 from odoo import models, fields, api
 from odoo.exceptions import UserError
-from ..tools.utils import have_method
+from ..tools.utils import have_method, safe_call_method
 
 _logger = logging.getLogger(__name__)
-
-
-class ApprovalResponsibleMixin(models.AbstractModel):
-    _name = "approval.responsible.mixin"
-
-    responsible_user_id = fields.Many2one(
-        'res.users', 'Responsible',
-        ondelete='set null',
-        help="User who take Responsible to approve. Related with responsible model. "
-             "ex: Department have manager when manager change responsible change to. "
-    )
-    responsible_model = fields.Char('Responsible Model')
-    responsible_id = fields.Integer('Responsible ID')
-    responsible_rule_id = fields.Many2one('approval.responsible')
-
-    def do_assignment(self, new_user_id=None, reason=None, task_line_id=None, task_line_model=None):
-        from_user_ids = self.responsible_user_id
-        self.responsible_user_id = new_user_id
-        if reason:
-            self.env['approval.task.assignment.history'].create({
-                'task_line_id': task_line_id or self.id,
-                'task_line_model': task_line_model or self._name,
-                'from_user_ids': from_user_ids,
-                'new_user_id': new_user_id,
-                'reason': reason
-            })
-
-    def get_approval_responsible_user(self, raise_exception=True):
-        return self.env['approval.responsible'].get_user_representative(
-            self.env[self.responsible_model].browse(self.responsible_id),
-            raise_exception=raise_exception
-        )
-
-    def action_responsible_assignment(self):
-        self.do_assignment(
-            new_user_id=self.env['approval.responsible'].get_user(
-                self.env[self.responsible_model].browse(self.responsible_id),
-                raise_exception=True
-            )
-        )
 
 
 class ApprovalAutoRegisterMixin(models.AbstractModel):
@@ -236,7 +197,7 @@ class ApprovalTransactionAbleMixin(models.AbstractModel):
             return self.env[self.transaction_model_name].browse()
         """Get the parent document ID if available."""
         # This method should be overridden in child classes if needed
-        return self.env[self.transaction_model_name].browse(self.transaction_id)
+        return self.env[self.transaction_model_name].browse(self.transaction_id).exists()
 
     @api.model
     def _selection_transaction_models(self):
@@ -358,6 +319,8 @@ class ApprovalTaskLineAccessMixin(models.AbstractModel):
         return groups
 
     def prepare_approval_task_dict(self):
+        if not self:
+            return {}
         self.ensure_one()
         kw = {
             'approval_task_line': self,
@@ -460,7 +423,8 @@ class ApprovalTypeMixin(models.AbstractModel):
         return groups
 
     def prepare_approval_task_dict(self):
-        """Prepare dict untuk create record approval task"""
+        if not self:
+            return {}
         self.ensure_one()
 
         kw = {
@@ -468,7 +432,7 @@ class ApprovalTypeMixin(models.AbstractModel):
             'approval_model': self._name,
             'approval_res_id': self.id,
         }
-        if self.responsible_user_id:
+        if hasattr(self, 'responsible_user_id') and self.responsible_user_id:
             kw['user_ids'] = self.responsible_user_id
             return kw
 
@@ -658,3 +622,77 @@ class ApprovalStatusMixin(models.AbstractModel):
 
     def set_to_draft_state(self):
         self.status_approval = APPROVAL_STATUS_CANCELLED
+
+
+class ApprovalTaskLineBuilderMixin(models.AbstractModel):
+    _name = 'approval.task.line.builder.mixin'
+    _description = 'Ensure Create Helper'
+
+    approval_mode = fields.Selection([
+        ('matrix', 'Approval Matrix'),
+        ('model', 'Responsible'),
+    ])
+    approval_matrix_id = fields.Many2one(
+        "approval.matrix.rule", string="Approval Matrix", ondelete='set null',
+    )
+    approval_matrix_model = fields.Char()
+    approval_matrix_model_id = fields.Many2one('ir.model', string="Target Model", ondelete='set null', )
+    approval_responsible_id = fields.Many2one('approval.responsible', string="Responsible Model", ondelete='set null', )
+
+
+class EnsureCreateMixin(models.AbstractModel):
+    _name = 'ensure.create.mixin'
+    _description = 'Ensure Create Helper'
+
+    def ensure_create_dict(self, model_name, vals):
+        model = self.env[model_name]
+
+        if isinstance(vals, models.BaseModel):
+            return vals
+
+        if not isinstance(vals, dict):
+            raise ValueError("vals must be dict or recordset")
+
+        vals = self._prepare_create_vals(model, vals)
+        return model.create(vals)
+
+    def _prepare_create_vals(self, model, vals):
+        vals = vals.copy()
+
+        for field_name, value in list(vals.items()):
+            field = model._fields.get(field_name)
+
+            if not field:
+                continue
+
+            # One2many
+            if field.type == 'one2many':
+                commands = []
+
+                for line in value or []:
+                    if isinstance(line, models.BaseModel):
+                        commands.append((4, line.id))
+                    elif isinstance(line, dict):
+                        commands.append((0, 0, self._prepare_create_vals(
+                            self.env[field.comodel_name],
+                            line
+                        )))
+
+                vals[field_name] = commands
+
+            # Many2one
+            elif field.type == 'many2one':
+                if isinstance(value, models.BaseModel):
+                    vals[field_name] = value.id
+
+            # Many2many
+            elif field.type == 'many2many':
+                ids = []
+                for rec in value or []:
+                    if isinstance(rec, models.BaseModel):
+                        ids.append(rec.id)
+                    elif isinstance(rec, int):
+                        ids.append(rec)
+                vals[field_name] = [(6, 0, ids)]
+
+        return vals

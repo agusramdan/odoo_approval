@@ -22,6 +22,7 @@
         'data/ir_sequence.xml',
         'data/approval_template_line_data.xml',
         'data/approval_document_data.xml',
+        'data/notification_template_data.xml',
 
         'views/notification_template_views.xml',
         'views/notification_log_views.xml',
@@ -38,7 +39,10 @@
         'views/approval_task_assignment_history_views.xml',
         'views/reminder_log_views.xml',
         'views/user_delegation_views.xml',
+
+        'views/res_company_views.xml',
         'views/res_config_settings_views.xml',
+
         'views/menuitem.xml',
 
         'wizard/popup_reject.xml',
@@ -47,4 +51,5 @@
     ],
     'demo': [],
     'installable': True,
+    'application': True,
 }

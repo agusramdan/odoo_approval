@@ -33,9 +33,9 @@
                         </h1>
                     </div>
                     <group>
-                        <group>
-                            <field name="requester_group_ids" options="{'no_create': True}" widget="many2many_tags"/>
-                        </group>
+<!--                        <group>-->
+<!--                            <field name="requester_group_ids" options="{'no_create': True}" widget="many2many_tags"/>-->
+<!--                        </group>-->
                         <group>
                             <field name="priority"/>
                             <!--                            <field name="company_id" options="{'no_create': True}" groups="base.group_multi_company"/>-->
@@ -54,23 +54,32 @@
                                     <field name="group_ids" widget="many2many_tags"
                                            attrs="{'invisible': [('type_approval', '!=', 'group')]}"
                                     />
-                                    <field name="responsible_rule_id"
+                                    <field name="responsible_mode" string="Mode"
                                            attrs="{'invisible': [('type_approval', '!=', 'model')]}"
                                     />
-                                    <field name="condition_select"/>
-                                    <field name="condition_range"
-                                           attrs="{'invisible': [('condition_select', 'not in', ['tiring','limit','range'])]}"
+                                    <field name="responsible_model" invisible="1"/>
+                                    <field name="responsible_id" invisible="1"/>
+                                    <field name="responsible_rule_id"
+                                           attrs="{'invisible': ['|',('type_approval', '!=', 'model'),('responsible_mode', '=', 'select')],'required': [('type_approval', '!=', 'model'),('responsible_mode', '!=', 'select')]}"
                                     />
-                                    <field name="condition_range_min"
-                                           attrs="{'invisible': [('condition_select', 'not in', ['tiring','range'])]}"/>
-                                    <field name="condition_range_max"
-                                           attrs="{'invisible': [('condition_select', 'not in', ['limit','range'])]}"/>
+                                    <field name="responsible_ref" string="Selected"
+                                           attrs="{'invisible': ['|',('type_approval', '!=', 'model'),('responsible_mode', '!=', 'select')],'required': [('type_approval', '!=', 'model'),('responsible_mode', '==', 'select')]}"
+                                    />
+                                    <field name="condition_select"/>
                                     <button
                                             name="action_open_line"
                                             type="object"
                                             icon="fa-external-link"
                                     />
-                                    <!--                                    <button name="action_open_condition_editor" string="Editor" type="object" class="oe_highlight" attrs="{'invisible': [('condition_select', '!=', 'python')]}"/>-->
+                                    <field name="condition_range"
+                                           attrs="{'invisible': [('condition_select', 'not in', ['tiring','limit','range'])]}"
+                                    />
+                                    <field name="condition_range_min"
+                                           attrs="{'invisible': [('condition_select', 'not in', ['tiring','range'])]}"
+                                    />
+                                    <field name="condition_range_max"
+                                           attrs="{'invisible': [('condition_select', 'not in', ['limit','range'])]}"
+                                    />
                                     <field name="reject_to_method" optional="hide"/>
                                     <field name="reject_to_line_id" optional="hide"/>
                                 </tree>
@@ -89,18 +98,40 @@
                                        attrs="{'invisible': [('condition_select', 'not in', ['limit','range'])]}"/>
                             </group>
                             <group attrs="{'invisible': [('condition_select', '!=', 'python')]}">
-                                <field name="condition_python" nolabel="1" colspan="4"/>
+                                <field name="condition_python" widget="ace" options="{'mode': 'python'}" nolabel="1" colspan="4"/>
                             </group>
-                            <!--                            <separator string="Test"/>-->
-                            <!--                            <group>-->
-                            <!--                                <field name="test_value"/>-->
-                            <!--                                <field name="test_result" readonly="1"/>-->
-                            <!--                            </group>-->
                         </page>
                         <page string="Description">
                             <field name="note"/>
                         </page>
+                        <page string="Python Code" name="code" autofocus="autofocus" >
+                            <field name="code" widget="ace" options="{'mode': 'python'}"
+                                   placeholder="Enter Python code here. Help about Python expression is available in the help tab of this document."
+                            />
+                        </page>
 
+                        <page string="Help" name="help_info"  >
+                            <div style="margin-top: 4px;">
+                                <h3>Help with Python expressions</h3>
+                                <p>Various fields may use Python code or Python expressions. The following variables can be used:</p>
+                                <ul>
+                                    <li><code>env</code>: Odoo Environment on which the action is triggered</li>
+                                    <li><code>approval_line</code>: Input and result this scrip</li>
+                                    <li><code>transaction_object</code>: TODO </li>
+                                    <li><code>time</code>, <code>datetime</code>, <code>dateutil</code>, <code>timezone</code>: useful Python libraries</li>
+                                    <li><code>log(message, level='info')</code>:logging function to record debug information in <code>ir.logging</code> table</li>
+                                    <li><code>UserError</code>: Warning Exception to use with <code>raise</code></li>
+                                    <li>To return an response, assign: <code> = {...}</code></li>
+                                    <li>Bila ingin custom approval line bisa memasukan data ke response['approval_line']</li>
+                                </ul>
+                                <div >
+                                    <p>Example of Python code</p>
+<code style="white-space: pre-wrap">
+
+</code>
+                                </div>
+                            </div>
+                        </page>
                     </notebook>
                 </sheet>
                 <footer/>
@@ -139,7 +170,7 @@
                                 <field name="condition_range_max" attrs="{'invisible': [('condition_select', 'not in', ['limit','range'])]}"/>
                             </group>
                             <group attrs="{'invisible': [('condition_select', '!=', 'python')]}">
-                                <field name="condition_python" nolabel="1" colspan="4"/>
+                                <field name="condition_python" widget="ace" options="{'mode': 'python'}" nolabel="1" colspan="4"/>
                             </group>
                         </page>
                         <page string="Model" attrs="{'invisible': [('type_approval', '!=', 'model')]}">
@@ -147,19 +178,32 @@
                                 <field name="responsible_mode" string="Mode"/>
                                 <field name="responsible_model" invisible="1"/>
                                 <field name="responsible_id" invisible="1"/>
-                                <field name="responsible_rule_id" attrs="{'invisible': [('responsible_mode', '=', 'select')],'required': [('type_approval', '!=', 'model'),('responsible_mode', '!=', 'select')]}"/>
-                                <field name="responsible_ref" string="Selected" attrs="{'invisible': [('responsible_mode', '!=', 'select')]}"/>
-<!--                                <field name="responsible_id" widget="many2one_reference" options="{'model_field': 'model_name'}" />-->
-                                <field name="responsible_field" string="Field" attrs="{'invisible': [('responsible_mode', '!=', 'field')]}"/>
-                                <field name="responsible_function" string="Function" attrs="{'invisible': [('responsible_mode', '!=', 'function')]}"/>
-                                <field name="responsible_code" string="Code" nolabel="1" colspan="4" attrs="{'invisible': [('responsible_mode', '!=', 'code')]}"/>
+                                <field name="responsible_rule_id"
+                                       attrs="{'invisible': [('responsible_mode', '=', 'select')],'required': [('type_approval', '!=', 'model'),('responsible_mode', '!=', 'select')]}"
+                                />
+                                <field name="responsible_ref" string="Selected"
+                                       attrs="{'invisible': [('responsible_mode', '!=', 'select')]}"
+                                />
+    <!--                            <field name="responsible_id" widget="many2one_reference" options="{'model_field': 'model_name'}" />-->
+                                <field name="responsible_field" string="Field"
+                                       attrs="{'invisible': [('responsible_mode', '!=', 'field')]}"
+                                />
+                                <field name="responsible_function" string="Function"
+                                       attrs="{'invisible': [('responsible_mode', '!=', 'function')]}"
+                                />
+                                <field name="responsible_code" string="Code"
+                                       widget="ace" options="{'mode': 'python'}"
+                                       attrs="{'invisible': [('responsible_mode', '!=', 'code')]}"
+                                />
                             </group>
                             <group string="Build Approval Task Line">
                                 <field name="responsible_strategy" string="Strategy"/>
-                                <field name="responsible_custom" string="Custom" nolabel="1" colspan="4"
+                                <field name="responsible_custom" string="Custom"
+                                       widget="ace" options="{'mode': 'python'}"
                                        attrs="{'invisible': [('responsible_strategy', '!=', 'custom')]}"
                                 />
                             </group>
+
                         </page>
 <!--                        <page string="Test">-->
                             <!--                            <separator string="Test"/>-->

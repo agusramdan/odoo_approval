@@ -38,23 +38,24 @@
                             </group>
                             <group>
                                 <field name="model_id" />
+                                <field name="approval_email_layout_xmlid"/>
                                 <field name="template_email" domain="[('model_id','=',model_id)]" string="Email"/>
                             </group>
                         </group>
                         <notebook>
                             <page string="Notification">
                                 <group>
-                                    <field name="title" />
-                                    <field name="body" />
-                                    <field name="image" />
+                                    <field name="title"/>
+                                    <field name="body"/>
+                                    <field name="image"/>
                                 </group>
                             </page>
                             <page string="Html">
-                                <field name="body_html" />
+                                <field name="body_html" widget="ace" options="{'mode': 'xml'}"/>
                             </page>
 
                             <page string="Chat">
-                                <field name="body_chat" />
+                                <field name="body_chat" widget="ace" options="{'mode': 'xml'}"/>
                             </page>
 
                             <page string="Whatsapp">

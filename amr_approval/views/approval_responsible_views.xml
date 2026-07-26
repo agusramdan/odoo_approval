@@ -30,7 +30,8 @@
                                         attrs="{'invisible':[('hierarchy_select','!=','function')]}"
                                     />
                                     <field name="hierarchy_code" string="Code"
-                                        widget="ace" options="{'mode': 'python'}" attrs="{'invisible':[('hierarchy_select','!=','code')]}"
+                                           widget="ace" options="{'mode': 'python'}"
+                                           attrs="{'invisible':[('hierarchy_select','!=','code')]}"
                                     />
                             </group>
                         </page>

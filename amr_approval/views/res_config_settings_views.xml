@@ -1,6 +1,6 @@
 <odoo>
 
-    <record id="view_config_settings_form" model="ir.ui.view">
+    <record id="res_config_settings_view_form" model="ir.ui.view">
         <field name="name">res.config.settings.view.form.approval</field>
         <field name="model">res.config.settings</field>
         <field name="inherit_id" ref="base.res_config_settings_view_form"/>
@@ -15,19 +15,6 @@
                         <div class="row mt16 o_settings_container">
                             <div class="col-xs-12 col-md-6 o_setting_box" >
                                 <div class="o_setting_left_pane">
-                                    <field name="module_amr_hr_employee_hierarchy"/>
-                                </div>
-                                <div class="o_setting_right_pane" >
-                                    <div class="content-group">
-                                        <label for="module_amr_hr_employee_hierarchy"/>
-                                        <div class="text-muted">
-                                            Approval Hierarchy on Employee
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-xs-12 col-md-6 o_setting_box" >
-                                <div class="o_setting_left_pane">
                                     <field name="module_amr_doa_activate"/>
                                 </div>
                                 <div class="o_setting_right_pane" >
@@ -39,21 +26,16 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
-                    <div id="amr_approval_mobile_client">
-                        <h2>Mobile Client</h2>
-                        <div class="row mt16 o_settings_container" id="amr_approval_mobile_client_setting_box">
                             <div class="col-xs-12 col-md-6 o_setting_box" >
                                 <div class="o_setting_left_pane">
-                                    <field name="module_amr_approval_mobile_client"/>
+                                    <field name="module_amr_approval_task_client"/>
                                 </div>
                                 <div class="o_setting_right_pane"  >
-                                    <div class="content-group" id="amr_approval_mobile_client_content_group">
-                                        <label for="module_amr_approval_mobile_client"/>
+                                    <div class="content-group" id="amr_approval_task_client_content_group">
+                                        <label for="module_amr_approval_task_client"/>
                                         <div class="text-muted">
-                                            Approval Mobile Client
+                                            Approval Task Client
                                         </div>
                                     </div>
                                 </div>

@@ -518,7 +518,8 @@ class ApprovalTaskLineApproveMixin(models.AbstractModel):
         kw.pop('approval_task_line_approve', None)
         approval_template = approval_template_line.get_approval_template(**kw)
         approval_template.before_approve(**kw)
-        approval_template_line.set_approved_status(**kw)
+
+        approval_template_line.invoke_method(approval_task_line_approve, 'set_approved_state', kwargs=kw, raise_exceptions=True)
         approval_task_line_next = approval_template_line.get_next_approval_task_line(**kw)
         if not skip_create_approval_audit_log:
             env['approval.audit.log'].create_approval_audit_log_approved(**kw)
@@ -594,8 +595,8 @@ class ApprovalTaskLineRejectMixin(models.AbstractModel):
     # def reject_method_legacy(self, reason=None, **kwargs):
     #     raise NotImplemented
     #
-    def get_reject_to_task_line(self):
-        return self.reject_to_task_id
+    # def get_reject_to_task_line(self):
+    #     return self.reject_to_task_id
 
     @classmethod
     def do_reject_approval_task_line(cls, approve_task_line_reject=None, **kwargs):
@@ -803,7 +804,8 @@ class ApprovalTaskLine(models.Model):
         return groups
 
     def prepare_approval_task_dict(self):
-        """Prepare dict untuk create record approval task"""
+        if not self:
+            return {}
         self.ensure_one()
 
         kw = {

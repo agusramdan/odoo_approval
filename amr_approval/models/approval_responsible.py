@@ -2,7 +2,6 @@
 
 import logging
 
-from collections.abc import Iterable
 from odoo import _, api, fields, models
 from odoo.tools.safe_eval import safe_eval, test_python_expr
 from ..tools.utils import have_method, safe_call_method
@@ -44,7 +43,7 @@ class ApprovalResponsibleLineMixin(models.AbstractModel):
         store=False,
     )
     responsible_user_id = fields.Many2one(
-        'res.users', 'Responsible',
+        'res.users', 'Responsible User',
         help="The record id this is attached to."
     )
 
@@ -137,7 +136,7 @@ class ApprovalResponsible(models.Model):
     ]
     active = fields.Boolean(default=True)
     name = fields.Char()
-    model_id = fields.Many2one('ir.model', required=True)
+    model_id = fields.Many2one('ir.model', required=True, ondelete='cascade', )
     model = fields.Char(related='model_id.model')
 
     hierarchy = fields.Boolean(
@@ -292,109 +291,6 @@ class ApprovalResponsible(models.Model):
                 return responsible_object
 
         return self.env['res.users'].browse()
-
-    # def get_next_responsible(self, responsible_object, params=None):
-    #     """hierarchy can get next reponsible"""
-    #     return self._run_definition(responsible_object, params=params)
-    #
-    # def get_user_representative(self, responsible_object, params=None):
-    #     if self.responsible_type == 'representative':
-    #         result = self._run_definition(responsible_object)
-    #     elif self.representative_id:
-    #         result = self.representative_id.get_user_representative(responsible_object, params=params)
-    #     elif self.is_auto_representative():
-    #         result = responsible_object
-    #     else:
-    #         return self.env['res.users'].browse()
-    #     return self.to_users(result) or self.env['res.users'].browse()
-    #
-    # def get_approval_task_line_definition(self, responsible_object, params=None):
-    #     # Return list of dictionary
-    #     if self.responsible_type == 'representative':
-    #         result = self._run_definition(responsible_object, params=params)
-    #     elif self.responsible_type == 'representative':
-    #         responsible_object_next = self.get_next_responsible(responsible_object)
-    #         result = self.get_user_representative(responsible_object_next)
-    #     else:
-    #         result = None
-    #     return self.to_users(result) or self.env['res.users'].browse()
-    #
-    # def _run_definition(self, responsible_object, params=None, raise_exception=False, ):
-    #     if not isinstance(responsible_object, models.Model):
-    #         if raise_exception:
-    #             raise ValueError("Invalid Responsible Object")
-    #         return False
-    #     rec = self.ensure_one()
-    #     if not rec:
-    #         if raise_exception:
-    #             raise ValueError()
-    #     if rec.responsible_select == 'field':
-    #         return responsible_object and getattr(responsible_object, rec.responsible_field)
-    #     if rec.responsible_select == 'function':
-    #         try:
-    #             return safe_call_method(responsible_object, rec.responsible_function)
-    #         except:
-    #             if raise_exception:
-    #                 _logger.error("Function error , %s , %s ", rec, responsible_object)
-    #                 raise
-    #             _logger.exception("Error")
-    #             return False
-    #     if rec.responsible_select == 'code':
-    #         try:
-    #             localdict = {
-    #                 'result': False,
-    #                 'responsible_object': responsible_object,
-    #                 'approval_responsible': rec,
-    #                 'params': params,
-    #             }
-    #             safe_eval(rec.responsible_code, localdict, mode="exec", nocopy=True)
-    #             return "result" in localdict and localdict["result"] or False
-    #         except:
-    #             if raise_exception:
-    #                 _logger.error("Code error , %s , %s ", rec, responsible_object)
-    #                 raise
-    #             _logger.exception("Error")
-    #             return False
-    #     return False
-    #
-    # def get_candidate_users(self, responsible_object, params=None, raise_exception=True):
-    #     responsible_rule = self
-    #     candidate_users = None
-    #     if responsible_rule.responsible_select == 'field':
-    #         candidate_users = getattr(
-    #             responsible_object,
-    #             responsible_rule.responsible_field,
-    #             None
-    #         )
-    #     elif responsible_rule.responsible_select == 'function':
-    #         try:
-    #             candidate_users = safe_call_method(
-    #                 responsible_object,
-    #                 responsible_rule.responsible_function, kwargs=params
-    #             )
-    #         except:
-    #             if raise_exception:
-    #                 _logger.error("Function error , %s , %s ", responsible_rule, responsible_object)
-    #                 raise
-    #             _logger.exception("Error")
-    #             candidate_users = None
-    #     elif responsible_rule.responsible_select == 'code':
-    #         try:
-    #             localdict = {
-    #                 'result': [],
-    #                 'responsible_object': responsible_object,
-    #                 'responsible_rule': responsible_rule,
-    #                 'params': params,
-    #             }
-    #             safe_eval(responsible_rule.approval_task_line_code, localdict, mode="exec", nocopy=True)
-    #             candidate_users = "result" in localdict and localdict["result"] or []
-    #         except:
-    #             if raise_exception:
-    #                 _logger.error("Code error , %s , %s ", responsible_rule, responsible_object)
-    #                 raise
-    #             _logger.exception("Error")
-    #             candidate_users = None
-    #     return candidate_users
 
     def prepare_list_approval_task_line(
             self, responsible_object=None, get_action='representative', **kwargs):

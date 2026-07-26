@@ -18,20 +18,41 @@ class ApprovalInstanceMixin(models.AbstractModel):
     name = fields.Char("Number/Name")
     document = fields.Char("Document")
     description = fields.Char("Description")
+    pdf_sign_server = fields.Selection([('local', 'Local'), ('remote', 'Remote')], default='local')
     pdf_sign = fields.Selection(
         [('none', 'None'),
-         ('approve_is_sign_pdf', 'Sign to Approve'),
-         ('approve_form_sign_pdf', 'Sign from Approve'),
+         ('approve_is_sign_pdf', 'Approve is Sign PDF'),
+         ('approve_form_sign_pdf', 'Sign PDF is Approve'),
          ], default='none', help="""
             none : Not related pdf
             Approve to sign: When approve this instance will propagate to sign pdf.
             Approve from : Sign document will approve this instance when approve will redirect to sign authenticate.
             """
     )
-    pdf_deep_link = fields.Char()
+    pdf_deep_link = fields.Char(store=False)
+    pdf_file = fields.Binary('PDF File', store=False)
+    pdf_filename = fields.Char('PDF Filename', store=False)
+    pdf_hash = fields.Char('PDF Hash', store=False)
+
+    pdf_lock_file = fields.Binary('Lock Lock', store=False)
+    pdf_lock_filename = fields.Char('Lock Filename', store=False)
+    pdf_lock_hash = fields.Char('Lock Hash', store=False)
+    pre_signed_pdf = fields.Binary('Pre Signed PDF', store=False)
+    pre_signed_qr = fields.Char(store=False)
+
+    signed_pdf = fields.Binary('Signed PDF', store=False)
+    signed_pdf_filename = fields.Char('Signed PDF Filename', store=False)
+
     approval_document_id = fields.Many2one('approval.document', ondelete='set null', )
     approval_template_id = fields.Many2one('approval.template', ondelete='set null', )
+    approval_template_line_id = fields.Many2one('approval.template.line', ondelete='set null', )
     approval_task_id = fields.Many2one('approval.task', ondelete='set null', )
+
+    flag_reject = fields.Boolean()
+    note_reject = fields.Text()
+    flag_reset_to_draft = fields.Boolean()
+    note_reset_to_draft = fields.Text()
+
     model_id = fields.Many2one('ir.model', readonly=True, ondelete='set null', )
     model = fields.Char(related='model_id.model', store=True, readonly=True)
     requester_id = fields.Many2one('res.users', 'Requester')
@@ -49,6 +70,92 @@ class ApprovalInstanceMixin(models.AbstractModel):
         compute="_compute_access_requester",
         store=False,
     )
+    # for generic notification template
+    notification_to_user_id = fields.Many2one(
+        'res.users', string='Notification to User',
+        compute="_compute_notification_to_user_id", compute_sudo=True,
+        help="User who will receive the notification.",
+    )
+    notification_to_partner_id = fields.Many2one(
+        'res.partner', string='Notification to User/Partner',
+        compute="_compute_notification_to_user_id", compute_sudo=True,
+        help="User who will receive the notification.",
+    )
+
+    # approval_task_id = fields.Many2many(
+    #     'approval.task',
+    #     string='Approval Task',
+    #     compute='_compute_approval_task',
+    #     compute_sudo=True,
+    # )
+    def get_internal_number(self):
+        if self:
+            transaction_object = self.get_transaction_object()
+            return (
+                    self.approval_document_id.get_internal_number(transaction_object) or
+                    getattr(transaction_object, 'name', None) or transaction_object.display_name or self.name
+            )
+        return None
+
+    def get_internal_document(self):
+        if self:
+            transaction_object = self.get_transaction_object()
+            return (
+                    self.approval_document_id.get_internal_document(transaction_object) or
+                    self.approval_template_id.document or
+                    getattr(transaction_object, '_description', None) or self.document
+            )
+        return None
+
+    def get_internal_description(self):
+        if self:
+            transaction_object = self.get_transaction_object()
+            return (
+                    self.approval_document_id.get_internal_description(transaction_object) or
+                    self.approval_template_id.description or
+                    getattr(transaction_object, '_description', None) or self.description
+            )
+        return None
+
+    def get_internal_requestor(self):
+        if self:
+            transaction_object = self.get_transaction_object()
+            return (
+                    self.approval_document_id.get_internal_requestor(transaction_object) or self.requester_id
+            )
+        return self.env['res.users'].browse()
+
+    def get_internal_reject_reason(self):
+        return self.note_reject or self.env.context.get('reject_reason')
+
+    def get_internal_reset_to_draft_reason(self):
+        return self.note_reset_to_draft or self.env.context.get('reset_to_draft_reason')
+
+    def get_internal_approver(self):
+        user_execution = self.env.context.get('user_execution')
+        if isinstance(user_execution, models.Model):
+            return user_execution
+        _logger.info('user_execution %s ',user_execution)
+        return self.env.user
+
+    def get_internal_url(self):
+        if self.url:
+            return self.url
+        transaction_object = self.get_transaction_object()
+        if have_method(transaction_object, 'get_internal_url'):
+            return transaction_object.get_internal_url()
+        return ""
+
+    @api.depends_context('notification_to_user')
+    def _compute_notification_to_user_id(self):
+        for rec in self:
+            notification_to_user = self.env.context.get('notification_to_user', False)
+            if notification_to_user:
+                rec.notification_to_user_id = notification_to_user.id
+                rec.notification_to_partner_id = notification_to_user.partner_id.id
+            else:
+                rec.notification_to_user_id = False
+                rec.notification_to_partner_id = False
 
     @api.model
     def ensure_disable_auto_register(self, transaction_object):
@@ -100,39 +207,57 @@ class ApprovalInstanceMixin(models.AbstractModel):
         return res
 
     def get_state_waiting_approvals(self):
+        if not self:
+            return False
         return self.approval_template_id and self.approval_template_id.get_state_waiting_approvals()
 
     def get_state_field(self):
+        if not self:
+            return False
         return self.approval_template_id.get_state_field()
 
     def get_state_rejected(self):
+        if not self:
+            return False
         return self.approval_template_id.get_state_rejected()
 
     def get_state_approved(self):
+        if not self:
+            return False
         return self.approval_template_id.get_state_approved()
 
     def get_transaction_status(self, transaction=None):
-        rec = self.ensure_approval_template()
+        if not self:
+            return False
+        rec = self.ensure_one()
         transaction = transaction or rec.get_transaction_object()
         return self.approval_template_id and self.approval_template_id.get_transaction_status(transaction)
 
     def get_user_requestor(self, transaction=None):
-        rec = self.ensure_approval_template()
+        if not self:
+            return False
+        rec = self.ensure_one()
         transaction = transaction or rec.get_transaction_object()
         return self.approval_template_id.get_user_requestor(transaction)
 
     def is_model_need_approval(self, transaction=None):
-        rec = self.ensure_approval_template()
+        if not self:
+            return False
+        rec = self.ensure_one()
         transaction = transaction or rec.get_transaction_object()
         return self.approval_template_id and self.approval_template_id.is_model_need_approval(transaction)
 
     def is_status_request_approval(self, transaction=None):
-        rec = self.ensure_approval_template()
+        if not self:
+            return False
+        rec = self.ensure_one()
         transaction = transaction or rec.get_transaction_object()
         return self.approval_template_id and self.approval_template_id.is_status_request_approval(transaction)
 
     def is_status_waiting_approval(self, transaction=None):
-        rec = self.ensure_approval_template()
+        if not self:
+            return False
+        rec = self.ensure_one()
         transaction = transaction or rec.get_transaction_object()
         return self.approval_template_id and self.approval_template_id.is_status_waiting_approval(transaction)
 
@@ -169,11 +294,14 @@ class ApprovalInstanceMixin(models.AbstractModel):
                 raise UserError("Approval Template not found.")
             return self.browse()
 
-        approval_instance = self.get_instance_for_transaction(transaction_model_name, transaction_id) or self.create({
-            'approval_template_id': approval_template_id.id,
-            'transaction_model_name': transaction_model_name,
-            'transaction_id': transaction_id,
-        })
+        approval_instance = (
+                self.get_instance_for_transaction(transaction_model_name, transaction_id) or
+                self.create([{
+                    'approval_template_id': approval_template_id.id,
+                    'transaction_model_name': transaction_model_name,
+                    'transaction_id': transaction_id,
+                }])[0]
+        )
         return approval_instance.ensure_approval_template()
 
     def get_instance_for_transaction(self, transaction_model_name, transaction_id):
@@ -205,38 +333,20 @@ class ApprovalInstanceMixin(models.AbstractModel):
 
     def get_all_approval_task_line(self):
         rec = self.ensure_approval_template()
-        approval_task_line_model = rec.approval_template_id.approval_task_line_model
-        if not approval_task_line_model:
-            return None
-        return self.env[approval_task_line_model].get_all_approval_task_line(
-            transaction_model_name=rec.transaction_model_name,
-            transaction_id=rec.transaction_id,
+        return rec.approval_template_id.get_all_approval_task_line(
+            approval_instance=rec
         )
 
     def get_next_approval_task_line(self):
         rec = self.ensure_approval_template()
-        approval_task_line_model = rec.approval_template_id.approval_task_line_model
-        if not approval_task_line_model:
-            return None
-        approval_task_line = self.env[approval_task_line_model]
-        if have_method(approval_task_line, 'get_next_approval_task_line'):
-            return self.env[approval_task_line_model].get_next_approval_task_line(
-                transaction_model_name=rec.transaction_model_name,
-                transaction_id=rec.transaction_id
-            )
-        else:
-            return rec.approval_template_id.get_next_approval_task_line(
-                approval_task_line, approval_instance=rec
-            )
+        return rec.approval_template_id.get_next_approval_task_line(
+            approval_instance=rec
+        )
 
     def get_last_approval_task_line(self):
         rec = self.ensure_approval_template()
-        approval_task_line_model = rec.approval_template_id.approval_task_line_model
-        if not approval_task_line_model:
-            return None
-        return self.env[approval_task_line_model].get_last_approval_task_line(
-            transaction_id=rec.transaction_id,
-            transaction_model_name=rec.transaction_model_name,
+        return rec.approval_template_id.get_last_approval_task_line(
+            approval_instance=rec
         )
 
     def check_approval_task_status(self):
@@ -274,25 +384,19 @@ class ApprovalInstanceMixin(models.AbstractModel):
         if not isinstance(transaction_object, models.BaseModel):
             transaction_object = rec.get_transaction_object()
         kwargs['transaction_object'] = transaction_object = self.ensure_disable_auto_register(transaction_object)
-        company = getattr(transaction_object, "company_id")
-        if company:
-            rec.company_id = company
+        rec.company_id = getattr(transaction_object, "company_id", None)
         rec.requester_id = rec.get_user_requestor()
         kwargs['approval_instance'] = rec
         kwargs['transaction_model_name'] = transaction_object._name
         kwargs['transaction_id'] = transaction_object.id
         kwargs['transaction_object'] = transaction_object
-        kwargs['requester_id'] = rec.requester_id.id
-
-        if rec.company_id:
-            kwargs['company_id'] = rec.company_id.id
-        if rec.name and 'name' not in kwargs:
-            kwargs['name'] = rec.name
-        if rec.document and 'document' not in kwargs:
-            kwargs['document'] = rec.document
-        if rec.description and 'description' not in kwargs:
-            kwargs['description'] = rec.description
-
+        kwargs.pop('approval_action', None)
+        kwargs = self._prepare_action(**kwargs)
+        approval_document = kwargs.get('approval_document')
+        if approval_document and approval_document.requestor_group_ids:
+            if not rec.requester_id.user_has_any_group(approval_document.requestor_group_ids):
+                raise UserError(
+                    "Requester not alaw create request approval for this document %s . " % approval_document.display_name)
         if have_method(approval_task_line, "prepare_approval_task_dict"):
             update = safe_call_method(approval_task_line, "prepare_approval_task_dict", kwargs=kwargs)
             update and kwargs.update(update)
@@ -304,6 +408,9 @@ class ApprovalInstanceMixin(models.AbstractModel):
         approval_task = self.env['approval.task'].approval_setup(
             transaction_id, transaction_model_name, **kwargs
         )
+        self.document = approval_task.document
+        self.name = approval_task.name
+        self.url = approval_task.url
         self.approval_task_id = approval_task
         return approval_task_line
 
@@ -347,6 +454,9 @@ class ApprovalInstanceMixin(models.AbstractModel):
         if approval_action == 'reset_to_draft':
             return self.action_reset_to_draft()
 
+        if approval_action == 'show_sign_pdf':
+            return self.action_show_sign_pdf()
+
         _logger.info("context %s ", self.env.context)
 
     def request_approval(self):
@@ -357,21 +467,29 @@ class ApprovalInstanceMixin(models.AbstractModel):
             raise UserError("Transaction not Available")
         kwargs['transaction_object'] = transaction_object = self.ensure_disable_auto_register(transaction_object)
         kwargs['approval_template'] = approval_template = self.approval_template_id
+        kwargs['approval_document'] = approval_document = self.approval_document_id.get_approval_document(
+            transaction_object
+        )
         if not approval_template:
             raise UserError("Template Approval not configure for this model")
 
         approval_template.invoke_method(
             transaction_object, 'validate_request_approval', kwargs
         )
-        if approval_instance.pdf_sign not in [False, 'none']:
-            # dry test
-            pdf = approval_template.invoke_method(
-                transaction_object, 'get_pdf_document', kwargs, raise_exceptions=True,
-            )
-            pdf_deep_link = pdf.get('pdf_deep_link')
-            if pdf_deep_link and approval_instance.pdf_deep_link != pdf_deep_link:
-                approval_instance.pdf_deep_link = pdf_deep_link
+        approval_template_line = None
+        if approval_document:
+            approval_instance.pdf_sign = approval_document.pdf_sign
+            approval_instance.pdf_sign_server = approval_document.pdf_sign_server
+            approval_instance.approval_document_id = approval_document
+            approval_template_line = approval_instance.approval_template_line_id
+        else:
+            approval_instance.approval_document_id = False
+            approval_instance.pdf_sign = False
 
+        if not approval_template_line:
+            approval_template_line = approval_template.approval_template_line_id
+        approval_instance.approval_template_line_id = approval_template_line
+        kwargs['approval_template_line'] = approval_template_line
         config_approval_task_line = approval_template.get_config_instance(approval_instance) or {}
         if config_approval_task_line.get('auto_approved'):
             self.after_auto_approved(**config_approval_task_line)
@@ -483,10 +601,15 @@ class ApprovalInstanceMixin(models.AbstractModel):
         if not without_clear_approval and not approval_clear:
             self.clear_approval()
 
-        approval_template_line = approval_template.approval_template_line_id
+        approval_template_line = approval_template.approval_template_line_id.get_approval_template_line(**kwargs)
         if approval_template_line:
-            approval_task_line = approval_template_line.safe_data_approval_task_line(approval_task_line)
-        return self.env[model].with_context(ctx).create_approval_task_line(approval_task_line, **kwargs)
+            _logger.info("Pake approval_template_line %s ", approval_template_line)
+            approval_task_lines = approval_template_line.create_approval_task_line(approval_task_line, **kwargs)
+            approval_template_line.setup_reject_to_rule_line(approval_task_lines, **kwargs)
+            return approval_task_lines
+        else:
+            _logger.info("Tidak punya approval_template_line")
+            return self.env[model].with_context(ctx).create(approval_task_line)
 
     def get_transaction_currency(self, transaction_object):
         if hasattr(transaction_object, "currency_id"):
@@ -546,42 +669,151 @@ class ApprovalInstanceMixin(models.AbstractModel):
         _logger.info(" model_name %s , model_res_id %s ", model_name, model_res_id)
         return context
 
-    def _prepare_action(self, **kw):
-        approval_instance = self.ensure_one()
-        approval_template = approval_instance.approval_template_id
-        transaction_object = approval_instance.get_transaction_object()
-        approval_task_line = approval_instance.get_next_approval_task_line()
-        approval_template_line = approval_template.approval_template_line_id
-        kw.update(
-            approval_instance=approval_instance,
-            approval_template=approval_template,
-            approval_task_line=approval_task_line,
-            transaction_object=transaction_object,
-            approval_template_line=approval_template_line
+    def _prepare_action(self, approval_action=None, **kw):
+
+        approval_instance = kw.get('approval_instance') or self.ensure_one()
+        kw.setdefault('approval_instance', approval_instance)
+
+        date_execution = kw.get('date_execution') or fields.Datetime.now()
+        kw.setdefault('date_execution', date_execution)
+
+        user_execution = kw.get('user_execution') or self.env.user
+        kw.setdefault('user_execution', user_execution)
+
+        transaction_id = kw.get('transaction_id') or approval_instance.transaction_id
+        kw.setdefault('transaction_id', transaction_id)
+
+        transaction_model_name = kw.get('transaction_model_name') or approval_instance.transaction_model_name
+        kw.setdefault('transaction_model_name', transaction_model_name)
+
+        approval_template = kw.get('approval_template') or approval_instance.approval_template_id
+        kw.setdefault('approval_template', approval_template)
+
+        transaction_object = kw.get('transaction_object') or approval_instance.get_transaction_object()
+        kw.setdefault('transaction_object', transaction_object)
+
+        approval_document = (
+                kw.get('approval_document') or
+                approval_instance.approval_document_id or
+                approval_instance.approval_document_id.get_approval_document(transaction_object)
         )
+        kw.setdefault('approval_document', approval_document)
+
+        approval_template_line = (
+                kw.get('approval_template_line') or
+                approval_instance.approval_template_line_id or
+                approval_document.approval_template_line_id or
+                approval_template.approval_template_line_id
+        )
+        kw.setdefault('approval_template_line', approval_template_line)
+
+        approval_task_line = (
+                kw.get('approval_task_line', None) or
+                approval_template_line.get_next_approval_task_line(**kw)
+        )
+        kw.setdefault('approval_task_line', approval_task_line)
+
+        if approval_action:
+            approval_action_context = dict(
+                __prepared_approval_action=True,
+                user_execution=user_execution,
+                date_execution=date_execution,
+            )
+            approval_task = (
+                    kw.get('approval_task') or
+                    approval_instance.approval_task_id or
+                    approval_instance.approval_task_id.get_approval_task(
+                        transaction_id, transaction_model_name
+                    )
+            )
+            kw.setdefault('approval_task', approval_task)
+            if not approval_task_line:
+                if approval_template_line:
+                    approval_task_line = approval_template_line.get_next_approval_task_line(**kw)
+                else:
+                    _logger.info("Without approval_template_line.")
+                    approval_task_line = approval_instance.get_next_approval_task_line()
+
+            if (
+                    approval_template_line and approval_task_line and
+                    approval_action in ['approver_action', 'approve', 'reject']
+            ):
+                result = approval_template_line.check_action_right(approval_task_line, kw) or {}
+                kw.update(result)
+                approval_action_context.update(result)
+                if result.get('execution_method') == 'with_user':
+                    user_approver = result.get('user_approver')
+                    transaction_object = transaction_object.with_user(user_approver)
+                    approval_task_line = approval_task_line.with_user(user_approver)
+                if result.get('execution_method') == 'sudo':
+                    transaction_object = transaction_object.sudo()
+                    approval_task_line = approval_task_line.sudo()
+                _logger.info("approval_template_line.check_action_right %s", result)
+
+            if approval_action in ['requester_action', 'rest_to_draft', 'cancel']:
+                result = approval_template.check_requester_action_right(**kw)
+                kw.update(result)
+                if result.get('execution_method') == 'with_user':
+                    user_approver = result.get('user_approver')
+                    transaction_object = transaction_object.with_user(user_approver)
+                    approval_task_line = approval_task_line.with_user(user_approver)
+                if result.get('execution_method') == 'sudo':
+                    transaction_object = transaction_object.sudo()
+                    approval_task_line = approval_task_line.sudo()
+
+            if not approval_instance.env.context.get('__prepared_approval_action'):
+                ctx = dict(approval_instance.env.context)
+                ctx.update(approval_action_context)
+                kw['approval_instance'] = approval_instance.with_context(ctx)
+
+            if not approval_template.env.context.get('__prepared_approval_action'):
+                ctx = dict(approval_template.env.context)
+                ctx.update(approval_action_context)
+                kw['approval_template'] = approval_template.with_context(ctx)
+
+            if not approval_document.env.context.get('__prepared_approval_action'):
+                ctx = dict(approval_document.env.context)
+                ctx.update(approval_action_context)
+                kw['approval_document'] = approval_document.with_context(ctx)
+
+            if not transaction_object.env.context.get('__prepared_approval_action'):
+                ctx = dict(transaction_object.env.context)
+                ctx.update(approval_action_context)
+                kw['transaction_object'] = transaction_object.with_context(ctx)
+
+            if approval_template_line and not approval_template_line.env.context.get('__prepared_approval_action'):
+                ctx = dict(approval_template_line.env.context)
+                ctx.update(approval_action_context)
+                kw['approval_template_line'] = approval_template_line.with_context(ctx)
+
+            if approval_task_line and not approval_task_line.env.context.get('__prepared_approval_action'):
+                ctx = dict(approval_task_line.env.context)
+                ctx.update(approval_action_context)
+                kw['approval_task_line'] = approval_task_line.with_context(ctx)
+        else:
+            _logger.info("_prepare_action approval_action %s", approval_action)
+        _logger.info("_prepare_action %s", kw)
         return kw
 
     def action_approve(self):
-        kw = self._prepare_action()
+        kw = self._prepare_action(approval_action='approve')
         approval_template = kw.get('approval_template')
-        approval_template_line = kw.get('approval_template_line')
-        approval_task_line = kw.get('approval_task_line')
         transaction_object = kw.get('transaction_object')
         approval_template.invoke_method(
             transaction_object, 'validate_approve', kw
         )
-        approval_template_line.check_action_right(approval_task_line, {})
+        # approval_template_line.check_action_right(approval_task_line, {})
         if approval_template.approve_action_type:
             return approval_template.approval_action_custom('approve', **kw)
         else:
             return self.do_approve(**kw)
 
     def action_reject(self):
-        kw = self._prepare_action()
+        kw = self._prepare_action(approval_action='reject')
         approval_template = kw.get('approval_template')
-        approval_template_line = kw.get('approval_template_line')
-        approval_task_line = kw.get('approval_task_line')
-        approval_template_line.check_action_right(approval_task_line, {})
+        # approval_template_line = kw.get('approval_template_line')
+        # approval_task_line = kw.get('approval_task_line')
+        # approval_template_line.check_action_right(approval_task_line, {})
         transaction_object = kw.get('transaction_object')
         approval_template.invoke_method(
             transaction_object, 'validate_reject', kw
@@ -592,12 +824,12 @@ class ApprovalInstanceMixin(models.AbstractModel):
             return self.do_reject(**kw)
 
     def action_cancel(self):
-        kw = self._prepare_action()
+        kw = self._prepare_action(approval_action='cancel')
         approval_template = kw.get('approval_template')
-        approval_template.check_requester_action_right(**kw)
-        approval_template_line = kw.get('approval_template_line')
-        approval_task_line = kw.get('approval_task_line')
-        approval_template_line.check_action_right(approval_task_line, {})
+        # kw = approval_template.check_requester_action_right(**kw)
+        # approval_template_line = kw.get('approval_template_line')
+        # approval_task_line = kw.get('approval_task_line')
+        # approval_template_line.check_action_right(approval_task_line, {})
         transaction_object = kw.get('transaction_object')
         approval_template.invoke_method(
             transaction_object, 'validate_cancel', kw
@@ -608,29 +840,29 @@ class ApprovalInstanceMixin(models.AbstractModel):
             return self.do_cancel(**kw)
 
     def action_reset_to_draft(self):
-        kw = self._prepare_action()
+        kw = self._prepare_action(approval_action='reset_to_draft')
         approval_template = kw.get('approval_template')
-        approval_template.check_requester_action_right(**kw)
-        approval_template_line = kw.get('approval_template_line')
-        approval_task_line = kw.get('approval_task_line')
-        approval_template_line.check_action_right(approval_task_line, {})
+        # kw = approval_template.check_requester_action_right(**kw)
+        # approval_template_line = kw.get('approval_template_line')
+        # approval_task_line = kw.get('approval_task_line')
+        # #kw=approval_template_line.check_requester_action_right(approval_task_line, {})
         transaction_object = kw.get('transaction_object')
         approval_template.invoke_method(
             transaction_object, 'validate_reset_to_draft', kw
         )
-        if approval_template.reset_to_draf_action_type:
-            return approval_template.approval_action_custom('reset_to_draf', **kw)
+        if approval_template.reset_to_draft_action_type:
+            return approval_template.approval_action_custom('reset_to_draft', **kw)
         else:
-            return self.do_reset_to_draf(**kw)
+            return self.do_reset_to_draft(**kw)
 
     def do_reset_to_draft(self, **kw):
-        approval_instance = self.ensure_one()
-        check_approval = approval_instance.get_next_approval_task_line()
-        approval_template = approval_instance.approval_template_id
-        approval_template.check_requester_action_right(**kw)
-        kw.setdefault('approval_instance', approval_instance)
-        kw.setdefault('approval_task_line', check_approval)
-        return approval_template.do_reset_to_draft(kw)
+        kw = self._prepare_action(approval_action='reset_to_draft', **kw)
+        approval_template = kw.get('approval_template')
+        kw = approval_template.check_requester_action_right(**kw)
+        # approval_instance = self.ensure_one()
+        # check_approval = approval_instance.get_next_approval_task_line()
+        # approval_template = approval_instance.approval_template_id
+        return approval_template.do_reset_to_draft(**kw)
 
     def action_clear_approval(self):
         self.clear_approval()
@@ -639,16 +871,8 @@ class ApprovalInstanceMixin(models.AbstractModel):
         return self.do_approve(**kwargs)
 
     def do_approve(self, **kw):
-        approval_instance = self.ensure_one()
-        check_approval = approval_instance.get_next_approval_task_line()
-        approval_template = approval_instance.approval_template_id
-        approval_template_line = approval_template.approval_template_line_id
-        kw.setdefault('approval_instance', self)
-        kw.setdefault('approval_template', approval_template)
-        kw.setdefault('transaction_object', approval_instance.get_transaction_object())
-        kw.pop('approval_task_line', None)
-        kw = approval_template_line.check_action_right(check_approval, kw) or kw
-        kw.setdefault('approval_task_line', check_approval)
+        kw = self._prepare_action(approval_action='approve', **kw)
+        approval_template = kw.get('approval_template')
         return approval_template.do_approve(**kw)
 
     def before_approve(self, **kwargs):
@@ -691,16 +915,8 @@ class ApprovalInstanceMixin(models.AbstractModel):
         return self.do_reject(reason=reason, **kwargs)
 
     def do_reject(self, **kw):
-        approval_instance = self.ensure_one()
-        check_approval = approval_instance.get_next_approval_task_line()
-        approval_template = approval_instance.approval_template_id
-        approval_template_line = approval_template.approval_template_line_id
-        kw.setdefault('approval_instance', self)
-        kw.setdefault('approval_template', approval_template)
-        kw.setdefault('transaction_object', approval_instance.get_transaction_object())
-        kw.pop('approval_task_line', None)
-        kw = approval_template_line.check_action_right(check_approval, kw) or kw
-        kw.setdefault('approval_task_line', check_approval)
+        kw = self._prepare_action(approval_action='reject', **kw)
+        approval_template = kw.get('approval_template')
         return approval_template.do_reject(**kw)
 
     def cancel(self, **kw):
@@ -708,13 +924,11 @@ class ApprovalInstanceMixin(models.AbstractModel):
 
     def do_cancel(self, **kw):
         approval_instance = self.ensure_one()
-        if approval_instance.access_requester:
-            raise UserError("Only Requester able to action cancel.")
         check_approval = approval_instance.get_next_approval_task_line()
         approval_template = approval_instance.approval_template_id
         kw.setdefault('approval_instance', approval_instance)
         kw.setdefault('approval_task_line', check_approval)
-        approval_template.check_requester_action_right(**kw)
+        kw = approval_template.check_requester_action_right(**kw)
         return approval_template.do_cancel(kw)
 
     def reject_from_popup_reject(self, **kwargs):
@@ -744,7 +958,6 @@ class ApprovalInstanceMixin(models.AbstractModel):
         if not self:
             _logger.warning("No Instance for done Approval")
             return self
-
         approval_instance = self.ensure_one()
         approval_template = approval_instance.approval_template_id
         approval_template.done_approval(**kwargs)
@@ -753,13 +966,16 @@ class ApprovalInstanceMixin(models.AbstractModel):
         if not self:
             _logger.warning("No Instance for celar Approval")
             return self
-        rec = self.ensure_one()
-        approval_task_line_model = rec.approval_template_id.approval_task_line_model
-        self.env[approval_task_line_model].search([
-            ('transaction_model_name', '=', rec.transaction_model_name),
-            ('transaction_id', '=', rec.transaction_id),
-        ]).unlink()
-        self.unregister_approval_task_line()
+        approval_instance = self.ensure_one()
+        approval_instance.unregister_approval_task_line()
+        approval_task_line = approval_instance.approval_task_line
+        if approval_task_line:
+            approval_task_line.sudo().unlink()
+        approval_template = approval_instance.approval_template_id
+        approval_instance.approval_template_id.clear_approval(
+            approval_instance=approval_instance,
+            approval_template=approval_template,
+        )
 
     def _mail_message_approve(self, message):
         self.env['mail.message'].sudo().create({
@@ -770,6 +986,9 @@ class ApprovalInstanceMixin(models.AbstractModel):
             'date': datetime.now(),
             'body': message,
         })
+
+    def action_show_sign_pdf(self):
+        raise UserError("PDF Sign Not ready.")
 
     def submit_pdf_document(self, **kwargs):
         raise NotImplemented("submit_pdf_document Not ready to integrate.")
@@ -785,7 +1004,7 @@ class ApprovalInstance(models.Model):
     _name = 'approval.instance'
     _inherit = 'approval.instance.mixin'
 
-    approval_document_id = fields.Many2one('approval.template', compute='_compute_approval_document_id')
+    approval_document_id = fields.Many2one('approval.document', compute='_compute_approval_document_id')
     approval_template_id = fields.Many2one('approval.template', compute='_compute_approval_template_id')
     approval_task_line_model = fields.Char(related='approval_template_id.approval_task_line_model')
     approval_task_line = fields.One2many('approval.task.line', 'approval_instance_id', string='Approval Task Lines')
@@ -831,3 +1050,12 @@ class ApprovalInstance(models.Model):
                     group_ids = next_approval_task_line.get_groups()
             rec.user_ids = user_ids.ids if user_ids else False
             rec.group_ids = group_ids.ids if group_ids else False
+
+    def setup_reject_to_rule_line(self):
+        approval_template_line = self.approval_template_line_id
+        if approval_template_line:
+            _logger.info("Pake approval_template_line %s ", approval_template_line.id)
+            approval_task_lines = approval_template_line.get_all_approval_task_line(status=None, approval_instance=self)
+            approval_template_line.setup_reject_to_rule_line(approval_task_lines)
+        else:
+            _logger.info("Not found approval_template_line at instance %s ", self.id)

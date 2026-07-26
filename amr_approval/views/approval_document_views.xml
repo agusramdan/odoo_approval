@@ -12,6 +12,10 @@
                 <field name="name"/>
                 <field name="model_id"/>
                 <field name="condition_select"/>
+                <field name="approval_template_line_id"/>
+                <field name="view_id"/>
+                <field name="action_id"/>
+                <field name="menu_id"/>
             </tree>
         </field>
     </record>
@@ -22,19 +26,31 @@
         <field name="model">approval.document</field>
         <field name="arch" type="xml">
             <form string="Approval Document">
+                <header>
+                    <button name="action_generate_view" string="Generate View" type="object" class="oe_highlight" attrs="{'invisible':[('view_id','=',False)]}"/>
+                    <button name="remove_generated_view" string="Remove View" type="object" class="oe_highlight" attrs="{'invisible':[('generate_view_id','=',False)]}"/>
+                    <field name="model" invisible="1"/>
+                </header>
                 <sheet>
-
+                    <div class="oe_title">
+                        <label for="code" class="oe_edit_only"/>
+                        <h1>
+                            <field name="code" class="oe_inline"/>
+                        </h1>
+                        <field name="name"/>
+                    </div>
                     <group>
                         <group>
-                            <field name="code"/>
-                            <field name="name"/>
-                            <field name="priority"/>
-                            <field name="need_approval"/>
-                        </group>
-
-                        <group>
+                            <field name="approval_template_id" string="Template" />
                             <field name="model_id" options="{'no_create': True}"/>
                             <field name="model" string=""/>
+                            <field name="priority"/>
+                            <field name="need_approval"/>
+                            <field name="requestor_group_ids" options="{'no_create': True}" widget="many2many_tags"/>
+                            <field name="pdf_sign" />
+                        </group>
+                        <group>
+                            <field name="generate_view_id"/>
                             <field name="view_id" string="Form" options="{'no_create': True}"/>
                             <field name="action_id" string="Window" options="{'no_create': True}"/>
                             <field name="menu_id" string="Menu" options="{'no_create': True}"/>
@@ -46,14 +62,107 @@
                             <group>
                                 <field name="condition_select"/>
                             </group>
-                            <group attrs="{'invisible':[('condition_select','!=','python')]}">
-                                <field name="condition_python"
-                                       widget="ace" nolabel="1"
-                                />
+                            <field name="condition_python"
+                                       widget="ace" options="{'mode': 'python'}" nolabel="1"
+                                       attrs="{'invisible':[('condition_select','!=','python')]}"
+                            />
+                        </page>
+                        <page string="Approval Task Mapping">
+                            <group>
+                                <group string="Document">
+                                    <field name="document_select" string="Select"/>
+                                    <field name="document_const" string="Const"
+                                           attrs="{'invisible':[('document_select','!=','const')]}"
+                                    />
+                                    <field name="document_field" string="Field"
+                                           attrs="{'invisible':[('document_select','!=','field')]}"
+                                    />
+                                    <field name="document_function" string="Function"
+                                           attrs="{'invisible':[('document_select','!=','function')]}"
+                                    />
+        <!--                            <field name="document_code" string="Code"-->
+        <!--                                   widget="ace" options="{'mode': 'python'}" attrs="{'invisible':[('document_select','!=','code')]}"-->
+        <!--                            />-->
+                                </group>
+                                <group string="Number">
+                                    <field name="number_select" string="Select"/>
+        <!--                            <field name="number_const" string="Const"-->
+        <!--                                   attrs="{'invisible':[('number_select','!=','const')]}"-->
+        <!--                            />-->
+                                    <field name="number_field" string="Field"
+                                           attrs="{'invisible':[('number_select','!=','field')]}"
+                                    />
+                                    <field name="number_function" string="Function"
+                                           attrs="{'invisible':[('number_select','!=','function')]}"
+                                    />
+        <!--                            <field name="number_code" string="Code"-->
+        <!--                                   widget="ace" options="{'mode': 'python'}" attrs="{'invisible':[('number_select','!=','code')]}"-->
+        <!--                            />-->
+                                </group>
+                                <group string="Description">
+                                    <field name="description_select" string="Select"/>
+                                    <field name="description_const" string="Const"
+                                           attrs="{'invisible':[('description_select','!=','const')]}"
+                                    />
+                                    <field name="description_field" string="Field"
+                                           attrs="{'invisible':[('description_select','!=','field')]}"
+                                    />
+                                    <field name="description_function" string="Function"
+                                           attrs="{'invisible':[('description_select','!=','function')]}"
+                                    />
+        <!--                            <field name="description_code" string="Code"-->
+        <!--                                   widget="ace" options="{'mode': 'python'}" attrs="{'invisible':[('number_select','!=','code')]}"-->
+        <!--                            />-->
+                                </group>
                             </group>
                         </page>
+                        <page string="Action Button" attrs="{'invisible':[('view_id','=',False)]}">
+                            <group>
+                                <group>
+                                    <field name="available_action_request_approval"/>
+                                    <field name="available_action_cancel"/>
+                                    <field name="available_action_reset_to_draft"/>
+                                </group>
+                                <group>
+                                    <field name="available_action_approve"/>
+                                    <field name="available_action_reject"/>
+                                    <field name="available_action_show_sign_pdf"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Pages" attrs="{'invisible':[('view_id','=',False)]}">
+                            <group>
+                                <group string="Approval Page">
+<!--                                    <field name="available_approval_template_line_models_ids" invisible="1"/>-->
+                                    <field name="approval_template_line_id" string="Line Template" />
+<!--                                    <field name="approval_task_line_model_id" string="Approval Line Model" domain="[('id','in',available_approval_template_line_models_ids)]"/>-->
+                                    <field name="approval_banner_show" />
+                                    <field name="approval_task_line_page" />
+                                    <field name="generate_field_approval_task_line"  string="Generate"
+                                           attrs="{'invisible':[('approval_task_line_page', '=', False)]}" />
+                                    <field name="generate_field_approval_task_line_id" string="Generated"
+                                           attrs="{'invisible':['|',('approval_task_line_page', '=', False),('generate_field_approval_task_line', '=', False)]}"
+                                    />
+                                    <field name="approval_task_line_field" string="Field Name"
+                                           attrs="{'invisible':['|',('approval_task_line_page', '=', False),('generate_field_approval_task_line', '=', True)]}"
+                                    />
+                                </group>
+                            </group>
+                        </page>
+                        <page string="PDF Digital Sign" attrs="{'invisible':[('pdf_sign','in',[False,'none'])]}">
+                            <group>
+                                <field name="pdf_sign_server" />
+                            </group>
+                            <field name="pdf_code"
+                                   widget="ace" options="{'mode': 'python'}" nolabel="1"
+                            />
+                        </page>
+                        <page string="Approval to Sign" attrs="{'invisible':[('pdf_sign','!=','approve_is_sign_pdf')]}">
+                            <field name="pdf_sign_code"
+                                   widget="ace" options="{'mode': 'python'}" nolabel="1"
+                            />
+                        </page>
                     </notebook>
-
                 </sheet>
             </form>
         </field>

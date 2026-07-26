@@ -38,6 +38,7 @@
                 <field name="approval_res_id" string="Res ID" optional="hide" groups="base.group_no_one"/>
                 <field name="approval_model" string="Model" optional="hide" groups="base.group_no_one"/>
                 <field name="approval_instance_id" optional="hide" groups="base.group_no_one"/>
+                <field name="approval_document_id" optional="hide" groups="base.group_no_one"/>
                 <field name="notification_approval_id" string="Notification" optional="hide" groups="base.group_no_one"/>
                 <field name="notification_reminder_id" string="Reminder" optional="hide" groups="base.group_no_one"/>
                 <field name="aging" optional="hide"/>
@@ -48,7 +49,7 @@
                 <button name="action_assign" string="Assignment User" type="object" class="oe_highlight"
                         icon="fa-solid fa-user-plus text-success" groups="base.group_system" help="Assign Responsible User"/>
                 <button name="action_approval_transaction" string="Show Detail" type="object" class="oe_highlight"/>
-                <button name="send_to_mobile_approval" string="Send to Mobile" type="object"
+                <button name="send_to_approval_aggregator" string="Send to Aggregator" type="object"
                         icon="fa-solid fa-mobile" groups="base.group_no_one"
                 />
                 <button name="send_notification" string="Send Notification" type="object"

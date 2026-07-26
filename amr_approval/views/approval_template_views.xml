@@ -6,9 +6,10 @@
         <field name="arch" type="xml">
             <tree string="Approval Template" default_order="model_id">
                 <field name="model_id"/>
-                <field name="model" string="Model Name"/>
                 <field name="approval_template_line_id"/>
-                <field name="view_name"/>
+                <field name="view_id"/>
+                <field name="action_id"/>
+                <field name="menu_id"/>
             </tree>
         </field>
     </record>
@@ -21,6 +22,7 @@
             <form string="Approval Template">
                 <header>
                     <button name="action_generate_view" string="Generate View" type="object" class="oe_highlight"/>
+                    <button name="remove_generated_view" string="Remove View" type="object" class="oe_highlight"/>
                     <field name="model" invisible="1"/>
                 </header>
                 <sheet>
@@ -44,7 +46,7 @@
                             />
                         </page>
 
-                        <page string="Help" name="help_info" autofocus="autofocus" >
+                        <page string="Help" name="help_info"  >
                             <div style="margin-top: 4px;">
                                 <h3>Help with Python expressions</h3>
                                 <p>Various fields may use Python code or Python expressions. The following variables can be used:</p>
@@ -73,8 +75,9 @@
                                     <field name="approval_responsible_id" string="Model" attrs="{'invisible':[('approval_mode', '!=', 'model')]}"/>
                                 </group>
                                 <group string="Approval Line">
+                                    <field name="available_approval_template_line_models_ids" invisible="1"/>
                                     <field name="approval_template_line_id" string="Line Template" />
-                                    <field name="approval_task_line_model_id" string="Approval Line" />
+                                    <field name="approval_task_line_model_id" string="Approval Line Model" domain="[('id','in',available_approval_template_line_models_ids)]"/>
                                     <field name="approval_task_line_page" />
                                     <field name="generate_field_approval_task_line"  string="Generate"
                                            attrs="{'invisible':[('approval_task_line_page', '=', False)]}" />
@@ -229,11 +232,11 @@
                             <group>
                                 <group string="To Approver">
                                     <field name="notification_approval_id"
-                                           domain="[('model_id.model','=',model)]"
+                                           domain="[('model_id.model','in',[model, 'approval.task']),('notification_type','in',[False, 'request_approval'])]"
                                            string="Request Approval"
                                     />
                                     <field name="notification_reminder_id"
-                                           domain="[('model_id.model','=',model)]"
+                                           domain="[('model_id.model','in',[model, 'approval.task']),('notification_type','in',[False, 'reminder_approval'])]"
                                            string="Reminder"
                                     />
                                     <label for="reminder_interval_number" string="Every"/>
@@ -293,6 +296,7 @@ records.migrate_approval_task()
         <field name="name">Approval Template</field>
         <field name="res_model">approval.template</field>
         <field name="view_mode">tree,form</field>
+        <field name="context">{'___generate_field_approval_task_line':1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Create your Approval Template

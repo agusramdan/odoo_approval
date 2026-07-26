@@ -19,11 +19,28 @@
             <field name="approval_mode_function" eval="False"/>
             <field name="approval_mode_fields">user_id,user_ids,group_id,group_ids</field>
 
-            <field name="field_user_execution">user_execution_id</field>
+            <field name="field_sign_title">sign_title</field>
+            <field name="field_user_execution_id">user_execution_id</field>
             <field name="field_date_execution">date_execution</field>
             <field name="field_reason">reject_reason</field>
             <field name="field_started_task_time">started_task_time</field>
-            <field name="field_user_delegation">user_delegation_id</field>
+            <field name="field_user_delegation_id">user_delegation_id</field>
+
+            <field name="field_responsible_rule_id">responsible_rule_id</field>
+            <field name="field_responsible_id">responsible_id</field>
+            <field name="field_responsible_user_id">responsible_user_id</field>
+
+            <field name="field_reject_to_method">reject_to_method</field>
+            <field name="field_matrix_rule_line_model">matrix_rule_line_model</field>
+            <field name="field_matrix_rule_line_id">matrix_rule_line_id</field>
+            <field name="field_reject_to_matrix_rule_line_id">reject_to_matrix_rule_line_id</field>
+            <field name="field_reject_to_task_id">reject_to_task_id</field>
+
+            <field name="field_type_approval">type_approval</field>
+            <field name="field_user_id">user_id</field>
+            <field name="field_group_id">group_id</field>
+            <field name="field_user_ids">user_ids</field>
+            <field name="field_group_ids">group_ids</field>
 
 <!--            <field name="method_start_task">method</field>-->
 <!--            <field name="method_set_waiting_approval_state">set_waiting_approval_state</field>-->
