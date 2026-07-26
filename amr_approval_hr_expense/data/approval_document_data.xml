@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="approval_document_hr_expense_sheet" model="approval.document">
+            <field name="model_id" ref="model_hr_expense_sheet"/>
+            <!-- agnostic -->
+            <field name="code">hr_expense_sheet</field>
+            <field name="name">HR Expense</field>
+<!--            <field name="priority">20</field>-->
+            <field name="need_approval" eval="True"/>
+            <field name="condition_select">none</field>
+<!--            <field name="condition_python">-->
+<!--result=transaction_object.type == 'entry'-->
+<!--            </field>-->
+            <!--            <field name="menu_id" ref="amr_approval.menu_to_approve"/>-->
+<!--            <field name="view_id" ref="hr_expense.view_hr_expense_sheet_form"/>-->
+<!--            <field name="action_id" ref="amr_approval.action_to_approve"/>-->
+        </record>
+
+    </data>
+</odoo>
