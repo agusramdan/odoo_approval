@@ -103,11 +103,13 @@ class ApprovalTaskLineBaseMixin(models.AbstractModel):
         approval_template_line = self.get_approval_template_line()
 
         approval_template = None
-        if not approval_template_line:
-            approval_template = self.get_approval_template()
-            if not approval_template:
+        if approval_template_line:
+            if not approval_template_line.auto_register_approval_task or not approval_template_line.approval_template_id:
                 return super().write(vals)
-
+        else:
+            approval_template = self.get_approval_template()
+            if not approval_template or not approval_template.auto_register_approval_task:
+                return super().write(vals)
         old = None
         state_field = None
         if approval_template_line and approval_template_line.state_field:
@@ -117,11 +119,13 @@ class ApprovalTaskLineBaseMixin(models.AbstractModel):
         if state_field and state_field in vals:
             old = {r.id: getattr(r, state_field, None) for r in self}
         res = super().write(vals)
-
-        if approval_template_line:
-            self.approval_template_line_handle(old, approval_template_line)
-        else:
-            self._approval_auto_register_handle(old, approval_template)
+        try:
+            if approval_template_line:
+                self._approval_auto_register_line_handle(old, approval_template_line)
+            else:
+                self._approval_auto_register_handle(old, approval_template)
+        except :
+            _logger.exception("Errror when auto register %s %s " % (self._name, self.ids))
         return res
 
     def _approval_auto_register_handle(self, old, approval_template):
@@ -162,14 +166,10 @@ class ApprovalTaskLineBaseMixin(models.AbstractModel):
         trx_change = {}
         approval_template = approval_template_line.approval_template_id
         if not approval_template:
-            approval_template = self.env['approval.template'].get_approval_template(
-                approval_task_line=self, approval_template_line=approval_template_line
-            )
+            _logger.info("Approval Template not found")
+            return
         if old:
             state_field = approval_template_line.state_field
-            approval_template = self.env['approval.template'].get_approval_template(
-                approval_task_line=self, approval_template_line=approval_template_line
-            )
             state_waiting_approvals = approval_template_line.get_state_waiting_approvals()
             for rec in self:
                 state_approval = getattr(rec, state_field)
@@ -219,5 +219,3 @@ class ApprovalTaskLineBaseMixin(models.AbstractModel):
                             approval_template=approval_template,
                             approval_template_line=approval_template_line,
                         )
-
-        return res
