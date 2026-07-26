@@ -538,6 +538,7 @@ class ApprovalTaskLineApproveMixin(models.AbstractModel):
 class ApprovalTaskLineRejectMixin(models.AbstractModel):
     _name = "approval.task.line.reject.mixin"
 
+    reject_reason = fields.Text('Reject Reason')
     reject_to_method = fields.Selection([
         ('legacy', "Legacy"),
         ('to_requestor', "To Requestor"),
@@ -545,7 +546,6 @@ class ApprovalTaskLineRejectMixin(models.AbstractModel):
         ('to_task_line', "To Task Line"),
     ], default='legacy', readonly=True
     )
-    reject_reason = fields.Text('Reject Reason')
     matrix_rule_line_id = fields.Integer()
     reject_to_matrix_rule_line_id = fields.Integer()
     reject_to_task_id = fields.Many2one(_name)
@@ -672,19 +672,19 @@ class ApprovalTaskLineRejectMixin(models.AbstractModel):
         template_line = template_line.search_template_line_by_model(approval_task_line_reject._name)
         if not template_line:
             return result
-
-        if not approval_task_line_reject.reject_to_method and approval_task_line_reject.reject_to_method == 'to_requestor':
+        reject_to_method = approval_task_line_reject.reject_to_method or template_line.reject_to_method_default
+        if not reject_to_method and reject_to_method == 'to_requestor':
             approval_task_line_between = template_line.get_all_approved_task_line(approval_task_line_reject, **kwargs)
         else:
-            if approval_task_line_reject.reject_to_method == 'to_task_line':
+            if reject_to_method == 'to_task_line':
                 approval_task_line_next = approval_task_line_reject.get_reject_to_task_line()
                 approval_task_line_between = template_line.get_approval_task_line_between(
                     approval_task_line_next, approval_task_line_reject, **kwargs
                 )
-            elif approval_task_line_reject.reject_to_method == 'to_previous':
+            elif reject_to_method == 'to_previous':
                 approval_task_line_next = template_line.get_previous_approval_task_line(approval_task_line_reject,
                                                                                         **kwargs)
-            elif approval_task_line_reject.reject_to_method == 'legacy':
+            elif reject_to_method == 'legacy':
                 approval_task_line_next, approval_task_line_between = approval_task_line_reject.reject_method_legacy(
                     **kwargs)
             else:
@@ -703,7 +703,7 @@ class ApprovalTaskLineRejectMixin(models.AbstractModel):
 class ApprovalTaskLine(models.Model):
     _name = 'approval.task.line'
     _inherit = [
-        'approval.task.line.assignment.mixin',
+        'approval.responsible.line.mixin',
         'approval.task.line.access.mixin',
         'approval.task.line.mixin',
         'approval.task.line.approve.mixin',

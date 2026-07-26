@@ -5,8 +5,8 @@
         <field name="arch" type="xml">
             <search string="Search Approval Template Line">
 
-                <field name="model_id"/>
-                <field name="approval_template_id"/>
+                <field name="model_id" options="{'no_create': True}"/>
+                <field name="approval_template_id" options="{'no_create': True}"/>
                 <field name="approval_mode"/>
 
                 <separator/>
@@ -73,13 +73,24 @@
                             <field name="field_user_delegation" string="Delegation"/>
                             <field name="field_started_task_time" string="Started Time"/>
                         </group>
+                        <group string="Responsible Field" >
+                            <field name="field_responsible_rule_id" string="Responsible Rule"/>
+                            <field name="field_responsible_id" string="Responsible ID"/>
+                            <field name="field_responsible_user_id" string="Delegation"/>
+                        </group>
+                        <group string="Reject Field" >
+                            <field name="field_reject_to_method" string="Reject Method"/>
+                            <field name="field_reject_to_task_id" string="Reject To Task Method"/>
+                            <field name="field_matrix_rule_line_id" string="Reject Rule Line ID"/>
+                            <field name="field_reject_to_matrix_rule_line_id" string="Reject Ru;e To Task"/>
+                        </group>
                         <group string="Approval Method To Set" >
                             <field name="method_start_task" string="Started Time"/>
                             <field name="method_set_waiting_approval_state" string="Waiting Approval"/>
                             <field name="method_set_approved_state" string="Approved"/>
                             <field name="method_set_rejected_state" string="Rejected"/>
                             <field name="method_set_canceled_state" string="Canceled"/>
-<!--                            <field name="method_set_to_draft_state" string="Set To Draft"/>-->
+                            <field name="method_set_to_draft_state" string="Set To Draft"/>
                         </group>
                     </group>
                 </sheet>

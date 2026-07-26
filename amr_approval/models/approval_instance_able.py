@@ -9,7 +9,10 @@ _logger = logging.getLogger(__name__)
 
 class ApprovalInstanceAbleMixin(models.AbstractModel):
     _name = 'approval.instance.able.mixin'
-
+    approval_document_id = fields.Many2one(
+        'approval.document',
+        compute="_compute_approval_document_id"
+    )
     approval_template_id = fields.Many2one(
         'approval.template',
         compute="_compute_approval_template_id"
@@ -441,6 +444,10 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
         rec = self.ensure_one()
         approval_instance = rec.ensure_approval_instance()
         return approval_instance.clear_approval()
+
+    def _compute_approval_document_id(self):
+        for rec in self:
+            rec.approval_document_id = self.approval_document_id.get_approval_document(rec)
 
     def _compute_approval_template_id(self):
         for rec in self:

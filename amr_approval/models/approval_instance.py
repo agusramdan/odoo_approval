@@ -29,7 +29,8 @@ class ApprovalInstanceMixin(models.AbstractModel):
             """
     )
     pdf_deep_link = fields.Char()
-    approval_template_id = fields.Many2one('approval.template.mixin', ondelete='set null', )
+    approval_document_id = fields.Many2one('approval.document', ondelete='set null', )
+    approval_template_id = fields.Many2one('approval.template', ondelete='set null', )
     approval_task_id = fields.Many2one('approval.task', ondelete='set null', )
     model_id = fields.Many2one('ir.model', readonly=True, ondelete='set null', )
     model = fields.Char(related='model_id.model', store=True, readonly=True)
@@ -482,6 +483,9 @@ class ApprovalInstanceMixin(models.AbstractModel):
         if not without_clear_approval and not approval_clear:
             self.clear_approval()
 
+        approval_template_line = approval_template.approval_template_line_id
+        if approval_template_line:
+            approval_task_line = approval_template_line.safe_data_approval_task_line(approval_task_line)
         return self.env[model].with_context(ctx).create_approval_task_line(approval_task_line, **kwargs)
 
     def get_transaction_currency(self, transaction_object):
@@ -542,7 +546,7 @@ class ApprovalInstanceMixin(models.AbstractModel):
         _logger.info(" model_name %s , model_res_id %s ", model_name, model_res_id)
         return context
 
-    def _prepare_action(self,**kw):
+    def _prepare_action(self, **kw):
         approval_instance = self.ensure_one()
         approval_template = approval_instance.approval_template_id
         transaction_object = approval_instance.get_transaction_object()
@@ -580,7 +584,7 @@ class ApprovalInstanceMixin(models.AbstractModel):
         approval_template_line.check_action_right(approval_task_line, {})
         transaction_object = kw.get('transaction_object')
         approval_template.invoke_method(
-            transaction_object, 'validate_reject',kw
+            transaction_object, 'validate_reject', kw
         )
         if approval_template.reject_action_type:
             return approval_template.approval_action_custom('reject', **kw)
@@ -742,7 +746,6 @@ class ApprovalInstanceMixin(models.AbstractModel):
             return self
 
         approval_instance = self.ensure_one()
-        approval_instance.ensure_approval_template()
         approval_template = approval_instance.approval_template_id
         approval_template.done_approval(**kwargs)
 
@@ -782,12 +785,23 @@ class ApprovalInstance(models.Model):
     _name = 'approval.instance'
     _inherit = 'approval.instance.mixin'
 
+    approval_document_id = fields.Many2one('approval.template', compute='_compute_approval_document_id')
     approval_template_id = fields.Many2one('approval.template', compute='_compute_approval_template_id')
     approval_task_line_model = fields.Char(related='approval_template_id.approval_task_line_model')
     approval_task_line = fields.One2many('approval.task.line', 'approval_instance_id', string='Approval Task Lines')
     approval_audit_log_ids = fields.Many2many('approval.audit.log', compute="_compute_approval_audit_log_ids")
     user_ids = fields.Many2many('res.users', compute='_compute_approval_users_groups', compute_sudo=True)
     group_ids = fields.Many2many('res.groups', compute='_compute_approval_users_groups', compute_sudo=True)
+
+    @api.depends('model_id', 'model', 'transaction_model_name', 'transaction_id')
+    def _compute_approval_document_id(self):
+        for rec in self:
+            if rec.transaction_id and (rec.transaction_model_name or rec.model):
+                transaction_object = rec.get_transaction_object()
+                rec.approval_document_id = self.approval_document_id.get_approval_document(transaction_object)
+            else:
+                rec.approval_document_id = False
+
     @api.depends('model_id', 'model', 'transaction_model_name')
     def _compute_approval_template_id(self):
         for rec in self:
@@ -798,7 +812,8 @@ class ApprovalInstance(models.Model):
     def _compute_approval_audit_log_ids(self):
         for rec in self:
             rec.approval_audit_log_ids = self.approval_audit_log_ids.search(
-                [('transaction_id', '=', rec.transaction_id), ('transaction_id', '=', rec.transaction_id)],
+                [('transaction_id', '=', rec.transaction_id),
+                 ('transaction_model_name', '=', rec.transaction_model_name)],
                 order='id desc',
             )
 

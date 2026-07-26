@@ -12,7 +12,7 @@
     'author': "Agus Muhammad Ramdan",
     'website': "http://agus.ramdan.tech",
     'category': 'Base',
-    'version': '13.0.0.2.1',
+    'version': '13.0.0.3.0',
     'depends': ['base', 'base_setup', 'mail'],
     'data': [
         'security/base_groups.xml',
@@ -21,6 +21,7 @@
         'data/ir_cron.xml',
         'data/ir_sequence.xml',
         'data/approval_template_line_data.xml',
+        'data/approval_document_data.xml',
 
         'views/notification_template_views.xml',
         'views/notification_log_views.xml',
@@ -28,6 +29,8 @@
         'views/approval_audit_log_views.xml',
         'views/approval_task_views.xml',
         'views/approval_task_line_views.xml',
+        'views/approval_document_views.xml',
+        'views/approval_responsible_views.xml',
         'views/approval_template_views.xml',
         'views/approval_template_line_views.xml',
         'views/approval_instance_views.xml',

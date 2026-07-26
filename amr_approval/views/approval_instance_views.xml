@@ -1,17 +1,17 @@
 <odoo>
     <!-- Tree View -->
-<!--    <record id="view_approval_instance_search" model="ir.ui.view">-->
-<!--        <field name="name">approval.instance</field>-->
-<!--        <field name="model">approval.instance</field>-->
-<!--        <field name="arch" type="xml">-->
-<!--            <search>-->
-<!--                <field name="name"/>-->
-<!--                <field name="next_approval_task_id"/>-->
+    <record id="view_approval_instance_search" model="ir.ui.view">
+        <field name="name">approval.instance</field>
+        <field name="model">approval.instance</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
 <!--                <filter string="My Approvals" name="filter_can_approve"-->
-<!--                        domain="[('access_approval', '=', True)]"/>-->
-<!--            </search>-->
-<!--        </field>-->
-<!--    </record>-->
+<!--                        domain="[('access_approval', '=', True)]"-->
+<!--                />-->
+            </search>
+        </field>
+    </record>
 
     <record id="view_approval_instance_tree" model="ir.ui.view">
         <field name="name">approval.instance.tree</field>
@@ -89,7 +89,7 @@
         <field name="name">Approval Instance</field>
         <field name="res_model">approval.instance</field>
         <field name="view_mode">tree,form</field>
-<!--        <field name="search_view_id" ref="view_approval_instance_search"/>-->
+        <field name="search_view_id" ref="view_approval_instance_search"/>
         <field name="context">
             {
                 'create':0,

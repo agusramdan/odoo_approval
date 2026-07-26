@@ -5,6 +5,9 @@ from . import rule_condition
 # Notification
 from . import notification_template
 
+from . import approval_document
+from . import approval_responsible
+
 # DOA
 from . import user_delegation
 

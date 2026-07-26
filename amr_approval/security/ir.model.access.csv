@@ -9,6 +9,12 @@ access_approval_task_admin,approval.task admin,model_approval_task,base.group_sy
 access_approval_audit_log_user,approval.task.audit.log user,model_approval_audit_log,base.group_user,1,1,1,0
 access_approval_audit_log_admin,approval.task.audit.log admin,model_approval_audit_log,base.group_system,1,1,1,1
 
+access_approval_document_read_user,approval.document.user,model_approval_document,base.group_user,1,0,0,0
+access_approval_document_manager,approval.document.manager,model_approval_document,base.group_system,1,1,1,1
+
+access_approval_responsible_read_user,approval.responsible.user,model_approval_responsible,base.group_user,1,0,0,0
+access_approval_responsible_manager,approval.responsible.manager,model_approval_responsible,base.group_system,1,1,1,1
+
 access_approval_template_read_user,Read Approval Template,model_approval_template,base.group_user,1,0,0,0
 access_approval_template_system_user,CRUD Approval Template,model_approval_template,base.group_system,1,1,1,1
 access_approval_template_line_read_user,Read Approval Template Line,model_approval_template_line,base.group_user,1,0,0,0

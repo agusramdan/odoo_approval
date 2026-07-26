@@ -19,7 +19,7 @@ class ApprovalResponsibleMixin(models.AbstractModel):
              "ex: Department have manager when manager change responsible change to. "
     )
     responsible_model = fields.Char('Responsible Model')
-    responsible_res_id = fields.Integer('Responsible ID')
+    responsible_id = fields.Integer('Responsible ID')
     responsible_rule_id = fields.Many2one('approval.responsible')
 
     def do_assignment(self, new_user_id=None, reason=None, task_line_id=None, task_line_model=None):
@@ -36,14 +36,14 @@ class ApprovalResponsibleMixin(models.AbstractModel):
 
     def get_approval_responsible_user(self, raise_exception=True):
         return self.env['approval.responsible'].get_user_representative(
-            self.env[self.responsible_model].browse(self.responsible_res_id),
+            self.env[self.responsible_model].browse(self.responsible_id),
             raise_exception=raise_exception
         )
 
     def action_responsible_assignment(self):
         self.do_assignment(
             new_user_id=self.env['approval.responsible'].get_user(
-                self.env[self.responsible_model].browse(self.responsible_res_id),
+                self.env[self.responsible_model].browse(self.responsible_id),
                 raise_exception=True
             )
         )
@@ -318,60 +318,6 @@ class ApprovalTieredMatrixRuleMixin(models.Model):
         )
 
 
-class ApprovalTaskLineAssignmentMixin(models.AbstractModel):
-    _name = "approval.task.line.assignment.mixin"
-    _description = "Mixin : Approval Task Line Assignment"
-
-    responsible_user_id = fields.Many2one('res.users', 'Responsible User')
-
-    def search_responsible_user(self, user_id):
-        return self.search([('responsible_user_id', '=', user_id)])
-
-    def revoke_assignment(self):
-        self.write({
-            'responsible_user_id': False,
-        })
-
-    def do_assignment(self, new_user_id, reason=None):
-        if have_method(self, 'get_users'):
-            old_users = self.get_users()
-        else:
-            old_users = self.responsible_user_id
-        self.env['approval.task.assignment.history'].sudo().create([{
-            'task_line_id': self.id,
-            'task_line_model': self._name,
-            'from_user_ids': [(6, 0, old_users.ids)] if old_users else [],
-            'new_user_id': int(new_user_id),
-            'reason': reason,
-            'reassigned_by': self.env.uid
-        }])
-        self.write({
-            'responsible_user_id': int(new_user_id),
-        })
-        if have_method(self, "register_to_approval_task"):
-            self.register_to_approval_task()
-
-    def action_assignment(self):
-        self.ensure_one()
-        if have_method(self, 'get_users'):
-            old_users = self.get_users()
-        else:
-            old_users = self.responsible_user_id
-        # call wizard to select new user and reason
-        return {
-            'type': 'ir.actions.act_window',
-            'name': 'Reassign Approval Task',
-            'res_model': 'approval.task.line.assignment.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {
-                'default_task_line_id': self.id,
-                'default_task_line_model': self._name,
-                'default_from_user_ids': old_users.ids if old_users else [],
-            }
-        }
-
-
 class ApprovalTaskLineAccessMixin(models.AbstractModel):
     _name = "approval.task.line.access.mixin"
 
@@ -464,17 +410,11 @@ class ApprovalTypeMixin(models.AbstractModel):
     user_ids = fields.Many2many('res.users', string='Approval By Users')
     group_ids = fields.Many2many('res.groups', string='Approval By Groups')
     company_id = fields.Many2one('res.company', 'Company')
-    assign_responsible_rule = fields.Selection([
-        ('legacy', 'Legacy'),
-        ('have_one_user', 'Have One User'),
-        ('pickup', 'Pickup Responsible'),
-    ], 'Responsible', default='legacy')
-    responsible_user_id = fields.Many2one('res.users', 'Responsible User')
 
     def get_users(self):
         """Return daftar user unik sesuai type_approval"""
         self.ensure_one()
-        if self.responsible_user_id:
+        if hasattr(self, 'responsible_user_id') and self.responsible_user_id:
             return self.responsible_user_id
         users = self.env['res.users']
 

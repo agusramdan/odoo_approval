@@ -33,16 +33,21 @@
     <menuitem id="main_management_configuration" name="Configuration" parent="main_approval"
               sequence="100" groups="base.user_admin"
     />
+    <menuitem id="menu_approval_document" name="Approval Document" sequence="10" parent="main_management_configuration"
+              action="action_approval_document"  groups="base.user_admin"
+    />
+    <menuitem id="menu_approval_responsible" name="Approval Responsible" sequence="15"
+              action="action_approval_responsible" parent="main_management_configuration"
+    />
     <menuitem id="menu_approval_template" name="Approval Template" parent="main_management_configuration"
-              action="action_approval_template" sequence="1" groups="base.user_admin"
+              action="action_approval_template" sequence="20" groups="base.user_admin"
     />
     <menuitem id="menu_approval_template_line" name="Approval Template Lines" parent="main_management_configuration"
-        action="action_approval_template_line" sequence="10"  groups="base.user_admin"
+        action="action_approval_template_line" sequence="25"  groups="base.user_admin"
     />
     <menuitem id="menu_approval_matrix_rule" name="Approval Matrix" parent="main_management_configuration"
-              action="action_approval_matrix_rule" sequence="20" groups="base.user_admin"
+              action="action_approval_matrix_rule" sequence="30" groups="base.user_admin"
     />
-
 
     <!-- technical -->
     <menuitem id="base_parent_menu" name="Task Approval" sequence="10"
@@ -59,11 +64,18 @@
         parent="base_notification_menu"
         action="notification_log_action"
     />
-
     <menuitem id="base_approval_menu" name="Approval" sequence="16"
               parent="base_parent_menu"
     />
-    <menuitem id="approval_template_menu" name="Approval Template" sequence="20"
+
+    <!-- Menu -->
+    <menuitem id="approval_document_menu" name="Approval Document" sequence="10"
+              action="action_approval_document" parent="base_approval_menu"
+    />
+    <menuitem id="approval_responsible_menu" name="Approval Responsible" sequence="20"
+              action="action_approval_responsible" parent="base_approval_menu"
+    />
+    <menuitem id="approval_template_menu" name="Approval Template" sequence="25"
               action="action_approval_template" parent="base_approval_menu"
     />
     <menuitem id="approval_template_line_menu" name="Approval Template Lines" parent="base_approval_menu"

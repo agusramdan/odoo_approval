@@ -65,7 +65,7 @@ class ApprovalTask(models.Model):
              "ex: Department have manager when manager change responsible change to. "
     )
     responsible_model = fields.Char('Responsible Model')
-    responsible_res_id = fields.Integer('Responsible ID')
+    responsible_id = fields.Integer('Responsible ID')
     requester_id = fields.Many2one(
         'res.users', 'Requester',
         default=lambda self: self.env.user,

@@ -42,18 +42,25 @@
                         </group>
                     </group>
                     <notebook>
-                        <page string="Tiered Config">
+                        <page string="List Config">
                             <field name="approval_matrix_rule_line">
                                 <tree editable="bottom" open_form_view="1">
                                     <field name="sequence" widget="handle"/>
                                     <field name="name"/>
                                     <field name="type_approval"/>
+                                    <field name="user_ids" widget="many2many_tags"
+                                           attrs="{'invisible': [('type_approval', '!=', 'user')]}"
+                                    />
                                     <field name="group_ids" widget="many2many_tags"
-                                           attrs="{'invisible': [('type_approval', '!=', 'group')]}"/>
-                                    <field name="model_id" attrs="{'invisible': [('type_approval', '!=', 'model')]}"/>
+                                           attrs="{'invisible': [('type_approval', '!=', 'group')]}"
+                                    />
+                                    <field name="responsible_rule_id"
+                                           attrs="{'invisible': [('type_approval', '!=', 'model')]}"
+                                    />
                                     <field name="condition_select"/>
                                     <field name="condition_range"
-                                           attrs="{'invisible': [('condition_select', 'not in', ['tiring','limit','range'])]}"/>
+                                           attrs="{'invisible': [('condition_select', 'not in', ['tiring','limit','range'])]}"
+                                    />
                                     <field name="condition_range_min"
                                            attrs="{'invisible': [('condition_select', 'not in', ['tiring','range'])]}"/>
                                     <field name="condition_range_max"
@@ -117,8 +124,8 @@
                     <group>
                         <group>
                             <field name="type_approval"/>
+                            <field name="user_ids" widget="many2many_tags" attrs="{'invisible': [('type_approval', '!=', 'user')]}"/>
                             <field name="group_ids" widget="many2many_tags" attrs="{'invisible': [('type_approval', '!=', 'group')]}"/>
-                            <field name="model_id" attrs="{'invisible': [('type_approval', '!=', 'model')]}"/>
                         </group>
                     </group>
                     <notebook>
@@ -135,13 +142,32 @@
                                 <field name="condition_python" nolabel="1" colspan="4"/>
                             </group>
                         </page>
-                        <page string="Test">
+                        <page string="Model" attrs="{'invisible': [('type_approval', '!=', 'model')]}">
+                            <group>
+                                <field name="responsible_mode" string="Mode"/>
+                                <field name="responsible_model" invisible="1"/>
+                                <field name="responsible_id" invisible="1"/>
+                                <field name="responsible_rule_id" attrs="{'invisible': [('responsible_mode', '=', 'select')],'required': [('type_approval', '!=', 'model'),('responsible_mode', '!=', 'select')]}"/>
+                                <field name="responsible_ref" string="Selected" attrs="{'invisible': [('responsible_mode', '!=', 'select')]}"/>
+<!--                                <field name="responsible_id" widget="many2one_reference" options="{'model_field': 'model_name'}" />-->
+                                <field name="responsible_field" string="Field" attrs="{'invisible': [('responsible_mode', '!=', 'field')]}"/>
+                                <field name="responsible_function" string="Function" attrs="{'invisible': [('responsible_mode', '!=', 'function')]}"/>
+                                <field name="responsible_code" string="Code" nolabel="1" colspan="4" attrs="{'invisible': [('responsible_mode', '!=', 'code')]}"/>
+                            </group>
+                            <group string="Build Approval Task Line">
+                                <field name="responsible_strategy" string="Strategy"/>
+                                <field name="responsible_custom" string="Custom" nolabel="1" colspan="4"
+                                       attrs="{'invisible': [('responsible_strategy', '!=', 'custom')]}"
+                                />
+                            </group>
+                        </page>
+<!--                        <page string="Test">-->
                             <!--                            <separator string="Test"/>-->
                             <!--                            <group>-->
                             <!--                                <field name="test_value"/>-->
                             <!--                                <field name="test_result" readonly="1"/>-->
                             <!--                            </group>-->
-                        </page>
+<!--                        </page>-->
                     </notebook>
                 </sheet>
             </form>

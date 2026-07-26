@@ -4,21 +4,39 @@ from odoo.exceptions import ValidationError
 
 class ApprovalTaskLineAssignmentWizard(models.TransientModel):
     _name = 'approval.task.line.assignment.wizard'
+    _inherit = 'approval.responsible.line.mixin'
 
+    user_filter = fields.Selection([
+        ('candidate', 'Recommended Users'),
+        ('all', 'All Users'),
+    ], default='candidate', required=True)
     task_line_id = fields.Integer(readonly=True)
     task_line_model = fields.Char(readonly=True)
     from_user_ids = fields.Many2many('res.users', readonly=True)
-    new_user_id = fields.Many2one('res.users', required=True)
+    new_user_id = fields.Many2one('res.users', required=True, domain="[('id', 'in', available_user_ids)]")
     reason = fields.Text()
     display_name = fields.Char(
         compute="_compute_display_name",
         string="Record"
+    )
+    available_user_ids = fields.Many2many(
+        'res.users',
+        compute='_compute_available_user_ids'
     )
 
     def _compute_display_name(self):
         for rec in self:
             record = self.env[rec.task_line_model].browse(rec.task_line_id)
             rec.display_name = record.display_name if record else False
+
+    @api.depends('task_line_model', 'task_line_id', 'user_filter')
+    def _compute_available_user_ids(self):
+        for rec in self:
+            if rec.user_filter == 'candidate':
+                users = rec.get_responsible_members_user()
+            else:
+                users = self.env['res.users'].search([])
+            rec.available_user_ids = self.responsible_rule_id.to_users(users)
 
     @api.constrains('new_user_id')
     def _check_same_user(self):

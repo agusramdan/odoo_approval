@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_approval_responsible_form" model="ir.ui.view">
+        <field name="name">approval.responsible.form</field>
+        <field name="model">approval.responsible</field>
+        <field name="arch" type="xml">
+            <form string="Approval Responsible">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="model_id"/>
+                            <field name="model" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="hierarchy"/>
+                            <field name="representative"/>
+                            <field name="members"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <!-- Hierarchy -->
+                        <page string="Hierarchy" attrs="{'invisible':[('hierarchy','=',False)]}">
+                            <group >
+                                    <field name="hierarchy_select" string="Select" widget="radio"/>
+                                    <field name="hierarchy_field" string="Field"
+                                        attrs="{'invisible':[('hierarchy_select','!=','field')]}"
+                                    />
+                                    <field name="hierarchy_function" string="Function"
+                                        attrs="{'invisible':[('hierarchy_select','!=','function')]}"
+                                    />
+                                    <field name="hierarchy_code" string="Code"
+                                        widget="ace" options="{'mode': 'python'}" attrs="{'invisible':[('hierarchy_select','!=','code')]}"
+                                    />
+                            </group>
+                        </page>
+
+                        <!-- Representative -->
+                        <page string="Representative" attrs="{'invisible':[('representative','=',False)]}">
+                            <group>
+                                <field name="representative_select" string="Select" widget="radio"/>
+                                <field name="representative_field" string="Field"
+                                       attrs="{'invisible':[('representative_select','!=','field')]}"
+                                />
+                                <field name="representative_function" string="Function"
+                                       attrs="{'invisible':[('representative_select','!=','function')]}"
+                                />
+                                <field name="representative_code" string="Code"
+                                       widget="ace" options="{'mode': 'python'}" attrs="{'invisible':[('representative_select','!=','code')]}"
+                                />
+                            </group>
+                        </page>
+
+                        <!-- Members -->
+                        <page string="Members" attrs="{'invisible':[('members','=',False)]}">
+                            <group>
+                                <field name="members_select" string="Select" widget="radio"/>
+                                <field name="members_field" string="Field"
+                                       attrs="{'invisible':[('members_select','!=','field')]}"/>
+                                <field name="members_function" string="Function"
+                                       attrs="{'invisible':[('members_select','!=','function')]}"/>
+                                <field name="members_code" string="Code"
+                                       widget="ace" options="{'mode': 'python'}" attrs="{'invisible':[('members_select','!=','code')]}"
+                                />
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Tree / List View -->
+    <record id="view_approval_responsible_tree" model="ir.ui.view">
+        <field name="name">approval.responsible.tree</field>
+        <field name="model">approval.responsible</field>
+        <field name="arch" type="xml">
+            <tree string="Approval Responsible">
+                <field name="name"/>
+                <field name="model_id"/>
+                <field name="hierarchy"/>
+                <field name="representative"/>
+                <field name="members"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_approval_responsible_search" model="ir.ui.view">
+        <field name="name">approval.responsible.search</field>
+        <field name="model">approval.responsible</field>
+        <field name="arch" type="xml">
+            <search string="Search Approval Responsible">
+                <field name="name"/>
+                <field name="model_id"/>
+                <group expand="0" string="Group By">
+                    <filter string="Model" name="group_by_model" context="{'group_by': 'model_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_approval_responsible" model="ir.actions.act_window">
+        <field name="name">Approval Responsible</field>
+        <field name="res_model">approval.responsible</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

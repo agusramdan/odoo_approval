@@ -21,7 +21,7 @@ class ApprovalTemplateLineMixin(models.AbstractModel):
     parent_mode = fields.Selection([
         ('agnostic', 'Agnostic'),
         ('specific', 'Specific'),
-    ],default='specific')
+    ], default='specific')
     # when parent mode specific parent model mandatory
     approval_template_id = fields.Many2one('approval.template', ondelete='set null', )
     parent_model_id = fields.Many2one('ir.model', related='approval_template_id.model_id')
@@ -53,7 +53,7 @@ class ApprovalTemplateLineMixin(models.AbstractModel):
     approval_mode = fields.Selection([
         ('function', 'Function'),
         ('fields', 'Fields'),
-    ],help="""
+    ], help="""
 Mode user mengambil Approval task Assign
 Assign task bisa bedasarkan group, user atau employee atau kombinasi.
 Data ini akan di kirim ke approval.task agar bisa menentukan user mana yang bisa melakukan approal
@@ -68,6 +68,23 @@ Data ini akan di kirim ke approval.task agar bisa menentukan user mana yang bisa
     field_user_delegation = fields.Char()
     field_started_task_time = fields.Char()
     field_reason = fields.Char()
+    # responsible mapping
+    field_responsible_rule_id = fields.Char()
+    field_responsible_id = fields.Char()
+    field_responsible_user_id = fields.Char()
+
+    field_sign_title = fields.Char()
+    # reject
+    field_reject_to_method = fields.Char()
+    field_matrix_rule_line_id = fields.Char()
+    field_reject_to_matrix_rule_line_id = fields.Char()
+    field_reject_to_task_id = fields.Char()
+    #
+    field_type_approval = fields.Char()
+    field_user_id = fields.Char()
+    field_group_id = fields.Char()
+    field_user_ids = fields.Char()
+    field_group_ids = fields.Char()
 
     method_start_task = fields.Char()
     method_set_waiting_approval_state = fields.Char()
@@ -75,6 +92,60 @@ Data ini akan di kirim ke approval.task agar bisa menentukan user mana yang bisa
     method_set_rejected_state = fields.Char()
     method_set_canceled_state = fields.Char()
     method_set_to_draft_state = fields.Char()
+
+    reject_to_method_default = fields.Selection([
+        ('to_requestor', "To Requestor"),
+        ('to_previous', "To Previous"),
+        ('to_task_line', "To Task Line"),
+    ], default='to_requestor', readonly=True)
+
+    def get_field_mapping(self):
+        mapping = {
+            field_name[6:]: getattr(self, field_name)
+            for field_name in self._fields
+            if field_name.startswith('field_') and getattr(self, field_name, False)
+        }
+        return mapping
+
+    def safe_data_approval_task_line(self, approval_task_line):
+        """
+        Normalize approval task line values so that they only contain
+        fields existing in the target model.
+
+        :param list[dict] approval_task_line:
+            Source values.
+        :return list[dict]:
+            Safe values ready for create().
+        """
+        self.ensure_one()
+
+        model_target = self.env[self.model]
+        target_fields = model_target._fields
+        mapping = self.get_field_mapping() or {}
+
+        result = []
+
+        for vals in approval_task_line:
+            if isinstance(vals, models.BaseModel) or not isinstance(vals, dict):
+                result.append(vals)
+                continue
+
+            safe_vals = {}
+
+            for field_name, value in vals.items():
+                # Field exists on target model
+                if field_name in target_fields:
+                    safe_vals[field_name] = value
+                    continue
+
+                # Try mapping
+                mapped_field = mapping.get(field_name)
+                if mapped_field and mapped_field in target_fields:
+                    safe_vals[mapped_field] = value
+
+            result.append(safe_vals)
+
+        return result
 
     def invoke_method(self, approval_task_line, method_name, kwargs=None, raise_exceptions=False):
         atts_method_name = f"method_{method_name} or {method_name}"
@@ -108,8 +179,11 @@ Data ini akan di kirim ke approval.task agar bisa menentukan user mana yang bisa
 
     @api.model
     def domain_waiting_status(self, transaction_id, transaction_model_name=None):
-        return self.domain_status(transaction_id, self.get_state_waiting_approvals(),
-                                  transaction_model_name=transaction_model_name)
+        return self.domain_status(
+            transaction_id,
+            self.get_state_waiting_approvals(),
+            transaction_model_name=transaction_model_name,
+        )
 
     def get_state_waiting_approvals(self, **kwargs):
         if self.state_waiting_approvals:
@@ -367,7 +441,8 @@ Data ini akan di kirim ke approval.task agar bisa menentukan user mana yang bisa
                 write[self.field_user_delegation] = False
             approval_task_line.write(write)
         else:
-            raise UserError("Invalid configuration set_waiting_approval_status field %s , value %s "%(self.state_field, self.state_waiting_approvals))
+            raise UserError("Invalid configuration set_waiting_approval_status field %s , value %s " % (
+                self.state_field, self.state_waiting_approvals))
 
     def set_approved_status(self, approval_task_line=None, **kwargs):
         if approval_task_line and self.state_field and self.state_approved:
@@ -386,7 +461,8 @@ Data ini akan di kirim ke approval.task agar bisa menentukan user mana yang bisa
             approval_task_line.write(write)
             return kwargs
         else:
-            raise UserError("Invalid configuration approval set_approved_status field %s , value %s "%(self.state_field, self.state_approved))
+            raise UserError("Invalid configuration approval set_approved_status field %s , value %s " % (
+                self.state_field, self.state_approved))
 
     def set_rejected_status(self, approval_task_line=None, **kwargs):
         if approval_task_line and self.state_field and self.state_rejected:
@@ -405,7 +481,8 @@ Data ini akan di kirim ke approval.task agar bisa menentukan user mana yang bisa
             approval_task_line.write(write)
             return kwargs
         else:
-            raise UserError("Invalid configuration approval field set_rejected_status %s , value %s "%(self.state_field, self.state_rejected))
+            raise UserError("Invalid configuration approval field set_rejected_status %s , value %s " % (
+                self.state_field, self.state_rejected))
 
     def set_canceled_status(self, approval_task_line=None, **kwargs):
         if approval_task_line and self.state_field and self.state_canceled:
@@ -425,7 +502,8 @@ Data ini akan di kirim ke approval.task agar bisa menentukan user mana yang bisa
 
             return kwargs
         else:
-            raise UserError("Invalid configuration approval  field %s , value %s "%(self.state_field, self.state_canceled))
+            raise UserError(
+                "Invalid configuration approval  field %s , value %s " % (self.state_field, self.state_canceled))
 
     # def get_user_delegation(self):
     #     return

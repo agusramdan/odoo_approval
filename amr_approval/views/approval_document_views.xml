@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Tree View -->
+    <record id="view_approval_document_tree" model="ir.ui.view">
+        <field name="name">approval.document.tree</field>
+        <field name="model">approval.document</field>
+        <field name="arch" type="xml">
+            <tree string="Approval Documents">
+                <field name="priority"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="model_id"/>
+                <field name="condition_select"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_approval_document_form" model="ir.ui.view">
+        <field name="name">approval.document.form</field>
+        <field name="model">approval.document</field>
+        <field name="arch" type="xml">
+            <form string="Approval Document">
+                <sheet>
+
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="name"/>
+                            <field name="priority"/>
+                            <field name="need_approval"/>
+                        </group>
+
+                        <group>
+                            <field name="model_id" options="{'no_create': True}"/>
+                            <field name="model" string=""/>
+                            <field name="view_id" string="Form" options="{'no_create': True}"/>
+                            <field name="action_id" string="Window" options="{'no_create': True}"/>
+                            <field name="menu_id" string="Menu" options="{'no_create': True}"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Condition">
+                            <group>
+                                <field name="condition_select"/>
+                            </group>
+                            <group attrs="{'invisible':[('condition_select','!=','python')]}">
+                                <field name="condition_python"
+                                       widget="ace" nolabel="1"
+                                />
+                            </group>
+                        </page>
+                    </notebook>
+
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_approval_document_search" model="ir.ui.view">
+        <field name="name">approval.document.search</field>
+        <field name="model">approval.document</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="model_id"/>
+
+                <filter string="Python"
+                        name="python"
+                        domain="[('condition_select','=','python')]"
+                />
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_approval_document" model="ir.actions.act_window">
+        <field name="name">Approval Documents</field>
+        <field name="res_model">approval.document</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_approval_document_search"/>
+    </record>
+
+</odoo>

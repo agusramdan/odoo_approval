@@ -20,6 +20,7 @@
         <field name="arch" type="xml">
             <form string="Approval Template">
                 <header>
+                    <button name="action_generate_view" string="Generate View" type="object" class="oe_highlight"/>
                     <field name="model" invisible="1"/>
                 </header>
                 <sheet>
@@ -69,7 +70,7 @@
                                 <group string="Approval Matrix">
                                     <field name="approval_mode" string="Matrix"/>
                                     <field name="approval_matrix_id" string="Matrix Id" attrs="{'invisible':[('approval_mode', '!=', 'matrix')]}"/>
-                                    <field name="approval_matrix_model_id" string="Model" attrs="{'invisible':[('approval_mode', '!=', 'model')]}"/>
+                                    <field name="approval_responsible_id" string="Model" attrs="{'invisible':[('approval_mode', '!=', 'model')]}"/>
                                 </group>
                                 <group string="Approval Line">
                                     <field name="approval_template_line_id" string="Line Template" />

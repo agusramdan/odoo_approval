@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="approval_document_rp_contact" model="approval.document">
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="code">rp_contact</field>
+            <field name="name">Contact</field>
+            <field name="priority">200</field>
+            <field name="need_approval" eval="False"/>
+<!--            <field name="condition_select">python</field>-->
+<!--            <field name="condition_python">-->
+<!--result=transaction_object.supplier_rank > 0-->
+<!--            </field>-->
+        </record>
+        <record id="approval_document_rp_supplier" model="approval.document">
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="code">rp_supplier</field>
+            <field name="name">Supplier</field>
+<!--            <field name="priority">20</field>-->
+<!--            <field name="need_approval" eval="True"/>-->
+            <field name="condition_select">python</field>
+            <field name="condition_python">
+result=transaction_object.supplier_rank > 0
+            </field>
+        </record>
+
+        <record id="approval_document_rp_customer" model="approval.document">
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="code">rp_customer</field>
+            <field name="name">Customer</field>
+<!--            <field name="priority">20</field>-->
+<!--            <field name="need_approval" eval="True"/>-->
+            <field name="condition_select">python</field>
+            <field name="condition_python">
+result=transaction_object.customer_rank > 0
+            </field>
+        </record>
+
+    </data>
+</odoo>
