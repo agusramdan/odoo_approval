@@ -1,0 +1,38 @@
+<odoo>
+    <record id="view_approval_instance_form" model="ir.ui.view">
+        <field name="name">approval.instance</field>
+        <field name="model">approval.instance</field>
+        <field name="priority" eval="16"/>
+        <field name="inherit_id" ref="amr_approval.view_approval_instance_form"/>
+        <field name="arch" type="xml">
+<!--            <xpath expr="//header/field[@name='state']" position="attributes">-->
+<!--                <attribute name="statusbar_visible">draft,waiting_approval,approved,active</attribute>-->
+<!--            </xpath>-->
+            <xpath expr="//header" position="inside">
+<!--                <field name="access_approval" invisible="1"/>-->
+                <button name="action_sign_all_pdf"
+                        string="Sign PDF"
+                        type="object" class="oe_highlight"
+                />
+<!--                <button name="action_reject"-->
+<!--                        string="Reject"-->
+<!--                        type="object" class="oe_highlight"-->
+<!--                        attrs="{'invisible': ['|',('access_approval','=',False),('state', '=', 'draft')]}"-->
+<!--                />-->
+            </xpath>
+            <notebook position="inside">
+                <page string="PDF Signature" attrs="{'invisible': [('pdf_document_id','=',False)]}">
+                    <group>
+                        <field name="pdf_document_id"/>
+                        <field name="pdf_filename" readonly="1"/>
+                        <field name="pdf_file" filename="pdf_filename" readonly="1" widget="pdf_viewer"/>
+                        <field name="signed_pdf_filename" readonly="1"/>
+                        <field name="signed_pdf" filename="signed_pdf_filename" readonly="1" widget="pdf_viewer"/>
+                    </group>
+                </page>
+            </notebook>
+        </field>
+
+    </record>
+
+</odoo>
