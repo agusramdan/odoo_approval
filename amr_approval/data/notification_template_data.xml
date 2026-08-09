@@ -132,15 +132,15 @@ data.update(
             </field>
         </record>
 
-    <record id="cancel_notification_template" model="notification.template">
-            <field name="name">Generic Reset To Draft Approval Template</field>
-            <field name="model_id" ref="model_approval_instance"/>
-            <field name="notification_type">cancel</field>
-            <field name="send_email" eval="True"/>
-            <field name="send_whatsapp" eval="True"/>
-            <field name="send_chat" eval="True"/>
-            <field name="send_firebase" eval="True"/>
-            <field name="body_html" type="html">
+        <record id="cancel_notification_template" model="notification.template">
+                <field name="name">Generic Cancel Approval Template</field>
+                <field name="model_id" ref="model_approval_instance"/>
+                <field name="notification_type">cancel</field>
+                <field name="send_email" eval="True"/>
+                <field name="send_whatsapp" eval="True"/>
+                <field name="send_chat" eval="True"/>
+                <field name="send_firebase" eval="True"/>
+                <field name="body_html" type="html">
                 <div style="margin: 0px; padding: 0px;">
                 <p style="margin: 0px; padding: 0px; font-size: 13px;">
                     Hi ${object.notification_to_partner_id.name},
@@ -155,10 +155,10 @@ data.update(
                 <br/><br/>
             </p>
 </div>
-</field>
+                </field>
 
-            <field name="title">Cancel ${object.get_internal_document} ${object.get_internal_number()}}</field>
-            <field name="body"><![CDATA[Hi ${object.notification_to_partner_id.name},
+                <field name="title">Cancel ${object.get_internal_document()} ${object.get_internal_number()}</field>
+                <field name="body"><![CDATA[Hi ${object.notification_to_partner_id.name},
 
 ${object.get_internal_requestor().name} has reset the approval request for ${object.get_internal_description()} ${object.get_internal_number()} to Draft.
 
@@ -169,7 +169,110 @@ Your pending approval request has been cancelled. The requester may update the d
             <field name="code">
 originator = record.get_internal_requestor() or record.create_uid
 data.update(
-    scope='CANCEL',
+    scope='CANCEL_APPROVAL',
+    ref=record.get_internal_number(),
+    url=record.get_internal_url(),
+    source_number=record.name,
+    source_document=record.get_internal_description(),
+    source_originator_name=originator.name,
+    source_model=record.transaction_model_name,
+    source_res_id=record.transaction_id,
+)
+            </field>
+        </record>
+
+        <record id="reject_notification_template" model="notification.template">
+                <field name="name">Generic Reject Approval Template</field>
+                <field name="model_id" ref="model_approval_instance"/>
+                <field name="notification_type">reject</field>
+                <field name="send_email" eval="True"/>
+                <field name="send_whatsapp" eval="True"/>
+                <field name="send_chat" eval="True"/>
+                <field name="send_firebase" eval="True"/>
+                <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px;">
+    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+        Hi ${object.notification_to_partner_id.name},
+        <br/>
+        ${object.get_internal_approver().name} has rejected your approval request for
+        ${object.get_internal_description()}
+        <b>${object.get_internal_number()}</b>.
+        <br/><br/>
+
+        <b>Reason:</b><br/>
+        ${object.get_internal_reject_reason() or '-'}
+        <br/><br/>
+
+        <a href="${object.get_internal_url()}">
+            Click here to review the rejection details.
+        </a>
+    </p>
+</div>
+                </field>
+
+                <field name="title">Reject ${object.get_internal_document()} ${object.get_internal_number()}</field>
+                <field name="body"><![CDATA[Hi ${object.notification_to_partner_id.name},
+
+${object.get_internal_approver().name} has rejected your approval request for ${object.get_internal_description()} ${object.get_internal_number()}.
+
+Reason:
+${object.get_internal_reject_reason() or '-'}
+
+Please review the rejection details at:
+${object.get_internal_url()}
+]]></field>
+            <!--            <field name="image">Todo send url image</field>-->
+            <field name="code">
+originator = record.get_internal_requestor() or record.create_uid
+data.update(
+    scope='REJECT_APPROVAL',
+    ref=record.get_internal_number(),
+    url=record.get_internal_url(),
+    source_number=record.name,
+    source_document=record.get_internal_description(),
+    source_originator_name=originator.name,
+    source_model=record.transaction_model_name,
+    source_res_id=record.transaction_id,
+)
+            </field>
+        </record>
+
+        <record id="approve_notification_template" model="notification.template">
+                <field name="name">Generic Approve Approval Template</field>
+                <field name="model_id" ref="model_approval_instance"/>
+                <field name="notification_type">approve</field>
+                <field name="send_email" eval="True"/>
+                <field name="send_whatsapp" eval="True"/>
+                <field name="send_chat" eval="True"/>
+                <field name="send_firebase" eval="True"/>
+                <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px;">
+    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+        Hi ${object.notification_to_partner_id.name},
+        <br/>
+        ${object.get_internal_approver().name} has approved your approval request for
+        ${object.get_internal_description()} <b>${object.get_internal_number()}</b>.
+        <br/>
+        <a href="${object.get_internal_url()}">
+            Please review the approved request.
+        </a>
+    </p>
+</div>
+                </field>
+
+                <field name="title">Approve ${object.get_internal_document()} ${object.get_internal_number()}</field>
+                <field name="body"><![CDATA[Hi ${object.notification_to_partner_id.name},
+
+Your approval request for ${object.get_internal_description()} ${object.get_internal_number()} has been approved by ${object.get_internal_approver().name}.
+
+Please review the approved request at:
+${object.get_internal_url()}
+]]></field>
+            <!--            <field name="image">Todo send url image</field>-->
+            <field name="code">
+originator = record.get_internal_requestor() or record.create_uid
+data.update(
+    scope='APPROVE_APPROVAL',
     ref=record.get_internal_number(),
     url=record.get_internal_url(),
     source_number=record.name,

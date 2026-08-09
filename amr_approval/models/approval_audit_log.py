@@ -13,9 +13,9 @@ class ApprovalAuditLog(models.Model):
     _description = 'Approval Audit Log'
     _order = 'create_date desc'
 
-    name = fields.Char('Name')
-    document = fields.Char()
-    description = fields.Char()
+    name = fields.Char()
+    document = fields.Char('Document')
+    description = fields.Char('Description')
     company_id = fields.Many2one(
         'res.company'
     )
@@ -60,7 +60,12 @@ class ApprovalAuditLog(models.Model):
         help="Additional notes or comments regarding the action reject"
     )
     create_date = fields.Datetime(
-        string='Action Time', readonly=True, default=fields.Datetime.now
+        string='Execution Time', readonly=True, default=fields.Datetime.now
+    )
+    request_task_date = fields.Datetime(
+        string="Request Task Date",
+        readonly=True,
+        help="Waktu yang dicatat ketika Approval Task diberikan pada user atau group tertentu.",
     )
     transaction_display_name = fields.Char(
         'Name',
@@ -151,6 +156,9 @@ class ApprovalAuditLog(models.Model):
             kw['user_delegate_id'] = int(user_delegate)
             kw['delegatee_user_id'] = user_delegate.delegatee_id.id
             kw['delegator_user_id'] = user_delegate.delegator_id.id
+        approval_task = kwargs.get('approval_task')
+        if approval_task and approval_task.exists():
+            kw['request_task_date'] = approval_task.request_approval_task_date
 
         if transaction_object:
             if 'name' not in kw and have_method(transaction_object, 'get_internal_number'):
@@ -174,11 +182,14 @@ class ApprovalAuditLog(models.Model):
             if not kw.get('transaction_model_name'):
                 kw['transaction_model_name'] = transaction_object._name
 
+        if not kw.get('user_id'):
+            kw['user_id'] = self.env.user.id
+
         create_dict = {key: value for key, value in kw.items() if key in _field}
         ignored_keys = [key for key in kw if key not in _field]
         if ignored_keys:
             _logger.warning("Ignored unknown fields in audit log: %s", ignored_keys)
-        return self.create([create_dict])[0]
+        return self.sudo().create([create_dict])[0]
 
     def get_approval_line_for_document(self, transaction_model_name, transaction_id, limit=100):
         self.get_approval_audit_log_for_document(transaction_model_name, transaction_id, limit=limit)

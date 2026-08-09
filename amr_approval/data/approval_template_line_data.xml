@@ -12,7 +12,7 @@
             <field name="state_canceled">cancelled</field>
             <field name="state_rejected">rejected</field>
             <field name="state_reset">reset</field>
-            <field name="state_waiting_approvals">waiting_approval,waiting</field>
+            <field name="state_waiting_approvals">waiting_approval,waiting,rejected</field>
 
             <!-- reject and approve status will handle in event_approval_done to draft or approved,-->
             <field name="approval_mode">fields</field>

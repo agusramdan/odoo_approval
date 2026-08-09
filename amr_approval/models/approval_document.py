@@ -47,8 +47,12 @@ DEFAULT_PDF_PYTHON_CODE = """
 #  - approval_template
 #  - transaction_object 
 # To return an response, assign: response = {...}
+
+# report = ref('amr_esign_pdf_demo.action_report_approval_form')
+# pdf_content, content_type = report.render_qweb_pdf(transaction_object.ids)
 # requester = approval_instance.requester_id
 # signature_ids = [{
+#   'seq' : 0,
 #   'name':'signature_requester',
 #   'user_id':requester.id,
 #   'user_email':requester.email,
@@ -57,20 +61,23 @@ DEFAULT_PDF_PYTHON_CODE = """
 # }]
 # approval_task_line = approval_instance.get_all_approval_task_line()
 # if approval_task_line:
+#   seq = 1
 #   for apr in approval_task_line:
 #     signature_ids.append({
+#       'seq':seq,
 #       'name':'signature_approvar_%s'%apr.id,
 #       'placeholder': "[[signature_approvar_%s_placeholder]]"%apr.id,
 #       'source_model': apr._name,
 #       'source_res_id': apr.id,
 #     })
+#     seq += 1
 # response = {
 #   'name':transaction_object.name,
 #   'template_id':1,
 #   'source_model': approval_instance.transaction_model_name,
 #   'source_res_id': approval_instance.transaction_id,
-#   'pdf_file': transaction_object.file_approve,
-#   'pdf_filename':transaction_object.file_approve_name,
+#   'pdf_file': b64encode(pdf_content),
+#   'pdf_filename':'approval_%s.pdf'%transaction_object.name,
 #   'signature_ids': signature_ids,
 # }
 \n\n\n\n
@@ -636,13 +643,12 @@ class ApprovalDocument(models.Model):
             }
             if not self.generate_field_approval_task_line_id:
                 self.generate_field_approval_task_line_id = self.env['ir.model.fields'].search(
-                    [('name','=',field_name),('model_id','=',self.model_id.id),]
+                    [('name', '=', field_name), ('model_id', '=', self.model_id.id), ]
                 )
             if self.generate_field_approval_task_line_id:
                 self.generate_field_approval_task_line_id.write(vals)
             else:
                 self.generate_field_approval_task_line_id = self.env['ir.model.fields'].create(vals)
-
 
     def _generate_buttons(self, parent):
         """
@@ -744,6 +750,7 @@ class ApprovalDocument(models.Model):
             'transaction_object': transaction_object,
             'transaction_model_name': self.model,
             'transaction_id': transaction_object.id,
+            'response': {}
         }
 
     @api.constrains('pdf_code')
@@ -761,19 +768,13 @@ class ApprovalDocument(models.Model):
         _logger.info("call create_or_update_pdf_document")
         return self._run_action_pdf_code_multi(self._get_pdf_eval_context(approval_instance))
 
-    @api.model
-    def _get_pdf_sign_eval_context(self, approval_instance, approval_task_line, user_execution):
-        """ evaluation context to pass to safe_eval """
-        eval_context = self._get_pdf_eval_context(approval_instance)
-        eval_context['approval_task_line'] = approval_task_line
-        eval_context['user_execution'] = user_execution
-        return eval_context
-
     def _run_action_pdf_sign_code_multi(self, eval_context):
         safe_eval(self.pdf_sign_code.strip(), eval_context, mode="exec", nocopy=True)  # nocopy allows to return 'action'
         return eval_context.get('response')
 
-    def get_config_pdf_sign_document(self, approval_instance, approval_task_line,user_execution):
-        return self._run_action_pdf_sign_code_multi(
-            self._get_pdf_sign_eval_context(approval_instance,approval_task_line,user_execution)
-        )
+    def get_config_pdf_sign_document(self, approval_instance, approval_task_line, user_execution, **kwargs):
+        eval_context = self._get_pdf_eval_context(approval_instance)
+        eval_context['approval_task_line'] = approval_task_line
+        eval_context['user_execution'] = user_execution
+        eval_context['kwargs'] = kwargs
+        return self._run_action_pdf_sign_code_multi(eval_context)

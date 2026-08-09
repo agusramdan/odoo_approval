@@ -180,7 +180,8 @@ class ApprovalMatrixRuleLine(models.Model):
         ('to_requestor', "To Requestor"),
         ('to_previous', "To Previous"),
         ('to_task_line', "To Task Line"),
-    ], default='to_previous', readonly=True)
+    ], default='to_requestor')
+
     reject_to_line_id = fields.Many2one(
         'approval.matrix.rule.line',
         "Reject To Line",
@@ -204,21 +205,21 @@ class ApprovalMatrixRuleLine(models.Model):
         help="Code document boolean for need approval."
     )
 
-    get_responsible_mode = fields.Selection([
-        ('field', 'Field'),
-        ('function', 'Function'),
-        ('code', 'Code'),
-    ])
-    get_responsible_field = fields.Char(
-        help="Filed document boolean for need approval."
-    )
-    get_responsible_function = fields.Char(
-        help="Code document boolean for need approval."
-    )
-    get_responsible_code = fields.Text(
-        default=DEFAULT_CODE,
-        help="Code document boolean for need approval."
-    )
+    # get_responsible_mode = fields.Selection([
+    #     ('field', 'Field'),
+    #     ('function', 'Function'),
+    #     ('code', 'Code'),
+    # ])
+    # get_responsible_field = fields.Char(
+    #     help="Filed document boolean for need approval."
+    # )
+    # get_responsible_function = fields.Char(
+    #     help="Code document boolean for need approval."
+    # )
+    # get_responsible_code = fields.Text(
+    #     default=DEFAULT_CODE,
+    #     help="Code document boolean for need approval."
+    # )
 
     responsible_strategy = fields.Selection([
         ('hierarchy', 'Hierarchy'),
@@ -359,10 +360,16 @@ class ApprovalMatrixRuleLine(models.Model):
         return prepare_list
 
     def prepare_dict_approval_task_line(self, **kwargs):
+        reject_to_method = self.reject_to_method
         p_dict = {
             'sign_title': self.name,
-            'matrix_rule_line_id': self.id
+            'matrix_rule_line_id': self.id,
+            'matrix_rule_line_model': self._name,
+            'reject_to_method': reject_to_method
         }
+        if reject_to_method == 'to_task_line':
+            p_dict['reject_to_matrix_rule_line_id'] = self.reject_to_line_id.id
+
         if not self.env.context.get('__approval_matrix_rule_line') and self.type_approval == 'user':
             p_dict.update(
                 self.user_ids.with_context(

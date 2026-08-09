@@ -66,6 +66,14 @@ class UserDelegation(models.Model):
     is_able_button_revoke = fields.Boolean(compute='compute_is_condition')
     filter_user_delegation = fields.Boolean(store=False, search="search_filter_user_delegation")
 
+    @api.model
+    def get_execution_method(self):
+        # with_user
+        # sudo
+        # grant_group
+        # see method activate module
+        return 'with_user'
+
     @api.depends('delegator_id')
     def _compute_delegator_group_ids(self):
         for rec in self:

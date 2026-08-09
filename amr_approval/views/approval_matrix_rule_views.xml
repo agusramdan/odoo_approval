@@ -60,10 +60,10 @@
                                     <field name="responsible_model" invisible="1"/>
                                     <field name="responsible_id" invisible="1"/>
                                     <field name="responsible_rule_id"
-                                           attrs="{'invisible': ['|',('type_approval', '!=', 'model'),('responsible_mode', '=', 'select')],'required': [('type_approval', '!=', 'model'),('responsible_mode', '!=', 'select')]}"
+                                           attrs="{'invisible': ['|',('type_approval', '!=', 'model'),('responsible_mode', '=', 'select')],'required': [('type_approval', '=', 'model'),('responsible_mode', '!=', 'select')]}"
                                     />
                                     <field name="responsible_ref" string="Selected"
-                                           attrs="{'invisible': ['|',('type_approval', '!=', 'model'),('responsible_mode', '!=', 'select')],'required': [('type_approval', '!=', 'model'),('responsible_mode', '==', 'select')]}"
+                                           attrs="{'invisible': ['|',('type_approval', '!=', 'model'),('responsible_mode', '!=', 'select')],'required': [('type_approval', '=', 'model'),('responsible_mode', '=', 'select')]}"
                                     />
                                     <field name="condition_select"/>
                                     <button
@@ -80,8 +80,11 @@
                                     <field name="condition_range_max"
                                            attrs="{'invisible': [('condition_select', 'not in', ['limit','range'])]}"
                                     />
-                                    <field name="reject_to_method" optional="hide"/>
-                                    <field name="reject_to_line_id" optional="hide"/>
+                                    <field name="reject_to_method" optional="hide" />
+                                    <field name="reject_to_line_id" optional="hide"
+                                           attrs="{'invisible': [('reject_to_method', '!=', 'to_task_line')],'required': [('reject_to_method', '!=', 'to_task_line')]}"
+                                           domain="[('approval_matrix_rule_id','=',parent.id)]"
+                                    />
                                 </tree>
 
                             </field>

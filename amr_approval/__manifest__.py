@@ -12,7 +12,7 @@
     'author': "Agus Muhammad Ramdan",
     'website': "http://agus.ramdan.tech",
     'category': 'Base',
-    'version': '13.0.0.3.0',
+    'version': '13.0.1.3.0',
     'depends': ['base', 'base_setup', 'mail'],
     'data': [
         'security/base_groups.xml',
@@ -45,9 +45,13 @@
 
         'views/menuitem.xml',
 
+        'wizard/popup_approve.xml',
         'wizard/popup_reject.xml',
+        'wizard/popup_reset.xml',
+        'wizard/popup_sign.xml',
         'wizard/approval_task_line_assignment.xml',
         'wizard/rule_condition.xml',
+
     ],
     'demo': [],
     'installable': True,

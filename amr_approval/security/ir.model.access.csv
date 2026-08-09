@@ -29,6 +29,9 @@ access_approval_matrix_rule_line_user,approval.matrix.rule.user,model_approval_m
 access_approval_matrix_rule_line_manager,approval.matrix.rule.manager,model_approval_matrix_rule_line,base.group_system,1,1,1,1
 
 access_popup_reject_message_wizard,popup.reject.message.wizard Wizard,model_popup_reject_message_wizard,base.group_user,1,1,1,1
+access_popup_approve_message_wizard,popup.approve.message.wizard Wizard,model_popup_approve_message_wizard,base.group_user,1,1,1,1
+access_popup_reset_message_wizard,popup.reset.message.wizard Wizard,model_popup_reset_message_wizard,base.group_user,1,1,1,1
+access_popup_sign_message_wizard,popup.sign.message.wizard Wizard,model_popup_sign_message_wizard,base.group_user,1,1,1,1
 
 access_approval_task_assignment_history_user,approval.task.assignment.history.user,model_approval_task_assignment_history,base.group_user,1,0,0,0
 access_approval_task_assignment_history_system,approval.task.assignment.history.system,model_approval_task_assignment_history,base.group_system,1,1,1,1

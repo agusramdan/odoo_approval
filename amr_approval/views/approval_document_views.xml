@@ -114,6 +114,21 @@
         <!--                                   widget="ace" options="{'mode': 'python'}" attrs="{'invisible':[('number_select','!=','code')]}"-->
         <!--                            />-->
                                 </group>
+                                <group string="Requestor">
+                                    <field name="requestor_select" string="Select"/>
+                                    <field name="requestor_const" string="Const"
+                                           attrs="{'invisible':[('requestor_select','!=','const')]}"
+                                    />
+                                    <field name="requestor_field" string="Field"
+                                           attrs="{'invisible':[('requestor_select','!=','field')]}"
+                                    />
+                                    <field name="requestor_function" string="Function"
+                                           attrs="{'invisible':[('requestor_select','!=','function')]}"
+                                    />
+        <!--                            <field name="description_code" string="Code"-->
+        <!--                                   widget="ace" options="{'mode': 'python'}" attrs="{'invisible':[('number_select','!=','code')]}"-->
+        <!--                            />-->
+                                </group>
                             </group>
                         </page>
                         <page string="Action Button" attrs="{'invisible':[('view_id','=',False)]}">

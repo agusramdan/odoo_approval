@@ -24,6 +24,7 @@
                     <button name="action_generate_view" string="Generate View" type="object" class="oe_highlight"/>
                     <button name="remove_generated_view" string="Remove View" type="object" class="oe_highlight"/>
                     <field name="model" invisible="1"/>
+                    <field name="approval_task_line_model" invisible="1"/>
                 </header>
                 <sheet>
                     <group>
@@ -232,11 +233,11 @@
                             <group>
                                 <group string="To Approver">
                                     <field name="notification_approval_id"
-                                           domain="[('model_id.model','in',[model, 'approval.task']),('notification_type','in',[False, 'request_approval'])]"
+                                           domain="[('model_id.model','in',[model, approval_task_line_model, 'approval.task','approval.instance']),('notification_type','in',[False, 'request_approval'])]"
                                            string="Request Approval"
                                     />
                                     <field name="notification_reminder_id"
-                                           domain="[('model_id.model','in',[model, 'approval.task']),('notification_type','in',[False, 'reminder_approval'])]"
+                                           domain="[('model_id.model','in',[model, approval_task_line_model, 'approval.task','approval.instance']),('notification_type','in',[False, 'reminder_approval'])]"
                                            string="Reminder"
                                     />
                                     <label for="reminder_interval_number" string="Every"/>
@@ -245,32 +246,40 @@
                                         <field name="reminder_interval_type" class="oe_inline"/>
                                     </div>
                                     <field
-                                            name="notification_reset_to_draft_approver_id"
-                                            domain="[('model_id.model','=',model)]"
-                                            string="Set to Draft"
-                                    />
-                                    <field
                                             name="notification_cancel_approver_id"
-                                            domain="[('model_id.model','=',model)]"
+                                            domain="[('model_id.model','in',[model, approval_task_line_model, 'approval.instance']),('notification_type','in',[False, 'cancel'])]"
                                             string="Cancel"
                                     />
                                     <field
                                             name="notification_rejection_to_approver_id"
-                                            domain="[('model_id.model','=',model)]"
-                                            string="Reject"
+                                            domain="[('model_id.model','in',[model, approval_task_line_model,'approval.audit.log', 'approval.instance',]),('notification_type','in',[False, 'reject','rejection_approver'])]"
+                                            string="Rejection to Approve"
                                     />
+                                    <label for="notification_reset_to_draft_approver_id" string="Reset to Draft"/>
+                                    <div>
+                                        <field
+                                                name="notification_reset_to_draft_approver_id"
+                                                domain="[('model_id.model','in',[model, approval_task_line_model, 'approval.instance']),('notification_type','in',[False, 'reset'])]"
+                                        /><br/>
+                                        <field name="notification_reset_to_draft_target" />
+                                    </div>
                                 </group>
 
                                 <group string="To Requester">
                                     <field
                                             name="notification_rejection_id"
-                                            domain="[('model_id.model','=',model)]"
+                                            domain="[('model_id.model','in',[model, approval_task_line_model, 'approval.audit.log', 'approval.instance']),('notification_type','in',[False, 'reject','rejection_requester'])]"
                                             string="Rejected"
                                     />
                                     <field
                                             name="notification_approved_id"
-                                            domain="[('model_id.model','=',model)]"
+                                            domain="[('model_id.model','in',[model, approval_task_line_model, 'approval.audit.log', 'approval.instance']),('notification_type','in',[False, 'approve'])]"
                                             string="Approved"
+                                    />
+                                    <field
+                                            name="notification_final_approved_id"
+                                            domain="[('model_id.model','in',[model, approval_task_line_model, 'approval.audit.log', 'approval.instance']),('notification_type','in',[False, 'approve', 'final_approve'])]"
+                                            string="Final Approved"
                                     />
                                 </group>
                             </group>

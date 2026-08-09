@@ -67,6 +67,7 @@
                             <field name="transaction_status" readonly="1"/>
                             <field name="transaction_ref" readonly="1"/>
                             <field name="approval_template_id" readonly="1"/>
+                            <field name="url" readonly="1"/>
                         </group>
                     </group>
                     <notebook>

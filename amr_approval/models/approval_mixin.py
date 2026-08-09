@@ -600,28 +600,28 @@ class ApprovalStatusMixin(models.AbstractModel):
         'Status Approval',
         default='draft',
     )
-
-    @api.model
-    def domain_waiting_status(self):
-        return [('status_approval', 'in', [APPROVAL_STATUS_NOT_APPROVE, 'waiting', 'draft'])]
-
-    def set_waiting_state(self):
-        self.status_approval = 'waiting'
-
-    def set_waiting_approval_state(self):
-        self.status_approval = APPROVAL_STATUS_NOT_APPROVE
-
-    def set_approve_state(self):
-        self.status_approval = APPROVAL_STATUS_APPROVED
-
-    def set_reject_state(self):
-        self.status_approval = APPROVAL_STATUS_REJECTED
-
-    def set_canceled_state(self):
-        self.status_approval = APPROVAL_STATUS_CANCELLED
-
-    def set_to_draft_state(self):
-        self.status_approval = APPROVAL_STATUS_CANCELLED
+    #
+    # @api.model
+    # def domain_waiting_status(self):
+    #     return [('status_approval', 'in', [APPROVAL_STATUS_NOT_APPROVE, 'waiting', 'draft'])]
+    #
+    # def set_waiting_state(self):
+    #     self.status_approval = 'waiting'
+    #
+    # def set_waiting_approval_state(self):
+    #     self.status_approval = APPROVAL_STATUS_NOT_APPROVE
+    #
+    # def set_approve_state(self):
+    #     self.status_approval = APPROVAL_STATUS_APPROVED
+    #
+    # def set_reject_state(self):
+    #     self.status_approval = APPROVAL_STATUS_REJECTED
+    #
+    # def set_canceled_state(self):
+    #     self.status_approval = APPROVAL_STATUS_CANCELLED
+    #
+    # def set_to_draft_state(self):
+    #     self.status_approval = APPROVAL_STATUS_CANCELLED
 
 
 class ApprovalTaskLineBuilderMixin(models.AbstractModel):

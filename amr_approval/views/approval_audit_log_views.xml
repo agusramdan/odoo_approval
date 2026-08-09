@@ -1,10 +1,30 @@
 <odoo>
+    <record id="approval_audit_log_search" model="ir.ui.view">
+        <field name="model">approval.audit.log</field>
+        <field name="arch" type="xml">
+            <search string="Filters">
+                <field name="document"/>
+                <field name="company_id"/>
+                <filter string="My filters" domain="['|',('delegatee_user_id','=',uid),('user_id','=',uid)]" name="my_filters"
+                        help="Filters created by myself"/>
+                <separator/>
+                <group expand="0" string="Group By">
+                    <filter string="Company" name="company" domain="[]" context="{'group_by':'company_id'}"/>
+                    <filter string="Document Type" name="document_type" domain="[]" context="{'group_by':'document'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="view_approval_audit_log_tree" model="ir.ui.view">
         <field name="name">approval.audit.log.tree</field>
         <field name="model">approval.audit.log</field>
         <field name="arch" type="xml">
             <tree>
                 <field name="transaction_display_name" />
+                <field name="document"/>
+                <field name="description"/>
+                <field name="company_id"/>
                 <field name="user_id"/>
                 <field name="job_position" optional="hide"/>
                 <field name="delegator_id" optional="hide"/>
@@ -12,6 +32,7 @@
                 <field name="delegatee_user_id" optional="hide"/>
                 <field name="delegatee_job_position" optional="hide"/>
                 <field name="action_type"/>
+                <field name="request_task_date"/>
                 <field name="create_date"/>
                 <field name="notes"/>
                 <button name="action_approval_transaction" string="Trx" type="object" class="oe_highlight"/>

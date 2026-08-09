@@ -69,6 +69,7 @@
                     <group>
                         <group string="Approval Field Mapping" >
                             <field name="field_sign_title"/>
+                            <field name="field_reason"/>
                             <field name="field_type_approval"/>
                             <field name="field_user_id"/>
                             <field name="field_group_id"/>

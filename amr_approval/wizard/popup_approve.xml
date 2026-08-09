@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="popup_reject_message" model="ir.ui.view">
-        <field name="name">popup.reject.message.wizard</field>
-        <field name="model">popup.reject.message.wizard</field>
+    <record id="popup_approve_message" model="ir.ui.view">
+        <field name="name">popup.approve.message.wizard</field>
+        <field name="model">popup.approve.message.wizard</field>
         <field name="arch" type="xml">
             <form string="Message">
                 <group>
@@ -11,16 +11,16 @@
                     </group>
                 </group>
                 <footer>
-                    <button name="button_reject" string="Reject" type="object" class="oe_highlight"/>
+                    <button name="button_approve" string="Approve" type="object" class="oe_highlight"/>
                     <button string="Cancel" special="cancel" />
                 </footer>
             </form>
         </field>
     </record>
 
-    <record id="action_popup_reject_message" model="ir.actions.act_window">
-        <field name="name">Reject Note</field>
-        <field name="res_model">popup.reject.message.wizard</field>
+    <record id="action_popup_approve_message" model="ir.actions.act_window">
+        <field name="name">Approve Note</field>
+        <field name="res_model">popup.approve.message.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
     </record>
