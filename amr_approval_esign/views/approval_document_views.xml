@@ -8,29 +8,6 @@
             <field name="pdf_sign_server" position="after">
                 <field name="pdf_sign_template_id" attrs="{'invisible': [('pdf_sign_server','!=','local')]}" />
             </field>
-<!--            <xpath expr="//header/field[@name='state']" position="attributes">-->
-<!--                <attribute name="statusbar_visible">draft,waiting_approval,approved,active</attribute>-->
-<!--            </xpath>-->
-<!--            <xpath expr="//header" position="inside">-->
-<!--                <field name="access_approval" invisible="1"/>-->
-<!--                <button name="action_approve"-->
-<!--                        string="Approve"-->
-<!--                        type="object" class="oe_highlight"-->
-<!--                        attrs="{'invisible': [('access_approval','=',False)]}"-->
-<!--                />-->
-<!--                <button name="action_reject"-->
-<!--                        string="Reject"-->
-<!--                        type="object" class="oe_highlight"-->
-<!--                        attrs="{'invisible': ['|',('access_approval','=',False),('state', '=', 'draft')]}"-->
-<!--                />-->
-<!--            </xpath>-->
-<!--            <notebook position="inside">-->
-<!--                <page string="PDF Sign Config">-->
-<!--                    <field name="pdf_code" widget="ace" options="{'mode': 'python'}"-->
-<!--                           placeholder="Enter Python code here. Help about Python expression is available in the help tab of this document."-->
-<!--                    />-->
-<!--                </page>-->
-<!--            </notebook>-->
         </field>
 
     </record>

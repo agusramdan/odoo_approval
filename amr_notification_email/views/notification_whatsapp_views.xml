@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_notification_whatsapp_tree" model="ir.ui.view">
+        <field name="name">notification.whatsapp.tree</field>
+        <field name="model">notification.whatsapp</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="notification_id"/>
+                <field name="state"/>
+                <field name="create_date"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_notification_whatsapp_form" model="ir.ui.view">
+        <field name="name">notification.whatsapp.form</field>
+        <field name="model">notification.whatsapp</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="notification_id"/>
+                        <field name="state"/>
+                        <field name="response_payload"/>
+                        <field name="error_message"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_notification_whatsapp" model="ir.actions.act_window">
+        <field name="name">WhatsApp Deliveries</field>
+        <field name="res_model">notification.whatsapp</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

@@ -1,0 +1,34 @@
+<odoo>
+    <menuitem id="menu_approval_management_root" name="Approval Aggregator" sequence="-9"
+              web_icon="amr_approval_aggregator,static/description/icon.png"
+    />
+
+    <menuitem id="base_approval_aggregator_menu" name="Approval" sequence="16"
+              parent="menu_approval_management_root"
+
+    />
+    <menuitem id="menu_approval_task_aggregator_my_approval" name="Waiting" sequence="20"
+              parent="base_approval_aggregator_menu"
+              action="action_approval_task_aggregator_my_approval"
+    />
+
+    <menuitem id="menu_approval_task_aggregator_my_request" name="Requests" sequence="20"
+              parent="base_approval_aggregator_menu"
+              action="action_approval_task_aggregator_my_request"
+    />
+
+    <menuitem id="base_approval_manager_menu" name="Manager" sequence="16"
+              parent="menu_approval_management_root"
+              groups="group_approval_task_aggregator_manager"
+    />
+    <menuitem id="menu_approval_task_aggregator_manager" name="Manager" sequence="20"
+              parent="base_approval_manager_menu"
+              action="action_approval_task_aggregator_manager"
+              groups="group_approval_task_aggregator_manager"
+    />
+    <menuitem id="menu_approval_task_aggregator_monitor" name="Monitor" sequence="20"
+              parent="base_approval_manager_menu"
+              action="action_approval_task_request_monitor"
+              groups="group_approval_task_aggregator_manager"
+    />
+</odoo>

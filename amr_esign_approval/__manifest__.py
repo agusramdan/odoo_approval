@@ -11,10 +11,10 @@
     'depends': ['base', 'mail', 'amr_approval', 'amr_esign_pdf'],
     'data': [
 
-        'views/approval_views.xml',
-        'views/menuitem_views.xml',
+        # 'views/approval_views.xml',
+        # 'views/menuitem_views.xml',
 
-        'data/notification_template_approval.xml',
+        # 'data/notification_template_approval.xml',
         'data/approval_template_data.xml',
     ],
 }

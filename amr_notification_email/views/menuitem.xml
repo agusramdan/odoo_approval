@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_notification_partner_whatsapp" model="ir.actions.act_window">
+        <field name="name">Notification Partners</field>
+        <field name="res_model">notification.partner</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="menu_notification_partner_whatsapp"
+              name="WhatsApp Notifications"
+              parent="amr_notification.base_notification_menu"
+              action="action_notification_partner_whatsapp"/>
+</odoo>

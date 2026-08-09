@@ -1,0 +1,126 @@
+<odoo>
+    <record id="view_approval_task_request_monitor_tree" model="ir.ui.view">
+        <field name="name">approval.task.request.monitor.tree</field>
+        <field name="model">approval.task.request</field>
+        <field name="arch" type="xml">
+            <tree default_order="request_datetime desc"
+                    create="false"
+                    edit="false"
+                    delete="false"
+                    decoration-success="state == 'done'"
+                    decoration-warning="state == 'process'"
+                    decoration-info="state == 'accept'"
+                    decoration-danger="state == 'error'"
+                    decoration-muted="state == 'expired'">
+
+                <field name="request_datetime"/>
+                <field name="state"/>
+                <field name="source_application"/>
+                <field name="source_model"/>
+                <field name="source_res_id"/>
+                <field name="last_error"/>
+                <field name="errors_message"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_approval_task_request_monitor_form" model="ir.ui.view">
+        <field name="name">approval.task.request.monitor.form</field>
+        <field name="model">approval.task.request</field>
+        <field name="arch" type="xml">
+            <form string="Approval Task Monitor"
+                  create="false"
+                  delete="false">
+                <header>
+                    <button name="action_retry"
+                            type="object"
+                            string="Retry"
+                            class="oe_highlight"
+                            attrs="{'invisible':[('state','=','done')]}"
+                    />
+<!--                    <button name="action_reset"-->
+<!--                            type="object"-->
+<!--                            string="Reset"-->
+<!--                    />-->
+<!--                    <button name="action_mark_done"-->
+<!--                            type="object"-->
+<!--                            string="Mark Done"-->
+<!--                            attrs="{'invisible':[('state','=','done')]}"-->
+<!--                    />-->
+                    <field name="state"
+                           widget="statusbar"
+                    />
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="source_application" readonly="1"/>
+                            <field name="source_model" readonly="1"/>
+                            <field name="source_res_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="request_type" readonly="1"/>
+                            <field name="request_datetime" readonly="1"/>
+                            <field name="last_error" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Payload" autofocus="autofocus">
+                            <field name="payload" widget="text"/>
+                        </page>
+                        <page string="Error Information">
+                            <field name="errors_message"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_approval_task_request_monitor_search" model="ir.ui.view">
+        <field name="name">approval.task.request.monitor.search</field>
+        <field name="model">approval.task.request</field>
+        <field name="arch" type="xml">
+
+            <search>
+
+                <field name="source_application"/>
+                <field name="source_model"/>
+                <field name="state"/>
+
+                <separator/>
+
+                <filter string="Accept" name="filter_state_accept" domain="[('state','=','accept')]"/>
+                <filter string="Process" name="filter_state_process" domain="[('state','=','process')]"/>
+                <filter string="Done" name="filter_state_done" domain="[('state','=','done')]"/>
+                <filter string="Expired" name="filter_state_expired" domain="[('state','=','expired')]"/>
+                <filter string="Error" name="filter_state_error" domain="[('state','=','error')]"/>
+
+                <separator/>
+
+                <group expand="0" string="Group By">
+                    <filter string="State" name="group_by_state"
+                            context="{'group_by':'state'}"/>
+                    <filter string="Application" name="group_by_source_application"
+                            context="{'group_by':'source_application'}"/>
+                    <filter string="Model" name="group_by_source_model"
+                            context="{'group_by':'source_model'}"/>
+                    <filter string="Request Date" name="group_by_request_datetime"
+                            context="{'group_by':'request_datetime:day'}"/>
+                </group>
+
+            </search>
+
+        </field>
+    </record>
+    <record id="action_approval_task_request_monitor"
+        model="ir.actions.act_window">
+
+        <field name="name">Approval Task Monitor</field>
+        <field name="res_model">approval.task.request</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id"
+               ref="view_approval_task_request_monitor_search"/>
+
+    </record>
+</odoo>

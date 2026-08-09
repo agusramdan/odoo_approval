@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- User hanya melihat task miliknya -->
+    <record id="approval_task_aggregator_user_rule" model="ir.rule">
+        <field name="name">Approval Task Aggregation User</field>
+        <field name="model_id" ref="model_approval_task_aggregator"/>
+        <field name="groups" eval="[(4, ref('group_approval_task_aggregator_user'))]"/>
+        <field name="domain_force">
+            ['|',
+                ('requester_id','=',user.id),
+                ('user_ids','in',[user.id])
+            ]
+        </field>
+    </record>
+
+</odoo>

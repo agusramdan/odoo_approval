@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- User -->
+    <record id="group_approval_task_aggregator_user" model="res.groups">
+        <field name="name">Approval Task Aggregation User</field>
+        <field name="category_id" ref="base.module_category_hidden"/>
+    </record>
+    <!-- Manager -->
+    <record id="group_approval_task_aggregator_manager" model="res.groups">
+        <field name="name">Approval Task Aggregation Manager</field>
+        <field name="category_id" ref="base.module_category_hidden"/>
+        <field name="implied_ids"
+               eval="[(4, ref('group_approval_task_aggregator_user'))]"
+        />
+    </record>
+
+
+
+</odoo>

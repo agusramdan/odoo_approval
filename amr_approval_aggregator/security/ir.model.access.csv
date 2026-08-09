@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_approval_task_aggregator_user,approval.task.aggregator.user,model_approval_task_aggregator,base.group_user,1,0,0,0
+access_approval_task_aggregator_manager,approval.task.aggregator.manager,model_approval_task_aggregator,group_approval_task_aggregator_manager,1,1,1,1
+access_approval_task_request_manager,approval.task.request.manager,model_approval_task_request,group_approval_task_aggregator_manager,1,1,1,1

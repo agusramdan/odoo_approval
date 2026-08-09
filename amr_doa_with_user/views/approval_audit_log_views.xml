@@ -1,0 +1,14 @@
+<odoo>
+    <record id="view_approval_audit_log_tree" model="ir.ui.view">
+        <field name="name">approval.audit.log.tree</field>
+        <field name="model">approval.audit.log</field>
+        <field name="inherit_id" ref="amr_base.view_approval_audit_log_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='user_id']" position="after">
+                <field name="delegatee_user_id" readonly="1"/>
+                <field name="delegator_user_id" readonly="1"/>
+                <field name="user_delegation_id" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

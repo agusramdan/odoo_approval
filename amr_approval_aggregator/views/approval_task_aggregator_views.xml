@@ -1,0 +1,95 @@
+<odoo>
+
+    <record id="view_approval_task_aggregator_tree" model="ir.ui.view">
+        <field name="name">approval.task.aggregator.tree</field>
+        <field name="model">approval.task.aggregator</field>
+        <field name="arch" type="xml">
+            <tree default_order="request_approval_datetime desc">
+                <field name="source_number"/>
+                <field name="source_document"/>
+                <field name="source_description"/>
+                <field name="source_application"/>
+                <field name="requester_id"/>
+                <field name="request_approval_datetime" optional="hide"/>
+                <field name="request_approval_task_datetime" string="Task Date"/>
+                <field name="company_id" />
+                <field name="source_local" optional="hide"/>
+                <button name="action_approval_transaction" string="Show Detail" type="object" class="oe_highlight"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_approval_task_aggregator_search" model="ir.ui.view">
+        <field name="name">approval.task.aggregator.search</field>
+        <field name="model">approval.task.aggregator</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="source_number"/>
+                <field name="source_document"/>
+                <field name="source_description"/>
+                <field name="requester_id"/>
+                <field name="company_id"/>
+
+                <separator/>
+
+                <filter string="My Request" name="filter_requester_id"
+                        domain="[('requester_id','=',uid)]"/>
+
+                <filter string="Assigned To Me" name="filter_to_me"
+                        domain="[('user_ids','in',[uid])]"/>
+
+                <filter string="Local" name="filter_is_local"
+                        domain="[('source_local','=',True)]"/>
+
+                <group expand="0" string="Group By">
+                    <filter string="Document" name="group_by_source_document"
+                            context="{'group_by':'source_document'}"/>
+                    <filter string="Requester" name="group_by_requester_id"
+                            context="{'group_by':'requester_id'}"/>
+                    <filter string="Company" name="group_by_requester_id"
+                            context="{'group_by':'company_id'}"/>
+                </group>
+
+            </search>
+
+        </field>
+    </record>
+
+    <record id="action_approval_task_aggregator_manager" model="ir.actions.act_window">
+        <field name="name">All Approval Tasks</field>
+        <field name="res_model">approval.task.aggregator</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[]</field>
+    </record>
+
+    <record id="action_approval_task_aggregator_my_approval" model="ir.actions.act_window">
+        <field name="name">My Approval Tasks</field>
+        <field name="res_model">approval.task.aggregator</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">
+            [('user_ids','in',[uid])]
+        </field>
+    </record>
+
+    <record id="action_approval_task_aggregator_my_request" model="ir.actions.act_window">
+        <field name="name">My Requests</field>
+        <field name="res_model">approval.task.aggregator</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">
+            [('requester_id','=',uid)]
+        </field>
+    </record>
+
+    <record id="action_approval_task_aggregator" model="ir.actions.act_window">
+        <field name="name">Approval Task Aggregation</field>
+        <field name="res_model">approval.task.aggregator</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_approval_task_aggregator_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Approval Task Aggregation
+            </p>
+        </field>
+    </record>
+
+</odoo>

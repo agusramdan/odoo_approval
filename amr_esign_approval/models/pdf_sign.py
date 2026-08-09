@@ -24,29 +24,29 @@ class PdfSign(models.Model):
     _name = 'pdf.sign'
     _inherit = [_name, 'approval.line.auto.register.mixin']
 
-    def set_approve_state(self, **kwargs):
-        self.write({
-            'approve': True,
-            'reject': False,
-            'status': 'approved',
-            'user_execution_id': self.env.user.id,
-            'date_execution': fields.Datetime.now(),
-        })
-
-    def set_reject_state(self):
-        self.write({
-            'approve': False,
-            'reject': True,
-            'status': 'rejected',
-            'user_execution_id': self.env.user.id,
-            'date_execution': fields.Datetime.now(),
-        })
-
-    def set_waiting_status(self, **kwargs):
-        self.write({
-            'approve': False,
-            'reject': False,
-            'status': 'waiting_approval',
-            'user_execution_id': False,
-            'date_execution': False,
-        })
+    # def set_approve_state(self, **kwargs):
+    #     self.write({
+    #         'approve': True,
+    #         'reject': False,
+    #         'status': 'approved',
+    #         'user_execution_id': self.env.user.id,
+    #         'date_execution': fields.Datetime.now(),
+    #     })
+    #
+    # def set_reject_state(self):
+    #     self.write({
+    #         'approve': False,
+    #         'reject': True,
+    #         'status': 'rejected',
+    #         'user_execution_id': self.env.user.id,
+    #         'date_execution': fields.Datetime.now(),
+    #     })
+    #
+    # def set_waiting_status(self, **kwargs):
+    #     self.write({
+    #         'approve': False,
+    #         'reject': False,
+    #         'status': 'waiting_approval',
+    #         'user_execution_id': False,
+    #         'date_execution': False,
+    #     })

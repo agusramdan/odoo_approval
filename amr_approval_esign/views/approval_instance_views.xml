@@ -5,21 +5,6 @@
         <field name="priority" eval="16"/>
         <field name="inherit_id" ref="amr_approval.view_approval_instance_form"/>
         <field name="arch" type="xml">
-<!--            <xpath expr="//header/field[@name='state']" position="attributes">-->
-<!--                <attribute name="statusbar_visible">draft,waiting_approval,approved,active</attribute>-->
-<!--            </xpath>-->
-            <xpath expr="//header" position="inside">
-<!--                <field name="access_approval" invisible="1"/>-->
-                <button name="action_sign_all_pdf"
-                        string="Sign PDF"
-                        type="object" class="oe_highlight"
-                />
-<!--                <button name="action_reject"-->
-<!--                        string="Reject"-->
-<!--                        type="object" class="oe_highlight"-->
-<!--                        attrs="{'invisible': ['|',('access_approval','=',False),('state', '=', 'draft')]}"-->
-<!--                />-->
-            </xpath>
             <notebook position="inside">
                 <page string="PDF Signature" attrs="{'invisible': [('pdf_document_id','=',False)]}">
                     <group>
@@ -33,6 +18,24 @@
             </notebook>
         </field>
 
+    </record>
+
+    <record id="view_approval_instance_pdf_document_form" model="ir.ui.view">
+        <field name="name">approval.instance</field>
+        <field name="model">approval.instance</field>
+        <field name="priority" eval="1000"/>
+        <field name="arch" type="xml">
+            <form string="PDF Signature"  edit="false" create="false" delete="false">
+                 <group>
+                     <field name="pdf_document_id" readonly="1" groups="base.group_no_one"/>
+                     <field name="pdf_filename" readonly="1"/>
+                     <field name="pre_signed_pdf" filename="pdf_filename" readonly="1" widget="pdf_viewer"/>
+                 </group>
+                <footer>
+                    <button string="Close" special="cancel"/>
+                </footer>
+            </form>
+        </field>
     </record>
 
 </odoo>

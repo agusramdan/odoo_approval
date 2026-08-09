@@ -1,0 +1,12 @@
+<odoo>
+    <record id="view_approval_task_tree" model="ir.ui.view">
+        <field name="name">approval.task.tree</field>
+        <field name="model">approval.task</field>
+        <field name="inherit_id" ref="amr_base.view_approval_task_tree"/>
+        <field name="arch" type="xml">
+            <field name="approval_instance_id" position="after">
+                <field name="user_delegation_id" optional="hide" groups="base.group_no_one" />
+            </field>
+        </field>
+    </record>
+</odoo>
