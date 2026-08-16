@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit res.config.settings view -->
+    <record id="res_config_settings_view_form_inherit" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="amr_resource.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@id='amr_approval_task_client_content_group']" position="inside">
+                <div class="mt16 row">
+                    <label for="approval_server_endpoint_id" string="Server" class="col-3 col-lg-3 o_light_label"/>
+                    <field name="approval_server_endpoint_id" nolabel="1"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>
