@@ -15,8 +15,7 @@ class NotificationDelivery(models.Model):
 
     device_id = fields.Many2one(
         "mobile.device",
-        required=True,
-        ondelete="restrict",
+        ondelete="set null",
     )
 
     state = fields.Selection(

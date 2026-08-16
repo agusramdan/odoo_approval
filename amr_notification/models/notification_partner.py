@@ -21,6 +21,12 @@ class NotificationPartner(models.Model):
     _inherit = [
         "notification.mixin"
     ]
+
+    notification_type = fields.Selection([
+        ("approval", "Approval"),
+        ("info", "Info"),
+    ], default="approval", index=True)
+
     user_id = fields.Many2one(
         "res.users",
         index=True,
@@ -37,11 +43,19 @@ class NotificationPartner(models.Model):
         "notification.delivery",
         'notification_id',
     )
+    source_application = fields.Char()
+    source_model = fields.Char()
+    source_res_id = fields.Integer()
+    source_url = fields.Char()
 
     @api.model
-    def prepare_notification(self, payload, user=None, **kwargs ):
+    def prepare_notification(self, payload, user=None, **kwargs):
         data_prepare = super(NotificationPartner, self).prepare_notification(payload)
         data = payload.get('data') or {}
+        data_prepare['source_application'] = payload.get('source_application') or data.get('source_application')
+        data_prepare['source_model'] = payload.get('source_model') or data.get('source_model')
+        data_prepare['source_res_id'] = payload.get('source_res_id') or data.get('source_res_id')
+        data_prepare['source_url'] = payload.get('source_url') or data.get('source_url')
         notification_to_user = payload.get('email') or data.get('notification_to_user')
         mobile_phone = payload.get('phone')
         to_user = user
@@ -152,3 +166,26 @@ class NotificationPartner(models.Model):
             self.process_notification()
         except Exception as ex:
             raise UserError(str(ex))
+
+    def action_approval_show(self):
+        self.ensure_one()
+        if self.notification_type != "approval":
+            raise UserError("Notification is not an approval type.")
+
+        if not self.source_model or not self.source_res_id:
+            raise UserError("Source model atau Source ID kosong.")
+
+        # Menyusun URL rute internal standar Odoo 13 untuk Form View
+        if self.source_url:
+            odoo_internal_url = self.source_url
+        else:
+            odoo_internal_url = "%s/web#id=%s&model=%s&view_type=form" % (
+                self.get_base_url(), self.source_res_id, self.source_model
+            )
+
+        # Kembalikan sebagai tipe act_url murni
+        return {
+            "type": "ir.actions.act_url",
+            "url": odoo_internal_url,
+            "target": "self",  # "self" agar berpindah di tab yang sama, "new" jika ingin tab baru
+        }

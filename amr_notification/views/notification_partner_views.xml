@@ -28,6 +28,12 @@
                             states="pending,failed"
                             groups="base.group_erp_manager"
                     />
+                    <button name="action_approval_show"
+                            string="Approval Show"
+                            type="object"
+                            class="oe_highlight"
+                    />
+
                     <field name="state"
                            widget="statusbar"
                            statusbar_visible="pending,processing,sent,failed"
@@ -38,6 +44,7 @@
                         <group>
                             <field name="partner_id"/>
                             <field name="user_id"/>
+                            <field name="notification_type"/>
                         </group>
                         <group>
                             <field name="processed_at" readonly="1"/>
@@ -47,6 +54,7 @@
                     <notebook>
                         <page name="notification" string="Notification">
                             <group>
+                                <field name="is_read"/>
                                 <field name="title"/>
                                 <field name="body"/>
                                 <field name="image"/>
@@ -70,6 +78,14 @@
                                     <field name="error_message" />
                                 </tree>
                             </field>
+                        </page>
+                        <page string="Approval" attrs="{'invisible':[('notification_type','!=','approval')]}">
+                            <group>
+                                <field name="source_application"/>
+                                <field name="source_model"/>
+                                <field name="source_res_id"/>
+                                <field name="source_url"/>
+                            </group>
                         </page>
                     </notebook>
                 </sheet>

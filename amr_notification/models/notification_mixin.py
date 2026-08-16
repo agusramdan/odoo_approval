@@ -30,6 +30,7 @@ class NotificationMessageMixin(models.AbstractModel):
     retry_count = fields.Integer(
         default=0,
     )
+    is_read = fields.Boolean(default=False,)
 
     def _get_data_payload(self):
         if not self.data_json:
@@ -84,3 +85,6 @@ class NotificationMessageMixin(models.AbstractModel):
             'data_json': json.dumps(payload),
             'raw_payload': raw_payload,
         }
+
+    def action_mark_read(self):
+        self.is_read = True
