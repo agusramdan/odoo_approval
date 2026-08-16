@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="approval_document_am_entry" model="approval.document">
+            <field name="model_id" ref="base.model_account_move"/>
+            <!-- agnostic -->
+            <field name="code">am_entry</field>
+            <field name="name">Journal Entry</field>
+<!--            <field name="priority">20</field>-->
+<!--            <field name="need_approval" eval="True"/>-->
+<!--            <field name="condition_select">none</field>-->
+            <field name="condition_python">
+result=transaction_object.type == 'entry'
+            </field>
+        </record>
+
+        <record id="approval_document_am_out_invoice" model="approval.document">
+            <field name="model_id" ref="base.model_account_move"/>
+            <!-- agnostic -->
+            <field name="code">am_out_invoice</field>
+            <field name="name">Customer Invoice</field>
+<!--            <field name="priority">20</field>-->
+<!--            <field name="need_approval" eval="True"/>-->
+<!--            <field name="condition_select">none</field>-->
+            <field name="condition_python">
+result=transaction_object.type == 'out_invoice'
+            </field>
+        </record>
+
+        <record id="approval_document_am_out_invoice" model="approval.document">
+            <field name="model_id" ref="base.model_account_move"/>
+            <!-- agnostic -->
+            <field name="code">am_out_refund</field>
+            <field name="name">Customer Credit Note</field>
+<!--            <field name="priority">20</field>-->
+<!--            <field name="need_approval" eval="True"/>-->
+<!--            <field name="condition_select">none</field>-->
+            <field name="condition_python">
+result=transaction_object.type == 'out_refund'
+            </field>
+        </record>
+
+        <record id="approval_document_am_in_invoice" model="approval.document">
+            <field name="model_id" ref="base.model_account_move"/>
+            <!-- agnostic -->
+            <field name="code">am_in_invoice</field>
+            <field name="name">Vendor Bill</field>
+<!--            <field name="priority">20</field>-->
+            <field name="need_approval" eval="True"/>
+<!--            <field name="condition_select">none</field>-->
+            <field name="condition_python">
+result=transaction_object.type == 'in_invoice'
+            </field>
+        </record>
+
+        <record id="approval_document_am_in_refund" model="approval.document">
+            <field name="model_id" ref="base.model_account_move"/>
+            <!-- agnostic -->
+            <field name="code">am_in_refund</field>
+            <field name="name">Vendor Credit Note</field>
+<!--            <field name="priority">20</field>-->
+<!--            <field name="need_approval" eval="True"/>-->
+<!--            <field name="condition_select">none</field>-->
+            <field name="condition_python">
+result=transaction_object.type == 'in_refund'
+            </field>
+        </record>
+
+        <record id="approval_document_am_out_receipt" model="approval.document">
+            <field name="model_id" ref="base.model_account_move"/>
+            <!-- agnostic -->
+            <field name="code">am_out_receipt</field>
+            <field name="name">Sales Receipt</field>
+<!--            <field name="priority">20</field>-->
+<!--            <field name="need_approval" eval="True"/>-->
+<!--            <field name="condition_select">none</field>-->
+            <field name="condition_python">
+result=transaction_object.type == 'out_receipt'
+            </field>
+        </record>
+
+        <record id="approval_document_am_in_receipt" model="approval.document">
+            <field name="model_id" ref="base.model_account_move"/>
+            <!-- agnostic -->
+            <field name="code">am_in_receipt</field>
+            <field name="name">Purchase Receipt</field>
+<!--            <field name="priority">20</field>-->
+<!--            <field name="need_approval" eval="True"/>-->
+<!--            <field name="condition_select">none</field>-->
+            <field name="condition_python">
+result=transaction_object.type == 'in_receipt'
+            </field>
+        </record>
+
+    </data>
+</odoo>
