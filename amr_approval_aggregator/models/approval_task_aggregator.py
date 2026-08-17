@@ -164,11 +164,12 @@ class ApprovalTaskAggregator(models.Model):
         else:
             domain.append(('source_application', '=', source_application))
 
-        ata = self.search(domain)
+        ata = self.sudo().search(domain)
         if ata:
             ata.sudo().write(data)
         else:
-            self.sudo().create([data])
+            ata = self.sudo().create([data])[0]
+        return ata
 
     def action_approval_transaction(self):
         if self.source_local:
@@ -179,7 +180,7 @@ class ApprovalTaskAggregator(models.Model):
                 self.sudo().unlink()
                 return
         else:
-            url = self.env.user.add_url_access_token(self.source_url, url_type='auto_login')
+            url = self.env.user.add_url_access_token(url=self.source_url, url_type='auto_login')
             return {
                 "type": "ir.actions.act_url",
                 "url": url,

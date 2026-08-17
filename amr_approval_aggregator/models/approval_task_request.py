@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 
+import logging
 import traceback
 import json
 
 from odoo import api, fields, models
+
+_logger = logging.getLogger(__name__)
 
 
 class ApprovalTaskRequest(models.Model):
@@ -60,11 +63,12 @@ class ApprovalTaskRequest(models.Model):
         request_type = self.request_type
         create_request = self
         try:
-            data = {
+            data = json.loads(self.payload) if self.payload else {}
+            data.update({
                 'source_application': self.source_application,
                 'source_model': self.source_model,
                 'source_res_id': self.source_res_id,
-            }
+            })
             if 'unregister_approval' == request_type:
                 create_request.unregister_approval(data)
             elif 'register_approval' == request_type:
@@ -140,9 +144,6 @@ class ApprovalTaskRequest(models.Model):
         self.state = 'process'
         source_company = kwargs.get('source_company')
         source_requester = kwargs.get('source_requester')
-        source_application = kwargs.get('source_application')
-        source_model = kwargs.get('source_model')
-        source_res_id = kwargs.get('source_res_id')
         request_datetime = kwargs.get('request_datetime')
         if request_datetime:
             request_datetime = fields.Datetime.to_datetime(request_datetime)
@@ -150,38 +151,17 @@ class ApprovalTaskRequest(models.Model):
             request_datetime = fields.Datetime.now()
         requester = self.get_user_from_client(source_requester)
         company = self.get_company_from_client(source_company)
-        approval_user = self.env["approval.task.aggregator"].search([
-            ('source_model', '=', source_model),
-            ('source_res_id', '=', source_res_id),
-            ('source_application', '=', source_application),
-        ])
-        accept_key = ['source_application', 'source_model', 'source_res_id',
-                      'source_number', 'source_document', 'source_url']
-        data = {k: v for k, v in kwargs.items() if k in accept_key}
+        data = dict(kwargs)
         data['source_url'] = kwargs.get('source_url') or kwargs.get('url')
+        _logger.info("data %s \n %s", data, kwargs)
         if requester:
             data['requester_id'] = requester.id
         if company:
             data['company_id'] = company.id
-        users = self.get_users_from_client(data)
-        data['user_ids'] = users.ids
-
-        if self.env.context.get('__source_local'):
-            data['source_local'] = True
+        data['user_ids'] = self.get_users_from_client(data)
         data['request_approval_task_datetime'] = request_datetime
-
-        if approval_user:
-            if request_datetime and approval_user.request_approval_task_datetime <= request_datetime:
-                approval_user.write(data)
-            else:
-                self.write({
-                    'state': 'expired',
-                    'errors_message': "Skip",
-                })
-                return approval_user
-        else:
-            approval_user = self.env["approval.task.aggregator"].create(data)
-
+        _logger.info("data %s \n kwargs %s", data, kwargs)
+        approval_user = self.env["approval.task.aggregator"].create_or_update(**data)
         self.write({
             'state': 'done',
             'errors_message': False,
