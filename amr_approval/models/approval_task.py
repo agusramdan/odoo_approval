@@ -16,7 +16,7 @@ class ApprovalTask(models.Model):
     _name = 'approval.task'
     _inherit = ['approval.transaction.able.mixin', 'approval.responsible.line.mixin']
     _description = 'Approval Task'
-    _order = 'request_approval_task_date desc, date desc, create_date desc'
+    _order = 'request_approval_task_date, date , create_date'
 
     name = fields.Char('Number')
     document = fields.Char('Type')
@@ -211,6 +211,8 @@ class ApprovalTask(models.Model):
                 notification_approval = self.notification_approval_id or approval_template.notification_approval_id
 
             notification_log = None
+            if 'approval_task' not in kwargs:
+                kwargs['approval_task'] = self
             kwargs['approval_task_id'] = self.id
             if notification_approval:
                 # res_id, model_name = self.get_res_id_for_notification(notification_approval, **kwargs)
@@ -595,7 +597,7 @@ class ApprovalTask(models.Model):
         if not isinstance(users, models.BaseModel):
             users = record.get_users()
         if users:
-            return users.get_users_for_notification(company=self.company_id)
+            return users.get_users_for_notification(company=record.company_id)
         else:
             return users
 
@@ -605,7 +607,8 @@ class ApprovalTask(models.Model):
         if not isinstance(users, models.BaseModel):
             users = record.get_users()
         if users:
-            return users.get_users_for_approval(company=self.company_id)
+            _logger.info("get_users_for_approval company %s",record.company_id)
+            return users.get_users_for_approval(company=record.company_id)
         else:
             return users
 
@@ -670,6 +673,9 @@ class ApprovalTask(models.Model):
                     self.transaction_model_name, self.transaction_id
                 )
                 kwargs = approval_instance._prepare_action(**kwargs)
+            if 'approval_task' not in kwargs:
+                kwargs['approval_task'] = self
+            kwargs['approval_task_id'] = self.id
             approval_template = kwargs.get('approval_template') or approval_instance.approval_template_id
             notification_approval = kwargs.get("notification_approval")
             if "notification_approval_id" in kwargs:

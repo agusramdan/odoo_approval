@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data>
+    <data noupdate="1">
         <record id="request_approval_notification_template" model="notification.template">
             <field name="name">Generic Notification Approval Template</field>
             <field name="model_id" ref="model_approval_task"/>
@@ -12,7 +12,7 @@
             <field name="body_html" type="html">
                 <div style="margin: 0px; padding: 0px;">
                     <p style="margin: 0px; padding: 0px; font-size: 13px;">
-                        Hi ${object.notification_to_partner_id.name},
+                        Dear ${object.notification_to_partner_id.name},
                         <br />
                         ${object.get_internal_requestor().name} has requested your approval for ${object.get_internal_description()} <b>${object.get_internal_number()}</b>.
                         <br/>
@@ -21,7 +21,7 @@
                 </div></field>
 
             <field name="title">Approval ${object.get_internal_document()} ${object.get_internal_number()}</field>
-            <field name="body"><![CDATA[Hi ${object.notification_to_partner_id.name}
+            <field name="body"><![CDATA[Dear ${object.notification_to_partner_id.name}
 ${object.get_internal_document()} has requested your approval for ${object.get_internal_description()} - ${object.get_internal_number()} .
 
 Please review and take the appropriate action.
@@ -54,7 +54,7 @@ data.update(
             <field name="body_html" type="html">
                 <div style="margin: 0px; padding: 0px;">
                     <p style="margin: 0px; padding: 0px; font-size: 13px;">
-                        Hi ${object.notification_to_partner_id.name},
+                        Dear ${object.notification_to_partner_id.name},
                         <br />
                         ${object.get_internal_requestor().name} has requested your approval for ${object.get_internal_description()} ${object.get_internal_number()} from ${object.get_internal_requestor().name} need your approval as Approver
                         <br/>
@@ -81,6 +81,65 @@ data.update(
             </field>
         </record>
 
+        <record id="reject_approval_notification_template" model="notification.template">
+                <field name="name">Generic Reject (To Approver) Approval Template</field>
+                <field name="model_id" ref="model_approval_instance"/>
+                <field name="notification_type">rejection_approver</field>
+                <field name="send_email" eval="True"/>
+                <field name="send_whatsapp" eval="True"/>
+                <field name="send_chat" eval="True"/>
+                <field name="send_firebase" eval="True"/>
+                <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px;">
+    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+        Dear ${object.notification_to_partner_id.name},
+        <br/>
+        ${object.get_internal_approver().name} has rejected approval request for
+        ${object.get_internal_description()}
+        <b>${object.get_internal_number()}</b>
+        your has been approved.
+        <br/>
+        <br/>
+
+        <b>Reason:</b><br/>
+        ${object.get_internal_reject_reason() or '-'}
+        <br/><br/>
+
+        <a href="${object.get_internal_url()}">
+            Click here to review the rejection details.
+        </a>
+    </p>
+</div>
+                </field>
+
+                <field name="title">Reject ${object.get_internal_document()} ${object.get_internal_number()}</field>
+                <field name="body"><![CDATA[Dear ${object.notification_to_partner_id.name},
+
+${object.get_internal_approver().name} has rejected approval request for ${object.get_internal_description()} ${object.get_internal_number()}.
+your has been approved.
+
+Reason:
+${object.get_internal_reject_reason() or '-'}
+
+Please review the rejection details at:
+${object.get_internal_url()}
+]]></field>
+            <!--            <field name="image">Todo send url image</field>-->
+            <field name="code">
+originator = record.get_internal_requestor() or record.create_uid
+data.update(
+    scope='REJECT_APPROVAL',
+    ref=record.get_internal_number(),
+    url=record.get_internal_url(),
+    source_number=record.name,
+    source_document=record.get_internal_description(),
+    source_originator_name=originator.name,
+    source_model=record.transaction_model_name,
+    source_res_id=record.transaction_id,
+)
+            </field>
+        </record>
+
         <record id="reset_to_draft_notification_template" model="notification.template">
             <field name="name">Generic Reset To Draft Approval Template</field>
             <field name="model_id" ref="model_approval_instance"/>
@@ -92,7 +151,7 @@ data.update(
             <field name="body_html" type="html">
                 <div style="margin: 0px; padding: 0px;">
                 <p style="margin: 0px; padding: 0px; font-size: 13px;">
-                    Hi ${object.notification_to_partner_id.name},
+                    Dear ${object.notification_to_partner_id.name},
                     <br/><br/>
                 ${object.get_internal_requestor().name} has reset the approval document
                 <b>${object.get_internal_number()}</b> to <b>Draft</b>.
@@ -107,7 +166,7 @@ data.update(
 </field>
 
             <field name="title">Reset to Draft ${object.get_internal_document()} ${object.get_internal_number()}</field>
-            <field name="body"><![CDATA[Hi ${object.notification_to_partner_id.name},
+            <field name="body"><![CDATA[Dear ${object.notification_to_partner_id.name},
 
 ${object.get_internal_requestor().name} has reset the approval request for ${object.get_internal_description()} ${object.get_internal_number()} to Draft.
 
@@ -143,7 +202,7 @@ data.update(
                 <field name="body_html" type="html">
                 <div style="margin: 0px; padding: 0px;">
                 <p style="margin: 0px; padding: 0px; font-size: 13px;">
-                    Hi ${object.notification_to_partner_id.name},
+                    Dear ${object.notification_to_partner_id.name},
                     <br/><br/>
                 ${object.get_internal_requestor().name} has reset the approval document
                 <b>${object.get_internal_number()}</b> to <b>Draft</b>.
@@ -158,7 +217,7 @@ data.update(
                 </field>
 
                 <field name="title">Cancel ${object.get_internal_document()} ${object.get_internal_number()}</field>
-                <field name="body"><![CDATA[Hi ${object.notification_to_partner_id.name},
+                <field name="body"><![CDATA[Dear ${object.notification_to_partner_id.name},
 
 ${object.get_internal_requestor().name} has reset the approval request for ${object.get_internal_description()} ${object.get_internal_number()} to Draft.
 
@@ -184,7 +243,7 @@ data.update(
         <record id="reject_notification_template" model="notification.template">
                 <field name="name">Generic Reject Approval Template</field>
                 <field name="model_id" ref="model_approval_instance"/>
-                <field name="notification_type">reject</field>
+                <field name="notification_type">rejection_requester</field>
                 <field name="send_email" eval="True"/>
                 <field name="send_whatsapp" eval="True"/>
                 <field name="send_chat" eval="True"/>
@@ -192,7 +251,7 @@ data.update(
                 <field name="body_html" type="html">
 <div style="margin: 0px; padding: 0px;">
     <p style="margin: 0px; padding: 0px; font-size: 13px;">
-        Hi ${object.notification_to_partner_id.name},
+        Dear ${object.notification_to_partner_id.name},
         <br/>
         ${object.get_internal_approver().name} has rejected your approval request for
         ${object.get_internal_description()}
@@ -211,7 +270,7 @@ data.update(
                 </field>
 
                 <field name="title">Reject ${object.get_internal_document()} ${object.get_internal_number()}</field>
-                <field name="body"><![CDATA[Hi ${object.notification_to_partner_id.name},
+                <field name="body"><![CDATA[Dear ${object.notification_to_partner_id.name},
 
 ${object.get_internal_approver().name} has rejected your approval request for ${object.get_internal_description()} ${object.get_internal_number()}.
 
@@ -248,7 +307,7 @@ data.update(
                 <field name="body_html" type="html">
 <div style="margin: 0px; padding: 0px;">
     <p style="margin: 0px; padding: 0px; font-size: 13px;">
-        Hi ${object.notification_to_partner_id.name},
+        Dear ${object.notification_to_partner_id.name},
         <br/>
         ${object.get_internal_approver().name} has approved your approval request for
         ${object.get_internal_description()} <b>${object.get_internal_number()}</b>.
@@ -261,7 +320,7 @@ data.update(
                 </field>
 
                 <field name="title">Approve ${object.get_internal_document()} ${object.get_internal_number()}</field>
-                <field name="body"><![CDATA[Hi ${object.notification_to_partner_id.name},
+                <field name="body"><![CDATA[Dear ${object.notification_to_partner_id.name},
 
 Your approval request for ${object.get_internal_description()} ${object.get_internal_number()} has been approved by ${object.get_internal_approver().name}.
 

@@ -313,9 +313,9 @@ class ApprovalTaskLineAccessMixin(models.AbstractModel):
     def get_groups(self):
         groups = self.env['res.groups'].browse()
         if hasattr(self, 'group_id') and self.group_id:
-            groups |= self.group_id.users
+            groups |= self.group_id
         if hasattr(self, 'group_ids') and self.group_ids:
-            groups |= self.group_ids.mapped('users')
+            groups |= self.group_ids
         return groups
 
     def prepare_approval_task_dict(self):
@@ -334,26 +334,28 @@ class ApprovalTaskLineAccessMixin(models.AbstractModel):
             users |= self.user_ids
         groups = self.env['res.groups'].browse()
         if hasattr(self, 'group_id') and self.group_id:
-            groups |= self.group_id.users
+            groups |= self.group_id
         if hasattr(self, 'group_ids') and self.group_ids:
-            groups |= self.group_ids.mapped('users')
+            groups |= self.group_ids
 
         return kw
+
+    def get_company(self,**kwargs):
+        company = kwargs.get('company')
+        if not company and 'company_id' in self._fields:
+            company = self.company_id
+        return company
 
     def get_users_for_approval(self, **kwargs):
         record = self.ensure_one()
         users = kwargs.get('users') or record.get_users()
-        company = kwargs.get('company')
-        if not company and 'company_id' in self._fields:
-            company = self.company_id
+        company=self.get_company(**kwargs)
         return users.get_users_for_approval(company=company)
 
     def get_users_for_notification(self, **kwargs):
         record = self.ensure_one()
         users = kwargs.get('users') or record.get_users()
-        company = kwargs.get('company')
-        if not company and 'company_id' in self._fields:
-            company = self.company_id
+        company=self.get_company(**kwargs)
         return users.get_users_for_notification(company=company)
 
 
@@ -465,21 +467,21 @@ class ApprovalTypeMixin(models.AbstractModel):
 
         return kw
 
-    def get_users_for_approval(self, **kwargs):
-        record = self.ensure_one()
-        users = kwargs.get('users') or record.get_users()
-        company = None
-        if 'company_id' in self._fields:
-            company = self.company_id
-        return users.get_users_for_approval(company=company)
-
-    def get_users_for_notification(self, **kwargs):
-        record = self.ensure_one()
-        users = kwargs.get('users') or record.get_users()
-        company = None
-        if 'company_id' in self._fields:
-            company = self.company_id
-        return users.get_users_for_notification(company=company)
+    # def get_users_for_approval(self, **kwargs):
+    #     record = self.ensure_one()
+    #     users = kwargs.get('users') or record.get_users()
+    #     company = None
+    #     if 'company_id' in self._fields:
+    #         company = self.company_id
+    #     return users.get_users_for_approval(company=company)
+    #
+    # def get_users_for_notification(self, **kwargs):
+    #     record = self.ensure_one()
+    #     users = kwargs.get('users') or record.get_users()
+    #     company = None
+    #     if 'company_id' in self._fields:
+    #         company = self.company_id
+    #     return users.get_users_for_notification(company=company)
 
 
 class ApprovalAccessMixin(models.AbstractModel):
@@ -496,9 +498,20 @@ class ApprovalAccessMixin(models.AbstractModel):
 
     def _compute_access_rights(self):
         """Hitung apakah user login punya akses approve/reject."""
-        current_user = self.env.user
-        for rec in self:
-            rec.access_approval = current_user in rec.get_users_for_approval()
+        if hasattr(self,'get_users_for_approval'):
+            current_user = self.env.user
+            for rec in self:
+                company = rec.get_company()
+                rec.access_approval = current_user in rec.get_users_for_approval(company=company)
+        else:
+            for rec in self:
+                rec.access_approval = False
+
+    def get_company(self,**kwargs):
+        company = kwargs.get('company')
+        if not company and 'company_id' in self._fields:
+            company = self.company_id
+        return company
 
     def get_approval_domain(self):
         current_uid = self.env.user.id

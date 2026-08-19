@@ -1,0 +1,59 @@
+<odoo>
+    <data>
+        <record id="view_approval_demo_tree" model="ir.ui.view">
+            <field name="name">approval.demo.tree</field>
+            <field name="model">approval.demo</field>
+            <field name="arch" type="xml">
+                <tree string="PDF Documents">
+                    <field name="name"/>
+                    <field name="state"/>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="user_id"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_approval_demo_form" model="ir.ui.view">
+            <field name="name">approval.demo.form</field>
+            <field name="model">approval.demo</field>
+            <field name="arch" type="xml">
+                <form string="PDF Document">
+                    <header>
+                        <field name="state" widget="statusbar" readonly="1"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name" attrs="{'readonly': [('state', '!=', 'draft')] }"/>
+                                <field name="company_id" attrs="{'readonly': [('state', '!=', 'draft')] }"
+                                       groups="base.group_multi_company"/>
+                            </group>
+                            <group>
+                                <field name="user_id" attrs="{'readonly': [('state', '!=', 'draft')] }"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Description">
+                                <field name="description"/>
+                            </page>
+                        </notebook>
+
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids" widget="mail_followers"/>
+                        <field name="message_ids" widget="mail_thread"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_approval_demo" model="ir.actions.act_window">
+            <field name="name">Approval Demo</field>
+            <field name="res_model">approval.demo</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help" type="html">
+                <p class="oe_view_nocontent_create">Create a new Approval to be demo.</p>
+            </field>
+        </record>
+    </data>
+</odoo>

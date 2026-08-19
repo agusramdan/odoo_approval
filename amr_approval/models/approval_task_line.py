@@ -800,6 +800,14 @@ class ApprovalTaskLine(models.Model):
                 groups |= self.group_ids
 
         return groups
+
+    def get_company(self,**kwargs):
+        company=super().get_company(**kwargs) or self.approval_instance_id.company_id
+        if not company:
+            transaction_object = self.get_transaction_object()
+            company = getattr(transaction_object,'company_id')
+        return company
+
     #
     # def prepare_approval_task_dict(self):
     #     if not self:

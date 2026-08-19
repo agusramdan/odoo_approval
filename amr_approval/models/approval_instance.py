@@ -1041,11 +1041,16 @@ class ApprovalInstance(models.Model):
             next_approval_task_line = rec.get_next_approval_task_line()
             user_ids = self.user_ids.browse()
             group_ids = self.group_ids.browse()
+            company = rec.company_id
+            if not company:
+                _logger.info("rec without company ",rec.id)
             if next_approval_task_line:
                 if have_method(next_approval_task_line, 'get_users_for_approval'):
-                    user_ids = next_approval_task_line.get_users_for_approval()
+                    user_ids = next_approval_task_line.get_users_for_approval(company=company)
                 elif have_method(next_approval_task_line, 'get_users'):
                     user_ids = next_approval_task_line.get_users()
+                    if isinstance(user_ids,models.BaseModel) and user_ids._name == 'res.users':
+                        user_ids = user_ids.get_users_for_approval(company=company)
                 if have_method(next_approval_task_line, 'get_groups'):
                     group_ids = next_approval_task_line.get_groups()
             rec.user_ids = user_ids.ids if user_ids else False

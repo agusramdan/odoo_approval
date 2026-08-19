@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import traceback
 
 from odoo import _, api ,models, tools
 
@@ -44,7 +45,7 @@ class ResUsers(models.Model):
         return self._has_group_id(group_id)
 
     def get_users_for_notification(self, company=None):
-        if not self or self.env.context.get("__user_with_delegatee_notification"):
+        if not self:
             return self
         if company:
             result = self.browse()
@@ -52,23 +53,33 @@ class ResUsers(models.Model):
                 if company.id in user.company_ids.ids:
                     result |= user
         else:
+            # _logger.warning(
+            #     "get_users_for_notification Without company dipanggil dari:\n%s",
+            #     ''.join(traceback.format_stack()),
+            # )
             result = self
+        if result.env.context.get("__user_with_delegatee_notification"):
+            return result
         result = result.get_notification_users(company_id=company)
         return result.with_context(__user_with_delegatee_notification=True)
 
     def get_users_for_approval(self, company=None):
         if not self:
             return self
-        if self.env.context.get("__user_with_delegator_approval"):
-            return self
         if company:
             result = self.browse()
             for user in self:
                 if company.id in user.company_ids.ids:
                     result |= user
-            result |= self
         else:
+            # _logger.warning(
+            #     "get_users_for_approval Without company dipanggil dari:\n%s",
+            #     ''.join(traceback.format_stack()),
+            # )
             result = self
+
+        if result.env.context.get("__user_with_delegator_approval"):
+            return result
         # Tambahkan delegatee user
         result = result | result.get_delegatee(company_id=company)
         return result.with_context(__user_with_delegatee_approval=True)

@@ -45,6 +45,8 @@
 
         'views/menuitem.xml',
 
+        'views/approval_demo_views.xml',
+
         'wizard/popup_approve.xml',
         'wizard/popup_reject.xml',
         'wizard/popup_reset.xml',

@@ -440,7 +440,7 @@ Data ini akan di kirim ke approval.task agar bisa menentukan user mana yang bisa
         user_ids = result_dict.get('user_ids') or self.env['res.users'].browse()
         group_ids = result_dict.get('group_ids')
         if group_ids:
-            user_ids |= group_ids.user_id
+            user_ids |= group_ids.mapped('users')
         return user_ids
 
     def get_access_approval(self, **kwargs):
