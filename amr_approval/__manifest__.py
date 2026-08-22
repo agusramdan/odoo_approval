@@ -2,7 +2,7 @@
 
 {
     'name': "Approval Task and Assignment",
-    'summary': """Approval Task""",
+    'summary': "Approval Task",
     'description': """
         This addons contain 
         1. Notification for Approval Task
