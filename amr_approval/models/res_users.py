@@ -118,10 +118,26 @@ class ResUsers(models.Model):
 
     def get_phone_number(self):
         partner = self.partner_id
+
         if 'hr.employee' in self.env:
-            employees = self.env['hr.employee'].sudo().search([('user_id', '=', self.id)])
+            employees = self.env['hr.employee'].sudo().search([
+                ('user_id', '=', self.id)
+            ])
+
             for emp in employees:
-                phone_number = partner.format_phone_number(getattr(emp, 'mobile_phone', None))
+                try:
+                    phone_number = partner.format_phone_number(
+                        emp.mobile_phone
+                    )
+                except Exception:
+                    _logger.exception(
+                        "Failed to get employee mobile phone. "
+                        "Employee ID: %s, User ID: %s",
+                        emp.id,
+                        self.id,
+                    )
+                    continue
+
                 if phone_number:
                     return phone_number
 

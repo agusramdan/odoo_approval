@@ -28,5 +28,6 @@ class ApprovalDemo(models.Model):
         string='State',
     )
     description = fields.Text()
+
     def action_print(self):
         return self.env.ref('amr_approval.action_report_approval_demo_form').report_action(self)

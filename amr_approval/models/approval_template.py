@@ -1443,7 +1443,10 @@ for rec in self:
             kwr = dict(kw)
             kwr['approval_task_line'] = kw.get('approval_task_line_approved') or kw.get('approval_task_line')
             users_ids = approval_template_line.get_user_execution(**kwr)
-            _logger.info('add self.notification_reset_to_draft_target  %s', self.notification_reset_to_draft_target)
+            _logger.info(
+                'add self.notification_reset_to_draft_target  %s, get_user_execution %s',
+                self.notification_reset_to_draft_target, users_ids
+            )
             if self.notification_reset_to_draft_target != 'approved':
                 if self.notification_reset_to_draft_target == 'all':
                     approval_task_lines = kw.get('approval_task_line_waiting_approvals') or []
@@ -1457,7 +1460,8 @@ for rec in self:
                     _logger.info('add users %s', users)
                     users_ids |= users
 
-            notification.send_notification_to_users(users_ids, transaction_object.id)
+            notification.send_notification_to_users(users_ids,transaction_object.id, **kwr)
+
             if not notes_chatter and notification.notes_chatter:
                 notes_chatter = notification.get_chatter_message(**kw)
 

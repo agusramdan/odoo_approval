@@ -713,7 +713,7 @@ class ApprovalTaskLine(models.Model):
         'approval.report.line.mixin',
     ]
     _description = 'Approval Task Line'
-    _order = 'id, sequence'
+    _order = 'sequence,id'
 
     sequence = fields.Integer(default=20)
     name = fields.Char()

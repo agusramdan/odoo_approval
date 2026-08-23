@@ -44,7 +44,7 @@
                     <notebook>
                         <page string="List Config">
                             <field name="approval_matrix_rule_line">
-                                <tree editable="bottom" open_form_view="1">
+                                <tree editable="bottom" open_form_view="1" context="{'approval_matrix_rule_line': approval_matrix_rule_line}">
                                     <field name="sequence" widget="handle"/>
                                     <field name="name"/>
                                     <field name="type_approval"/>

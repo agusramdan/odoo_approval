@@ -56,13 +56,15 @@ data.update(
                     <p style="margin: 0px; padding: 0px; font-size: 13px;">
                         Dear ${object.notification_to_partner_id.name},
                         <br />
-                        ${object.get_internal_requestor().name} has requested your approval for ${object.get_internal_description()} ${object.get_internal_number()} from ${object.get_internal_requestor().name} need your approval as Approver
+                         This is a reminder that ${object.get_internal_description()} "${object.get_internal_number()}" from ${object.get_internal_requestor().name} has been waiting for your approval for ${object.aging} days.
                         <br/>
                         <a href="${object.get_internal_url()}">Click here for detail</a>
                     </p>
                 </div></field>
             <field name="title">Reminder Approval ${object.get_internal_document()} ${object.get_internal_number()}</field>
-            <field name="body"><![CDATA[This is a reminder that ${object.get_internal_description()} "${object.get_internal_number()}" from ${object.get_internal_requestor().name} has been waiting for your approval for ${object.aging} days.
+            <field name="body"><![CDATA[Dear ${object.notification_to_partner_id.name},
+This is a reminder that ${object.get_internal_description()} "${object.get_internal_number()}" from ${object.get_internal_requestor().name} has been waiting for your approval for ${object.aging} days.
+
 Please review the request at your earliest convenience.
 ${object.get_internal_url() | safe} ]]></field>
             <!--            <field name="image">Todo send url image</field>-->
