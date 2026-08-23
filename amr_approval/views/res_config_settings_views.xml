@@ -10,16 +10,16 @@
                      data-string="amr_approval" string="Approval Addons"
                      data-key="amr_approval_addons" groups="base.group_erp_manager">
 
-                    <div id="amr_approval">
+                    <div id="amr_approval" groups="base.group_erp_manager">
                         <h2>Task Approval</h2>
                         <div class="row mt16 o_settings_container">
                             <div class="col-xs-12 col-md-6 o_setting_box" >
                                 <div class="o_setting_left_pane">
-                                    <field name="module_amr_doa_activate"/>
+                                    <field name="module_amr_doa_with_user"/>
                                 </div>
                                 <div class="o_setting_right_pane" >
                                     <div class="content-group">
-                                        <label for="module_amr_doa_activate"/>
+                                        <label for="module_amr_doa_with_user"/>
                                         <div class="text-muted">
                                             Approval DOA Activate
                                         </div>
@@ -36,6 +36,38 @@
                                         <label for="module_amr_approval_task_client"/>
                                         <div class="text-muted">
                                             Approval Task Client
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="amr_doa" groups="base.group_erp_manager">
+                        <h2>DoA</h2>
+                        <div class="row mt16 o_settings_container">
+                            <div class="col-xs-12 col-md-6 o_setting_box">
+                                <div class="o_setting_left_pane">
+                                    <field name="module_amr_doa_approval"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <div class="content-group">
+                                        <label for="module_amr_doa_approval"/>
+                                        <div class="text-muted">
+                                            Delegation of Authority (DoA) Approval
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-md-6 o_setting_box" >
+                                <div class="o_setting_left_pane">
+                                    <field name="module_amr_doa_with_user"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <div class="content-group">
+                                        <label for="module_amr_doa_with_user"/>
+                                        <div class="text-muted">
+                                            Delegation of Authority (DoA) Activated With User Strategy.
                                         </div>
                                     </div>
                                 </div>

@@ -10,7 +10,7 @@ _logger = logging.Logger(__name__)
 
 class ApprovalDemo(models.Model):
     _name = 'approval.demo'
-    _inherit = ['mail.thread']
+    _inherit = ['approval.report.mixin', 'mail.thread']
     _description = 'Approval Demo and Simulation'
     _order = 'name'
 
@@ -28,3 +28,5 @@ class ApprovalDemo(models.Model):
         string='State',
     )
     description = fields.Text()
+    def action_print(self):
+        return self.env.ref('amr_approval.action_report_approval_demo_form').report_action(self)

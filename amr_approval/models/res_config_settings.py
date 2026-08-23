@@ -10,6 +10,6 @@ class ResConfigSettings(models.TransientModel):
     module_amr_hr_employee_delegation = fields.Boolean(string="Approval Employee Delegation")
     module_amr_approval_task_client = fields.Boolean(string="Approval Task Client")
     module_amr_doa_approval = fields.Boolean(string="DOA Approval")
-    module_amr_doa_activate = fields.Boolean(string="Activate DOA Approval")
+    module_amr_doa_with_user = fields.Boolean(string="DOA (With User)")
 
     module_amr_approval_mobile_client = fields.Boolean(string="Mobile Client")

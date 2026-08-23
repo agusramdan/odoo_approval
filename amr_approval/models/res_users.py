@@ -1,22 +1,127 @@
 # -*- coding: utf-8 -*-
 
-import logging
 import traceback
+import io
+import logging
+import base64
 
-from odoo import _, api ,models, tools
+# from io import BytesIO
+from PIL import Image, ImageChops
+
+from odoo import _, api, fields, models, tools
 
 _logger = logging.getLogger(__name__)
+
+# Bounds used to strip the paper background off a scanned signature. The paper level is
+# detected per image so a cream or grey scan clears as well as a white one, but nothing
+# darker than FLOOR may be mistaken for paper. Pixels a full SPAN below the paper level
+# are kept opaque and the alpha ramps in between, so anti-aliased strokes stay smooth.
+SIGNATURE_PAPER_FLOOR = 170
+SIGNATURE_INK_SPAN = 75
 
 
 class ResUsers(models.Model):
     _inherit = 'res.users'
+
+    signature_image = fields.Binary(
+        string='Signature',
+        attachment=True,
+    )
+    signature_image_filename = fields.Char(
+        string='Signature Filename',
+    )
+
+    def _get_signature_attachment(self, field_name='signature_image'):
+        self.ensure_one()
+        return self.env['ir.attachment'].search([
+            ('res_model', '=', self._name),
+            ('res_id', '=', self.id),
+            ('res_field', '=', field_name),
+        ], limit=1)
+
+    def get_signature_style(self, signature, mimetype='image/*', width=90, height=80):
+        """Inline CSS for a signature box. Drawn as a background-image so
+        background-size: contain scales it to fit either way; object-fit would
+        read better but the PDF engine may not support it."""
+        style = ('height: %spx; width: %spx; border: 1px solid black;'
+                 ' margin: 10px auto 4px auto;' % (height, width))
+        if signature:
+            signature = self._clear_signature_background(signature)
+            if isinstance(signature, bytes):
+                signature = signature.decode()
+            style += (" background-image: url('data:%s;base64,%s');"
+                      " background-size: contain; background-repeat: no-repeat;"
+                      " background-position: center;" % (mimetype, signature))
+        return style
+
+    def get_signature_visual(self, field_name='signature_image', width=90, height=80):
+        result = {'type': 'signature', 'alt': 'Electronic Signature'}
+        if self:
+            self.ensure_one()
+            signature_image = getattr(self, field_name, None)
+        else:
+            signature_image = None
+        if signature_image:
+            attachment = self._get_signature_attachment(field_name=field_name)
+            mimetype = (
+                attachment.mimetype
+                if attachment and attachment.mimetype
+                else 'image/*'
+            )
+            signature_image = self._clear_signature_background(signature_image)
+        else:
+            mimetype = 'image/*'
+
+        if signature_image:
+            result.update({
+                'image': signature_image,
+                'mimetype': mimetype,
+                'style': self.get_signature_style(signature_image, mimetype=mimetype, width=width, height=height),
+            })
+        else:
+            _logger.warning("user %s has no signature image to display in report visual.", self.name)
+            result['style'] = self.get_signature_style(signature_image, width=width, height=height)
+        return result
+
+    def _signature_paper_level(self, grey):
+        """Grey level of the paper: the most common bright tone, detected per image
+        so a cream or grey scan clears as well as a white one. None if no bright
+        tone exists to tell apart from the strokes."""
+        histogram = grey.histogram()[SIGNATURE_PAPER_FLOOR:]
+        if not any(histogram):
+            return None
+        return SIGNATURE_PAPER_FLOOR + histogram.index(max(histogram))
+
+    def _clear_signature_background(self, signature):
+        """Drop the paper background so a scan prints like a transparent PNG.
+        Returns the signature untouched if undecodable, since a bad upload must
+        never break the printout."""
+        try:
+            image = Image.open(io.BytesIO(base64.b64decode(signature))).convert('RGBA')
+            grey = image.convert('L')
+            paper = self._signature_paper_level(grey)
+            if paper is None:
+                return signature
+            ink = max(paper - SIGNATURE_INK_SPAN, 0)
+            span = paper - ink or 1
+            alpha = grey.point(lambda level: 255 if level <= ink else (
+                0 if level >= paper else int(255 * (paper - level) / span)))
+            # Whatever the uploaded PNG already made transparent stays transparent.
+            alpha = ImageChops.multiply(image.getchannel('A'), alpha)
+            image.putalpha(alpha)
+            buffer = io.BytesIO()
+            image.save(buffer, 'PNG')
+            return base64.b64encode(buffer.getvalue())
+        except Exception:
+            _logger.warning("Unreadable signature image, printing it as uploaded", exc_info=True)
+            return signature
 
     def get_phone_number(self):
         partner = self.partner_id
         if 'hr.employee' in self.env:
             employees = self.env['hr.employee'].sudo().search([('user_id', '=', self.id)])
             for emp in employees:
-                phone_number = partner.format_phone_number(getattr(emp,'mobile_phone',None))
+                phone_number = partner.format_phone_number(getattr(emp, 'mobile_phone', None))
                 if phone_number:
                     return phone_number
 
@@ -123,10 +228,10 @@ class ResUsers(models.Model):
     def get_delegate_user_group(self):
         """Get all delegations user group for this proxy user."""
         return {
-                'user_ids': [],
-                'group_ids': [],
-                'user_delegate_ids': []
-            }
+            'user_ids': [],
+            'group_ids': [],
+            'user_delegate_ids': []
+        }
 
     def get_notification_user_ids(self, company_id=None):
         """

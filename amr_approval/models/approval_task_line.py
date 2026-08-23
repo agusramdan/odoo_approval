@@ -710,10 +710,12 @@ class ApprovalTaskLine(models.Model):
         'approval.status.mixin',
         'approval.access.mixin',
         'approval.transaction.able.mixin',
+        'approval.report.line.mixin',
     ]
     _description = 'Approval Task Line'
-    _order = 'id'
+    _order = 'id, sequence'
 
+    sequence = fields.Integer(default=20)
     name = fields.Char()
     approval_instance_id = fields.Many2one(
         'approval.instance',

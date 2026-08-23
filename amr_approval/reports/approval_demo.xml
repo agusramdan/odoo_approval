@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_approval_demo_form" model="ir.actions.report">
+        <field name="name">Approval Form</field>
+        <field name="model">approval.demo</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">amr_approval.report_approval_demo_form</field>
+        <field name="report_file">amr_approval.report_approval_demo_form</field>
+        <field name="print_report_name">'Approval - %s' % (object.name)</field>
+    </record>
+
+    <template id="amr_approval.report_approval_demo_form">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <style type="text/css">
+                    .placeholder_esign_pdf {
+                        color: #999999;
+                        text-align: left;
+                        vertical-align: bottom;
+                    }
+
+                    table.approval {
+                        width: 100%;
+                        border-collapse: collapse;
+                    }
+
+                    table.approval td,
+                    table.approval th {
+                        border: 1px solid #000;
+                        padding: 4px;
+                    }
+                    .approval_row {
+                        height: 100px;
+                    }
+                    .approval_row td {
+                        height: 100px;
+                        vertical-align: bottom;
+                    }
+                </style>
+
+                    <div class="page">
+
+                        <h2 style="text-align:center">
+                            APPROVAL FORM
+                        </h2>
+
+                        <table class="table table-sm table-bordered" style="width:100%;">
+                            <tbody>
+                                <tr>
+                                    <td width="25%"><strong>Approval No</strong></td>
+                                    <td width="25%">
+                                        <span t-field="doc.name"/>
+                                    </td>
+
+                                    <td width="25%"><strong>Date</strong></td>
+                                    <td width="25%">
+                                        <span t-field="doc.create_date"/>
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td><strong>Description</strong></td>
+                                    <td colspan="3">
+                                        <span t-field="doc.description"/>
+                                    </td>
+                                </tr>
+
+                            </tbody>
+                        </table>
+                        <br/>
+
+                        <t t-call="amr_approval.approval_block">
+                            <t t-set="approval" t-value="doc.get_approval_report_data()"/>
+                            <t t-set="layout" t-value="'table'"/>
+                        </t>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

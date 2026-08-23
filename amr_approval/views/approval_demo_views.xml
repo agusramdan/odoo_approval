@@ -19,6 +19,7 @@
             <field name="arch" type="xml">
                 <form string="PDF Document">
                     <header>
+                        <button name="action_print" string="Print" type="object" class="oe_highlight"/>
                         <field name="state" widget="statusbar" readonly="1"/>
                     </header>
                     <sheet>

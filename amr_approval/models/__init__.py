@@ -13,6 +13,7 @@ from . import user_delegation
 
 # Approval
 from . import approval_mixin
+from . import approval_report
 from . import approval_matrix_rule
 from . import approval_audit_log
 from . import approval_task_assignment
