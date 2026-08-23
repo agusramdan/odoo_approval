@@ -79,16 +79,15 @@ class ApprovalReportLineMixin(models.AbstractModel):
         }
 
     def get_approval_report_lines(self):
-        self.ensure_one()
         kw = {}
         approval_template_line = self.env['approval.template.line'].search_template_line_by_model(self._name)
         if approval_template_line:
             kw = {
-                "field_name_status": approval_template_line.field_name_status or 'status_approval',
-                "field_name_user_execution": approval_template_line.field_name_user_execution or 'user_execution_id',
-                "field_name_sign_title": approval_template_line.field_name_sign_title or 'display_name',
+                "field_name_status": approval_template_line.state_field or 'status_approval',
+                "field_name_user_execution": approval_template_line.field_user_execution_id or 'user_execution_id',
+                "field_name_sign_title": approval_template_line.field_sign_title or 'display_name',
             }
-        return [task.get_approval_report_line_data(**kw) for task in self.approval_task_line.sorted("sequence")]
+        return [task.get_approval_report_line_data(**kw) for task in self]
 
 
 class ApprovalReportMixin(models.AbstractModel):
