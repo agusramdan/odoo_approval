@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <record id="approval_document" model="approval.document">
+            <field name="model_id" ref="model_approval_demo"/>
+            <field name="code">approval_demo</field>
+            <field name="name">Approval Demo</field>
+            <field name="priority">200</field>
+            <field name="need_approval" eval="True"/>
+
+            <field name="document_select">const</field>
+            <field name="document_const">Approval Demo</field>
+
+            <field name="number_select">field</field>
+            <field name="number_field">name</field>
+
+            <field name="description_select">field</field>
+            <field name="description_field">description</field>
+
+<!--            <field name="menu_id" ref="menu_sign"/>-->
+<!--            <field name="view_id" ref="amr_esign_pdf.view_approval_demo_form"/>-->
+<!--            <field name="action_id" ref="amr_esign_pdf.action_approval_demo"/>-->
+
+            <field name="approval_task_line_field">approval_task_line</field>
+<!--            <field name="condition_select">python</field>-->
+<!--            <field name="condition_python">-->
+<!--result=transaction_object.supplier_rank > 0-->
+<!--            </field>-->
+
+        <field name="pdf_code">
+# Mapping approval to pdf sign
+# Available variables:
+#  - approval_instance
+#  - transaction_object
+#  - approval_task_line
+#  - user_execution
+# To return an response, assign: response = {...}
+
+report = ref('amr_esign_pdf_demo.action_report_approval_form')
+pdf_content, content_type = report.render_qweb_pdf(transaction_object.ids)
+
+requester = approval_instance.requester_id or user
+signature_ids = [{
+  'seq':0,
+  'name':'signature_requester',
+  'user_id':requester.id,
+  'user_email':requester.email,
+  'placeholder':"[[signature_requester_placeholder]]",
+  'auto_sign_after_request':True
+}]
+approval_task_line = approval_instance.get_all_approval_task_line()
+if approval_task_line:
+  seq=1
+  for apr in approval_task_line:
+    signature_ids.append({
+      'seq':seq,
+      'name':'signature_approvar_%s'%apr.id,
+      'placeholder': "[[signature_approvar_%s_placeholder]]"%apr.id,
+      'source_model': apr._name,
+      'source_res_id': apr.id,
+    })
+    seq+=1
+
+response = {
+  'name':transaction_object.name,
+  'template_id':1,
+  'source_model': approval_instance.transaction_model_name,
+  'source_res_id': approval_instance.transaction_id,
+  'pdf_file': b64encode(pdf_content),
+  'pdf_filename':'approval_%s.pdf'%transaction_object.name,
+  'signature_ids': signature_ids,
+}
+
+            </field>
+
+            <field name="pdf_sign_code"># Mapping approval to pdf sign
+# Available variables:
+#  - approval_instance
+#  - transaction_object
+#  - approval_task_line
+#  - user_execution
+# To return an response, assign: response = {...}
+# requester = approval_instance.requester_id
+response={
+  'source_model': approval_task_line._name,
+  'source_res_id': approval_task_line.id,
+  'user_execution': user_execution,
+  'user_execution_id': user_execution.id,
+  'user_execution_email': user_execution.email,
+  'user_execution_name': user_execution.name,
+  'auto_sign_ca': True,
+  'signature_pdf': kwargs.get('signature_pdf'),
+}
+</field>
+        </record>
+
+    </data>
+</odoo>

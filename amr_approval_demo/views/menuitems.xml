@@ -1,0 +1,6 @@
+<odoo>
+    <menuitem id="menu_approval_demo_main" name="Demo" parent="amr_approval.main_approval"/>
+    <menuitem id="menu_approval_demo" name="Approval Demo" parent="menu_approval_demo_main"
+         action="amr_approval.action_approval_demo" sequence="20"
+    />
+</odoo>
