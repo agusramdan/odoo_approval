@@ -273,10 +273,17 @@ class ApprovalTask(models.Model):
         return can_access
 
     def _compute_user_have_access_to_approval(self):
-        """Hitung apakah user login punya akses approve/reject."""
-        current_user = self.env.user
         for rec in self:
-            rec.user_have_access_to_approval = current_user.id in rec.get_users_for_approval().ids
+            rec.user_have_access_to_approval = rec.check_current_task_access(raise_exception=False)
+
+    def check_current_task_access(self, raise_exception=True):
+        """Hitung apakah user login punya akses approve/reject."""
+        self.ensure_one()
+        if self.env.user in self.get_users_for_approval().ids:
+            return True
+        if raise_exception:
+            raise AccessError("You don't have access to this approval task.")
+        return False
 
     def search_filter_user_have_access_to_approval(self, operator, value):
         current_uid = self.env.user.id

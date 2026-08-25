@@ -214,6 +214,7 @@ class ApprovalDocument(models.Model):
     # )
     approval_banner_show = fields.Boolean("Approval Banner")
     approval_task_line_page = fields.Boolean("Approval Page")
+    approval_attachment_page = fields.Boolean("Approval Attachment Page")
     approval_task_line_field = fields.Char('Line Field')
 
     # approval_template_line_id = fields.Many2one(
@@ -304,7 +305,6 @@ class ApprovalDocument(models.Model):
     available_action_show_sign_pdf = fields.Boolean('Show Sign PDF')
 
     requestor_group_ids = fields.Many2many('res.groups', help="Requestor Allow Create Approval")
-
     # def _compute_available_approval_template_line_models_ids(self):
     #     for rec in self:
     #         template_lines = self.approval_template_line_id.search([])
@@ -315,6 +315,9 @@ class ApprovalDocument(models.Model):
     #         rec.approval_template_line_id = self.approval_template_line_id.search(
     #             [('model_id', '=', rec.approval_task_line_model_id.id)], limit=1
     #         ) or None
+
+    def name_get(self):
+        return [(rec.id, f"[{rec.code}] {rec.name}") for rec in self]
 
     @api.depends('model_id')
     def _compute_approval_template_id(self):
@@ -391,6 +394,7 @@ class ApprovalDocument(models.Model):
                 'available_action_show_sign_pdf',
                 'approval_banner_show',
                 'approval_task_line_page',
+                'approval_attachment_page',
                 'approval_task_line_field',
             }
             if trigger_fields.intersection(vals):
@@ -474,7 +478,6 @@ class ApprovalDocument(models.Model):
         field.set("name", "is_request_approval")
         field.set("invisible", "1")
 
-
         self._generate_buttons(xpath)
         if (
                 self.approval_task_line_page and
@@ -487,6 +490,12 @@ class ApprovalDocument(models.Model):
             xpath.set("expr", "//notebook")
             xpath.set("position", "inside")
             self._generate_approval_page(xpath)
+
+        if self.approval_attachment_page:
+            xpath = etree.SubElement(root, "xpath")
+            xpath.set("expr", "//notebook")
+            xpath.set("position", "inside")
+            self._generate_attachment_page(xpath)
 
         if self.approval_banner_show:
             xpath = etree.SubElement(root, "xpath")
@@ -624,31 +633,42 @@ class ApprovalDocument(models.Model):
         # field.set("invisible", "1")
         # button.set("context", "{'approval_action':'%s'}" % button_def["action"]
 
-        def _generate_field_compute(self):
-            field_name = f"x_document_approval_task_line_{self.id}"
-            compute = """
-    for rec in self:
-        rec['%s'] = rec.approval_template_line_id.get_all_approval_task_line(transaction_object=rec)
+    def _generate_attachment_page(self, parent):
+        page = etree.SubElement(parent, "page")
+        page.set("name", "page_attachment")
+        page.set("string", "Attachment")
+        page.set("type", "object")
+
+        field = etree.SubElement(page, "field")
+        field.set("name", 'approval_attachment_reference_ids')
+        # field.set("invisible", "1")
+        # button.set("context", "{'approval_action':'%s'}" % button_def["action"]
+
+    def _generate_field_compute(self):
+        field_name = f"x_document_approval_task_line_{self.id}"
+        compute = """
+for rec in self:
+    rec['%s'] = rec.approval_template_line_id.get_all_approval_task_line(transaction_object=rec)
     """ % field_name
-            vals = {
-                "name": field_name,
-                "field_description": "Approval Task Line",
-                "model_id": self.model_id.id,
-                "model": self.model,
-                "ttype": "many2many",
-                "relation": self.approval_task_line_model,
-                "state": "manual",
-                "depends": "approval_template_line_id",
-                "compute": compute,
-            }
-            if not self.generate_field_approval_task_line_id:
-                self.generate_field_approval_task_line_id = self.env['ir.model.fields'].search(
-                    [('name', '=', field_name), ('model_id', '=', self.model_id.id), ]
-                )
-            if self.generate_field_approval_task_line_id:
-                self.generate_field_approval_task_line_id.write(vals)
-            else:
-                self.generate_field_approval_task_line_id = self.env['ir.model.fields'].create(vals)
+        vals = {
+            "name": field_name,
+            "field_description": "Approval Task Line",
+            "model_id": self.model_id.id,
+            "model": self.model,
+            "ttype": "many2many",
+            "relation": self.approval_task_line_model,
+            "state": "manual",
+            "depends": "approval_template_line_id",
+            "compute": compute,
+        }
+        if not self.generate_field_approval_task_line_id:
+            self.generate_field_approval_task_line_id = self.env['ir.model.fields'].search(
+                [('name', '=', field_name), ('model_id', '=', self.model_id.id), ]
+            )
+        if self.generate_field_approval_task_line_id:
+            self.generate_field_approval_task_line_id.write(vals)
+        else:
+            self.generate_field_approval_task_line_id = self.env['ir.model.fields'].create(vals)
 
     def _generate_buttons(self, parent):
         """
@@ -769,7 +789,8 @@ class ApprovalDocument(models.Model):
         return self._run_action_pdf_code_multi(self._get_pdf_eval_context(approval_instance))
 
     def _run_action_pdf_sign_code_multi(self, eval_context):
-        safe_eval(self.pdf_sign_code.strip(), eval_context, mode="exec", nocopy=True)  # nocopy allows to return 'action'
+        safe_eval(self.pdf_sign_code.strip(), eval_context, mode="exec",
+                  nocopy=True)  # nocopy allows to return 'action'
         return eval_context.get('response')
 
     def get_config_pdf_sign_document(self, approval_instance, approval_task_line, user_execution, **kwargs):

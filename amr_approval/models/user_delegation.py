@@ -41,6 +41,16 @@ class UserDelegation(models.Model):
          ('send_to_both', 'Notif to delegator & delegatee')],
         default='send_to_both'
     )
+    document_option = fields.Selection(
+        [('all', 'All Documents'),
+         ('selected', 'Selected Documents')],
+        default='all'
+    )
+    document_ids = fields.Many2many(
+        'approval.document',
+        string='Documents',
+        help="Documents for which the delegation is valid."
+    )
     delegator_id = fields.Many2one(
         'res.users', string='Delegator', required=True, tracking=True, default=lambda self: self.env.user
     )

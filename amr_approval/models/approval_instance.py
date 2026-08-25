@@ -3,7 +3,7 @@
 import logging
 
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, AccessError
 from odoo.tools import datetime
 
 from ..tools.utils import have_method, safe_call_method
@@ -47,7 +47,9 @@ class ApprovalInstanceMixin(models.AbstractModel):
     approval_template_id = fields.Many2one('approval.template', ondelete='set null', )
     approval_template_line_id = fields.Many2one('approval.template.line', ondelete='set null', )
     approval_task_id = fields.Many2one('approval.task', ondelete='set null', )
-
+    attachment_reference_ids = fields.One2many(
+        'approval.attachment.reference', 'approval_instance_id', string='Approval Attachment References', readonly=True
+    )
     flag_reject = fields.Boolean()
     note_reject = fields.Text()
     flag_reset_to_draft = fields.Boolean()
@@ -172,6 +174,10 @@ class ApprovalInstanceMixin(models.AbstractModel):
                 rec.access_approval = False
                 continue
             access_approval = False
+            if rec.check_current_task_access(raise_exception=False):
+                rec.access_approval = True
+                continue
+
             approval_task_line = rec.get_next_approval_task_line()
             if approval_task_line:
                 if hasattr(approval_task_line, 'access_approval'):
@@ -184,6 +190,16 @@ class ApprovalInstanceMixin(models.AbstractModel):
                         approval_instance=rec,
                     )
             rec.access_approval = access_approval
+
+    def check_current_task_access(self, raise_exception=True):
+        self.ensure_one()
+
+        task = self.approval_task_id
+
+        if not task:
+            raise AccessError("There is no current approval task.")
+
+        return task.check_current_task_access(raise_exception=raise_exception)
 
     @api.depends_context('uid')
     def _compute_access_requester(self):
@@ -999,6 +1015,45 @@ class ApprovalInstanceMixin(models.AbstractModel):
     def cancel_pdf_document(self, **kwargs):
         raise NotImplemented("cancel_pdf_document Not ready to integrate.")
 
+    def set_approval_attachment(self, attachments=None):
+        self.ensure_one()
+        if attachments is None:
+            attachments = self.env["ir.attachment"].sudo().search(
+                [("res_model", "=", self.transaction_model_name), ("res_id", "=", self.transaction_id)]
+            )
+        AttachmentReference = self.env["approval.attachment.reference"]
+
+        # Pastikan recordset ir.attachment
+        attachments = attachments.exists()
+
+        current_references = self.attachment_reference_ids
+
+        current_attachments = current_references.mapped("attachment_id")
+
+        # Attachment yang harus ditambahkan
+        attachments_to_add = attachments - current_attachments
+
+        # Reference yang harus dihapus
+        references_to_remove = (
+            current_references.filtered(
+                lambda ref: ref.attachment_id not in attachments
+            )
+        )
+
+        # Remove reference
+        references_to_remove.sudo().unlink()
+
+        # Add reference
+        AttachmentReference.sudo().create([
+            {
+                "approval_instance_id": self.id,
+                "attachment_id": attachment.id,
+            }
+            for attachment in attachments_to_add
+        ])
+
+        return self.attachment_reference_ids
+
 
 class ApprovalInstance(models.Model):
     _name = 'approval.instance'
@@ -1043,7 +1098,7 @@ class ApprovalInstance(models.Model):
             group_ids = self.group_ids.browse()
             company = rec.company_id
             if not company:
-                _logger.info("rec without company ",rec.id)
+                _logger.info("rec without company %s .", rec.id)
             if next_approval_task_line:
                 if have_method(next_approval_task_line, 'get_users_for_approval'):
                     user_ids = next_approval_task_line.get_users_for_approval(company=company)

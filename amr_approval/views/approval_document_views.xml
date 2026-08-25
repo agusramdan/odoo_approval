@@ -152,6 +152,7 @@
                                     <field name="approval_template_line_id" string="Line Template" />
 <!--                                    <field name="approval_task_line_model_id" string="Approval Line Model" domain="[('id','in',available_approval_template_line_models_ids)]"/>-->
                                     <field name="approval_banner_show" />
+                                    <field name="approval_attachment_page" />
                                     <field name="approval_task_line_page" />
                                     <field name="generate_field_approval_task_line"  string="Generate"
                                            attrs="{'invisible':[('approval_task_line_page', '=', False)]}" />

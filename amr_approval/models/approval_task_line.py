@@ -9,6 +9,16 @@ from ..tools.utils import have_method, safe_call_method
 
 _logger = logging.getLogger(__name__)
 
+"""
+approval.task.line daftar assignment atau tahapan tugas.
+
+Ini adalah model standar yang di gunakan.
+
+Kami meyarankan untuk migrasi dengan model ini. Walapun untuk dalam bebrapsa prosess masih bisa mengunakan model legacy
+dengan cara menambahkan configurasi di approval.template.line .
+
+"""
+
 
 class ApprovalTaskLineMixin(models.AbstractModel):
     _name = "approval.task.line.mixin"

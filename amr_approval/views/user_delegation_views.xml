@@ -28,14 +28,15 @@
                         <group>
                             <field name="delegator_id" attrs="{'readonly': [('is_edit_able_delegator_id', '=', False)]}" force_save="true"/>
                             <field name="delegatee_id" attrs="{'readonly': [('state', '!=', 'draft')],'required': [('state', '=', 'draft')]}" />
-                            <field name="company_id" attrs="{'readonly': [('state', '!=', 'draft')]}" groups="base.group_multi_company"/>
-                        </group>
-                        <group>
-                            <field name="notification_option" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
                             <field name="start_date" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
                             <field name="end_date" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
                         </group>
-
+                        <group>
+                            <field name="notification_option" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                            <field name="company_id" attrs="{'readonly': [('state', '!=', 'draft')]}" groups="base.group_multi_company"/>
+                            <field name="document_option" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                            <field name="document_ids" attrs="{'readonly': [('state', '!=', 'draft')]}" widget="many2many_tags"/>
+                        </group>
                     </group>
                     <notebook>
                         <page string="Notes" name="page_notes">

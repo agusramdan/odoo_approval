@@ -75,6 +75,9 @@
                               attrs="{'invisible':[('approval_task_line_model','!=','approval.task.line')]}">
                             <field name="approval_task_line" readonly="1" />
                         </page>
+                        <page string="Attachments" id="attachment_reference_ids">
+                            <field name="attachment_reference_ids" readonly="1" />
+                        </page>
                         <page string="Audit Log" id="default_approval_audit_log_ids">
                             <field name="approval_audit_log_ids" readonly="1" />
                         </page>

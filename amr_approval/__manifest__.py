@@ -12,7 +12,7 @@
     'author': "Agus Muhammad Ramdan",
     'website': "http://agus.ramdan.tech",
     'category': 'Base',
-    'version': '13.0.1.3.1',
+    'version': '13.0.1.3.2',
     'depends': ['base', 'base_setup', 'mail'],
     'data': [
         'security/base_groups.xml',
@@ -37,6 +37,7 @@
         'views/approval_instance_views.xml',
         'views/approval_matrix_rule_views.xml',
         'views/approval_task_assignment_history_views.xml',
+        'views/approval_attachment_reference_views.xml',
         'views/reminder_log_views.xml',
         'views/user_delegation_views.xml',
 

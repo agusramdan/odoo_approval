@@ -1,0 +1,19 @@
+<odoo>
+    <data>
+        <record id="view_approval_attachment_reference_tree" model="ir.ui.view">
+            <field name="name">approval.attachment.reference.tree</field>
+            <field name="model">approval.attachment.reference</field>
+            <field name="arch" type="xml">
+                <tree string="Approval Attachments">
+                    <field name="approval_instance_id" string="Approval Instance" invisible="1"/>
+                    <field name="attachment_name" string="Document"/>
+                    <field name="mimetype" string="Type"/>
+                    <field name="file_size" string="Size"/>
+                    <field name="create_date" string="Added At"/>
+                    <button name="action_view" type="object" string="View" icon="fa-eye"/>
+                    <button name="action_download" type="object" string="Download" icon="fa-download"/>
+                </tree>
+            </field>
+        </record>
+    </data>
+</odoo>

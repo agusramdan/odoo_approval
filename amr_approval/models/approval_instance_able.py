@@ -39,6 +39,11 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
         related='approval_instance_id.approval_task_line',
         string='Approval Task Lines'
     )
+    approval_attachment_reference_ids = fields.One2many(
+        'approval.attachment.reference',
+        related='approval_instance_id.attachment_reference_ids',
+        string='Approval Attachment Reference'
+    )
     is_need_approval = fields.Boolean(
         compute="_compute_need_approval",
         help="document flag need approval"

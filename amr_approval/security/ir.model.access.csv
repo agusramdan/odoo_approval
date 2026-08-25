@@ -6,6 +6,9 @@ access_user_delegation_admin,user.delegation Admin,model_user_delegation,base.gr
 access_approval_task_user,approval.task user,model_approval_task,base.group_user,1,1,1,0
 access_approval_task_admin,approval.task admin,model_approval_task,base.group_system,1,1,1,1
 
+access_approval_attachment_reference_user,approval.attachment.reference user,model_approval_attachment_reference,base.group_user,1,0,0,0
+access_approval_attachment_reference_admin,approval.attachment.reference admin,model_approval_attachment_reference,base.group_system,1,1,1,1
+
 access_approval_audit_log_user,approval.task.audit.log user,model_approval_audit_log,base.group_user,1,1,1,0
 access_approval_audit_log_admin,approval.task.audit.log admin,model_approval_audit_log,base.group_system,1,1,1,1
 
