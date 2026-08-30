@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="amr_notification_systray.NotificationSystray">
+        <!-- Meniru persis kelas pembungkus item systray Odoo 13 -->
+        <li class="o_mail_systray_item o_notification_systray dropdown">
+
+            <!-- Tombol Bel dengan data-display="static" dan o-no-caret -->
+            <a class="dropdown-toggle o-no-caret o_notification_bell"
+               data-toggle="dropdown"
+               data-display="static"
+               aria-expanded="false"
+               title="Notifications"
+               href="#"
+               role="button">
+                <i class="fa fa-bell" role="img" aria-label="Notifications"/>
+                <span t-if="widget &amp;&amp; widget.state &amp;&amp; widget.state.unreadCount" class="o_notification_counter badge badge-pill bg-danger text-white">
+                    <t t-esc="widget.state.unreadCount"/>
+                </span>
+            </a>
+
+            <!-- Kotak Dropdown Menggunakan Kelas Standar dropdown-menu -->
+            <div class="dropdown-menu dropdown-menu-right o_mail_systray_dropdown o_notification_dropdown" role="menu" style="min-width: 320px; max-height: 450px; overflow-y: auto; padding: 0;">
+
+                <!-- Navigasi Tab Atas -->
+                <div class="o_notification_header" style="padding: 10px; border-bottom: 1px solid #eee; background: #f8f9fa;">
+                    <div class="o_notification_tabs d-flex justify-content-around">
+                        <a href="#" t-att-class="widget &amp;&amp; widget.state &amp;&amp; widget.state.tab === 'unread' ? 'o_notification_tab active font-weight-bold' : 'o_notification_tab'" data-tab="unread" style="color: #4c4c4c; text-decoration: none; padding: 4px 12px;">Unread</a>
+                        <a href="#" t-att-class="widget &amp;&amp; widget.state &amp;&amp; widget.state.tab === 'all' ? 'o_notification_tab active font-weight-bold' : 'o_notification_tab'" data-tab="all" style="color: #4c4c4c; text-decoration: none; padding: 4px 12px;">All</a>
+                    </div>
+                </div>
+
+                <!-- Konten List Item Notifikasi -->
+                <div class="o_notification_body" style="padding: 5px;">
+
+                    <!-- Kondisi JIKA List Kosong -->
+                    <t t-set="notif_list" t-value="widget &amp;&amp; widget.getFilteredNotifications()"/>
+                    <div t-if="!notif_list || !notif_list.length" class="text-center text-muted" style="padding: 30px 10px;">
+                        <i class="fa fa-check-circle-o fa-2x d-block mb-2" style="color: #28a745"/>
+                        <div class="small">Tidak ada notifikasi baru</div>
+                    </div>
+
+                    <!-- Kondisi JIKA Ada Data Notifikasi -->
+                    <div t-if="notif_list &amp;&amp; notif_list.length" class="o_mail_systray_dropdown_items">
+                        <t t-foreach="notif_list" t-as="notification">
+
+                            <div t-att-class="notification.is_read ? 'o_mail_preview p-2 border-bottom' : 'o_mail_preview unread p-2 border-bottom bg-light'"
+                                 t-att-data-id="notification.id" style="cursor: pointer; display: flex; align-items: start; clear: both;">
+
+                                <!-- Bagian Gambar / Ikon -->
+                                <div class="o_mail_preview_image" style="margin-right: 10px; padding-top: 3px;">
+                                    <img t-if="notification.icon" t-att-src="notification.icon" alt="Notification" style="width: 28px; height: 28px; border-radius: 50%;"/>
+                                    <span t-else="" style="color: #007bff;"><i class="fa fa-bell fa-lg"/></span>
+                                </div>
+                                <!-- Bagian Judul dan Detail Teks -->
+                                <div class="o_preview_info" style="width: 100%;">
+                                    <div class="font-weight-bold text-dark small" style="line-height: 1.2; text-align: left;"><t t-esc="notification.title"/></div>
+                                    <div class="text-muted mt-1" style="font-size: 11px; line-height: 1.3; text-align: left;"><t t-esc="notification.message"/></div>
+                                    <div class="text-right text-muted small" style="font-size: 10px; margin-top: 4px;"><t t-esc="notification.time"/></div>
+                                </div>
+                                <!-- Tombol Aksi Kustom -->
+                                <div class="o_notification_actions" style="margin-left: auto; align-self: center; padding-left: 5px; display: flex; gap: 5px;">
+                                    <!-- TAMBAHKAN INI: Tombol khusus untuk Tipe Approval -->
+                                    <button t-if="notification.notification_type == 'approval'"
+                                            type="button"
+                                            class="btn btn-primary btn-sm p-1 o_notification_action_approval"
+                                            title="Buka Approval"
+                                            t-att-data-id="notification.id"
+                                            style="font-size: 11px; padding: 2px 6px !important; line-height: 1;">
+                                        <i class="fa fa-gavel mr-1"/>Approval
+                                    </button>
+
+                                    <!-- Tombol Toggle Read (yang sudah dibuat sebelumnya) -->
+                                    <button type="button"
+                                            class="btn btn-link p-0 o_notification_toggle_read"
+                                            t-att-title="notification.is_read ? 'Mark as unread' : 'Mark as read'"
+                                            t-att-data-id="notification.id"
+                                            style="color: #666; font-size: 14px; width: 24px;">
+                                        <i t-att-class="notification.is_read ? 'fa fa-circle-o' : 'fa fa-check'"/>
+                                    </button>
+                                </div>
+
+                            </div>
+                        </t>
+                    </div>
+
+                </div>
+
+            </div>
+        </li>
+    </t>
+
+</templates>
