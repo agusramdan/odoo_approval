@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from functools import wraps
 
 import logging
@@ -6,7 +8,8 @@ import traceback
 import base64
 import binascii
 
-from odoo import models
+from datetime import datetime, date
+from odoo import fields, models
 
 _logger = logging.getLogger(__name__)
 
@@ -170,20 +173,23 @@ def is_base64_string(s):
 
 def normalize_binary(value):
     """
-    Return base64 string or False
+    Return base64 string or string or False
     """
+    if value is None:
+        return None
+
     if not value:
         return False
-
-    # sudah base64 string
-    if isinstance(value, str) and is_base64_string(value):
-        return value
 
     # binary bytes → convert ke base64
     if isinstance(value, (bytes, bytearray)):
         return base64.b64encode(value).decode('utf-8')
 
-    raise ValueError("Unsupported binary format")
+    # sudah base64 string
+    if isinstance(value, str) or is_base64_string(value):
+        return value
+
+    raise ValueError("Unsupported binary format %s " % value)
 
 
 def serialize_filter(self, for_default=False):
@@ -206,3 +212,31 @@ def serialize_filter(self, for_default=False):
             data[key] = value
 
     return data
+
+
+def remove_odoo_objects(value):
+    if isinstance(value, models.BaseModel):
+        return {
+            'ids': value.ids,
+            '_name': value._name
+        }
+
+    if isinstance(value, datetime):
+        return fields.Datetime.to_string(value)
+
+    if isinstance(value, date):
+        return fields.Date.to_string(value)
+
+    if isinstance(value, dict):
+        return {k: remove_odoo_objects(v) for k, v in value.items()}
+
+    if isinstance(value, list):
+        return [remove_odoo_objects(v) for v in value]
+
+    if isinstance(value, tuple):
+        return tuple(remove_odoo_objects(v) for v in value)
+
+    if isinstance(value, (bytes, bytearray)):
+        return base64.b64encode(value).decode('utf-8')
+
+    return value

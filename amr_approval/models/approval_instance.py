@@ -1,12 +1,19 @@
 # -*- coding: utf-8 -*-
 
+import io
 import logging
+import base64
+
+from io import BytesIO
+from PyPDF2 import PdfFileReader, PdfFileWriter
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, AccessError
 from odoo.tools import datetime
 
 from ..tools.utils import have_method, safe_call_method
+
+from PIL import Image, ImageChops
 
 _logger = logging.getLogger(__name__)
 
@@ -1053,6 +1060,16 @@ class ApprovalInstanceMixin(models.AbstractModel):
         ])
 
         return self.attachment_reference_ids
+
+    def report_pdf_with_attachment(self, xml_id, attachments=None):
+        self.ensure_one()
+
+        # 1. Generate report Odoo
+        report = self.env.ref(xml_id)
+        pdf_content, _ = report.render_qweb_pdf(self.transaction_id)
+        if attachments:
+            return self.attachment_reference_ids.merge_pdf_with_attachments(pdf_content, attachments)
+        return self.attachment_reference_ids.merge_pdf_with_attachment(pdf_content)
 
 
 class ApprovalInstance(models.Model):

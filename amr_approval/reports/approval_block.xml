@@ -97,13 +97,9 @@
                                 <div class="approval-user">
                                     <span t-esc="line['user']['name']"/>
                                 </div>
-
-                                <div t-att-class="
-                                    'approval-state ' + line['state'].get('css_class', '')
-                                ">
-                                    <span t-esc="line['state']['label']"/>
+                                <div class="approval-date">
+                                    <span t-esc="line['date'].get('date_str')"/>
                                 </div>
-
                             </td>
                         </t>
                     </tr>
@@ -127,10 +123,8 @@
                         <div class="approval-user">
                             <span t-esc="line['user']['name']"/>
                         </div>
-                        <div t-att-class="
-                            'approval-state ' + line['state']['css_class']
-                        ">
-                            <span t-esc="line['state']['label']"/>
+                        <div class="approval-date">
+                            <span t-esc="line['date'].get('date_str')"/>
                         </div>
                     </div>
                 </t>

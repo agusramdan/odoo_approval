@@ -41,7 +41,7 @@
         'views/reminder_log_views.xml',
         'views/user_delegation_views.xml',
 
-        'views/res_users_views.xml',
+        # 'views/res_users_views.xml',
         'views/res_company_views.xml',
         'views/res_config_settings_views.xml',
 

@@ -2,7 +2,7 @@
 
 import logging
 
-from odoo import models
+from odoo import fields, models
 
 _logger = logging.getLogger(__name__)
 
@@ -38,13 +38,12 @@ class ApprovalReportLineMixin(models.AbstractModel):
     _inherit = ["approval.selection.mixin"]
     _description = "Approval Report Mixin"
 
-    def _get_approval_report_visuals(self):
-        self.ensure_one()
+    def get_approval_report_visuals(self, user=None):
         visuals = []
-        signature_image = self.user_execution_id.sudo().get_signature_visual()
-        if signature_image:
-            visuals.append(signature_image)
-
+        if user:
+            signature_image = user.sudo().get_signature_visual()
+            if signature_image:
+                visuals.append(signature_image)
         # if self.verification_qr:
         #     visuals.append({
         #         "type": "qr",
@@ -55,28 +54,54 @@ class ApprovalReportLineMixin(models.AbstractModel):
         #             "width: 60px;"
         #         ),
         #     })
-
         return visuals
+
+    def create_approval_report_line_data_default(self, user=None, label=None, date_execution=None, state=None):
+        date_str = None
+        if date_execution:
+            date_str = fields.Datetime.context_timestamp(self, date_execution).strftime('%d/%m/%Y %H:%M')
+        result = {
+            "obj": self,
+            "user": {
+                "obj": user,
+                "name": user.name if user else None,
+            },
+            "label": label,
+            "date": {
+                "obj": date_execution,
+                "date_str": date_str,
+            },
+            "state": state,
+            "visuals": self.get_approval_report_visuals(user),
+        }
+        return result
 
     def get_approval_report_line_data(
             self,
             field_name_status="status_approval",
             field_name_user_execution="user_execution_id",
-            field_name_sign_title="sign_title"
+            field_name_sign_title="sign_title",
+            field_name_date_execution="date_execution"
     ):
         task = self.ensure_one()
-        user_execution = getattr(task, field_name_user_execution, None) if hasattr(task,
-                                                                                   field_name_user_execution) else None
-        sign_title = getattr(task, field_name_sign_title, None) if hasattr(task, field_name_sign_title) else None
-        return {
-            "label": sign_title,
-            "user": {
-                "obj": user_execution,
-                "name": user_execution.name if user_execution else None,
-            },
-            "state": self._get_selection_dict(field_name=field_name_status),
-            "visuals": self._get_approval_report_visuals(),
-        }
+        label = getattr(task, field_name_sign_title, None) if hasattr(task, field_name_sign_title) else ""
+        if not label and task:
+            label = task.display_name if hasattr(task, 'display_name') else task.name if hasattr(task, 'name') else ""
+        if hasattr(task, field_name_user_execution):
+            user_execution = getattr(task, field_name_user_execution, None)
+        else:
+            user_execution = None
+
+        if hasattr(task, field_name_sign_title):
+            date_execution = getattr(task, field_name_date_execution, None)
+        else:
+            date_execution = None
+
+        return task.create_approval_report_line_data_default(
+            user=user_execution, label=label,
+            date_execution=date_execution,
+            state=self._get_selection_dict(field_name=field_name_status)
+        )
 
     def get_approval_report_lines(self):
         kw = {}
@@ -86,6 +111,7 @@ class ApprovalReportLineMixin(models.AbstractModel):
                 "field_name_status": approval_template_line.state_field or 'status_approval',
                 "field_name_user_execution": approval_template_line.field_user_execution_id or 'user_execution_id',
                 "field_name_sign_title": approval_template_line.field_sign_title or 'display_name',
+                "field_name_date_execution": approval_template_line.field_date_execution or "date_execution"
             }
         return [task.get_approval_report_line_data(**kw) for task in self]
 
@@ -105,30 +131,30 @@ class ApprovalReportMixin(models.AbstractModel):
             "approval_template": approval_template,
         }
         return {
-            "enabled": self._approval_report_enabled(**kw),
-            "state": self._get_approval_report_state(**kw),
-            "lines": self._get_approval_report_lines(**kw),
-            "history": self._get_approval_report_history(),
-            "verification": self._get_approval_report_verification(),
+            "enabled": self.approval_report_enabled(**kw),
+            "state": self.get_approval_report_state(**kw),
+            "lines": self.get_approval_report_lines(**kw),
+            "history": self.get_approval_report_history(),
+            "verification": self.get_approval_report_verification(),
         }
 
-    def _approval_report_enabled(self, approval_document=None, approval_template=None, **kwargs):
-        return bool(self._get_approval_report_lines())
+    def approval_report_enabled(self, approval_document=None, approval_template=None, **kwargs):
+        return bool(self.get_approval_report_lines())
 
-    def _get_approval_report_state(self, approval_document=None, approval_template=None, **kwargs):
+    def get_approval_report_state(self, approval_document=None, approval_template=None, **kwargs):
         return {
             "key": False,
             "label": False,
         }
 
-    def _get_approval_report_lines(self, approval_document=None, approval_template=None, **kwargs):
+    def get_approval_report_lines(self, approval_document=None, approval_template=None, **kwargs):
         self.ensure_one()
         return self.approval_task_line.get_approval_report_lines()
 
-    def _get_approval_report_history(self):
+    def get_approval_report_history(self):
         return []
 
-    def _get_approval_report_verification(self):
+    def get_approval_report_verification(self):
         return {
             "enabled": False,
             "visuals": [],

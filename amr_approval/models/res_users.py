@@ -23,13 +23,13 @@ SIGNATURE_INK_SPAN = 75
 class ResUsers(models.Model):
     _inherit = 'res.users'
 
-    signature_image = fields.Binary(
-        string='Signature',
-        attachment=True,
-    )
-    signature_image_filename = fields.Char(
-        string='Signature Filename',
-    )
+    # signature_image = fields.Binary(
+    #     string='Signature',
+    #     attachment=True,
+    # )
+    # signature_image_filename = fields.Char(
+    #     string='Signature Filename',
+    # )
 
     def _get_signature_attachment(self, field_name='signature_image'):
         self.ensure_one()
@@ -43,8 +43,7 @@ class ResUsers(models.Model):
         """Inline CSS for a signature box. Drawn as a background-image so
         background-size: contain scales it to fit either way; object-fit would
         read better but the PDF engine may not support it."""
-        style = ('height: %spx; width: %spx; border: 1px solid black;'
-                 ' margin: 10px auto 4px auto;' % (height, width))
+        style = ('height: %spx; width: %spx; margin: 10px auto 4px auto;' % (height, width))
         if signature:
             signature = self._clear_signature_background(signature)
             if isinstance(signature, bytes):

@@ -741,6 +741,27 @@ class ApprovalTaskLine(models.Model):
 
     def name_get(self):
         result = []
+        ctx_display_name = self.env.context.get('__approval_task_line_display_name', None)
+        if ctx_display_name == 'sign_title':
+            for rec in self:
+                sign_title = rec.sign_title
+                type_name = rec.name or sign_title or rec.id
+                result.append((rec.id, type_name))
+            return result
+
+        if ctx_display_name == 'group':
+            for rec in self:
+                result.append((rec.id, rec.group_id.name))
+            return result
+
+        if ctx_display_name == 'user':
+            for rec in self:
+                if rec.responsible_user_id:
+                    result.append((rec.id, rec.responsible_user_id.name))
+                else:
+                    result.append((rec.id, rec.user_id.name))
+            return result
+
         for rec in self:
             sign_title = rec.sign_title
             type_name = rec.name or sign_title or rec.id

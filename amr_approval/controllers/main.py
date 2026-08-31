@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import base64
 import json
 import werkzeug
 
@@ -22,34 +23,24 @@ class ApprovalAttachmentController(http.Controller):
         methods=["GET"],
     )
     def view_attachment(self, reference_id, **kwargs):
-        reference = request.env[
-            "approval.attachment.reference"
-        ].browse(reference_id).exists()
+        reference = request.env["approval.attachment.reference"].sudo().browse(reference_id).exists()
 
         if not reference:
-            raise AccessError(
-                "Attachment reference not found."
-            )
+            raise AccessError("Attachment reference not found.")
 
         # SECURITY CHECK
-        reference.check_access(
-            operation="view"
-        )
+        reference.check_access(operation="view")
 
-        attachment = reference.attachment_id.sudo()
-
+        attachment = reference.attachment_id
+        data = base64.b64decode(attachment.datas)
         return request.make_response(
-            attachment.raw,
+            data,
             headers=[
                 (
-                    "Content-Type",
-                    attachment.mimetype or
-                    "application/octet-stream",
+                    "Content-Type", attachment.mimetype or "application/octet-stream",
                 ),
                 (
-                    "Content-Disposition",
-                    'inline; filename="%s"' %
-                    attachment.name,
+                    "Content-Disposition", 'inline; filename="%s"' % attachment.name,
                 ),
             ],
         )
@@ -62,32 +53,23 @@ class ApprovalAttachmentController(http.Controller):
     )
     def download_attachment(self, reference_id, **kwargs):
 
-        reference = request.env[
-            "approval.attachment.reference"
-        ].browse(reference_id).exists()
+        reference = request.env["approval.attachment.reference"].sudo().browse(reference_id).exists()
 
         if not reference:
-            raise AccessError(
-                "Attachment reference not found."
-            )
+            raise AccessError("Attachment reference not found.")
 
         # SECURITY CHECK
         reference.check_access(operation="download")
-
         attachment = reference.attachment_id.sudo()
-
+        data = base64.b64decode(attachment.datas)
         return request.make_response(
-            attachment.raw,
+            data,
             headers=[
                 (
-                    "Content-Type",
-                    attachment.mimetype or
-                    "application/octet-stream",
+                    "Content-Type", attachment.mimetype or "application/octet-stream",
                 ),
                 (
-                    "Content-Disposition",
-                    'attachment; filename="%s"' %
-                    attachment.name,
+                    "Content-Disposition", 'attachment; filename="%s"' % attachment.name,
                 ),
             ],
         )
