@@ -23,13 +23,13 @@ SIGNATURE_INK_SPAN = 75
 class ResUsers(models.Model):
     _inherit = 'res.users'
 
-    # signature_image = fields.Binary(
-    #     string='Signature',
-    #     attachment=True,
-    # )
-    # signature_image_filename = fields.Char(
-    #     string='Signature Filename',
-    # )
+    signature_image = fields.Binary(
+        string='Signature',
+        attachment=True,
+    )
+    signature_image_filename = fields.Char(
+        string='Signature Filename',
+    )
 
     def _get_signature_attachment(self, field_name='signature_image'):
         self.ensure_one()

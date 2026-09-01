@@ -20,6 +20,7 @@
                 <form string="PDF Document">
                     <header>
                         <button name="action_print" string="Print" type="object" class="oe_highlight"/>
+                        <button name="action_report_composer" string="Compose PDF" type="object" class="oe_highlight"/>
                         <field name="state" widget="statusbar" readonly="1"/>
                     </header>
                     <sheet>

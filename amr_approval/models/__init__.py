@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from . import rule_condition
+from . import report_attachment
 
 # Notification
 from . import notification_template
@@ -10,6 +11,7 @@ from . import approval_responsible
 
 # DOA
 from . import user_delegation
+
 
 # Approval
 from . import approval_mixin

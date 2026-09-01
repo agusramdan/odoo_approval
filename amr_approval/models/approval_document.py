@@ -542,7 +542,7 @@ class ApprovalDocument(models.Model):
             td,
             "field",
             {
-                "name": "alert_waiting_approval",
+                "name": "banner_waiting_approval",
                 "readonly": "1",
             },
         )
@@ -590,7 +590,7 @@ class ApprovalDocument(models.Model):
             td,
             "field",
             {
-                "name": "note_reject",
+                "name": "banner_reject",
                 "readonly": "1",
             },
         )

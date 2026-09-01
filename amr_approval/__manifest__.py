@@ -55,6 +55,7 @@
         'wizard/popup_sign.xml',
         'wizard/approval_task_line_assignment.xml',
         'wizard/rule_condition.xml',
+        'wizard/report_composer_wizard.xml',
 
         'reports/approval_block.xml',
         'reports/approval_demo.xml',

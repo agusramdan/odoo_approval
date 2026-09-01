@@ -14,6 +14,10 @@ from odoo.tools import plaintext2html
 _logger = logging.getLogger(__name__)
 
 DEFAULT_PYTHON_CODE = """# Available variables:
+#  - ctx: Contex
+#  - object: Object
+#  - record: Record
+#  - kwargs: kwargs
 #  - notification_template: Template Notification
 #  - env: Odoo Environment on which the action is triggered
 #  - notification

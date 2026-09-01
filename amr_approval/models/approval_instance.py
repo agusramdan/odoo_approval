@@ -58,7 +58,12 @@ class ApprovalInstanceMixin(models.AbstractModel):
         'approval.attachment.reference', 'approval_instance_id', string='Approval Attachment References', readonly=True
     )
     flag_reject = fields.Boolean()
+    user_reject = fields.Many2one('res.users',readonly=True, ondelete='set null',)
     note_reject = fields.Text()
+    # reason = _("Rejected by %s, Reason: %s") % (self.env.user.name, self.name) _compute_banner_reject
+    banner_reject = fields.Text(compute='_compute_banner_reject')
+    banner_waiting_approval = fields.Text(compute='_compute_banner_waiting_approval')
+
     flag_reset_to_draft = fields.Boolean()
     note_reset_to_draft = fields.Text()
 
@@ -90,6 +95,42 @@ class ApprovalInstanceMixin(models.AbstractModel):
         compute="_compute_notification_to_user_id", compute_sudo=True,
         help="User who will receive the notification.",
     )
+
+    @api.depends('user_reject', 'note_reject')
+    def _compute_banner_reject(self):
+        for rec in self:
+            if rec.user_reject:
+                reason = _("Rejected by %s, Reason: %s") % (rec.user_reject.name, rec.note_reject)
+            else:
+                reason = _("Reason: %s") % (rec.note_reject)
+            rec.banner_reject = reason
+
+    def get_banner_reject(self):
+        if not self:
+            return ""
+        rec = self
+        if rec.user_reject:
+            reason = _("Rejected by %s, Reason: %s") % (rec.user_reject.name, rec.note_reject)
+        else:
+            reason = _("Reason: %s") % rec.note_reject
+        return reason
+
+    @api.depends('approval_task_id')
+    def _compute_banner_waiting_approval(self):
+        for rec in self:
+            rec.banner_waiting_approval = rec.get_banner_waiting_approval()
+
+    def get_banner_waiting_approval(self):
+        if not self:
+            return ""
+        banner_waiting_approval = ""
+        approval_user_ids = self.approval_task_id.approval_user_ids
+        if approval_user_ids:
+            approver_user = " / ".join([user.name for user in approval_user_ids])
+            approver_name = "Waiting for Approval ( " + approver_user + " )"
+            banner_waiting_approval = str(approver_name)
+
+        return banner_waiting_approval
 
     # approval_task_id = fields.Many2many(
     #     'approval.task',
@@ -144,7 +185,7 @@ class ApprovalInstanceMixin(models.AbstractModel):
         user_execution = self.env.context.get('user_execution')
         if isinstance(user_execution, models.Model):
             return user_execution
-        _logger.info('user_execution %s ',user_execution)
+        _logger.info('user_execution %s ', user_execution)
         return self.env.user
 
     def get_internal_url(self):
@@ -534,6 +575,7 @@ class ApprovalInstanceMixin(models.AbstractModel):
         transaction_object = kwargs.get('transaction_object') or approval_instance.get_transaction_object()
         kwargs['transaction_object'] = transaction_object = self.ensure_disable_auto_register(transaction_object)
         approval_task_line = kwargs.get('approval_task_line') or approval_instance.get_next_approval_task_line()
+        approval_instance.flag_reject=False
         if transaction_object and not transaction_object.env.context.get('__skip_approval_transaction_status'):
             transaction_object = kwargs['transaction_object'] = transaction_object.with_context(
                 __skip_approval_transaction_status=True
@@ -1034,8 +1076,7 @@ class ApprovalInstanceMixin(models.AbstractModel):
         attachments = attachments.exists()
 
         current_references = self.attachment_reference_ids
-
-        current_attachments = current_references.mapped("attachment_id")
+        current_attachments = current_references.mapped("attachment_id").sudo()
 
         # Attachment yang harus ditambahkan
         attachments_to_add = attachments - current_attachments
@@ -1048,6 +1089,7 @@ class ApprovalInstanceMixin(models.AbstractModel):
         )
 
         # Remove reference
+        references_to_remove.sudo().ensure_copy_attachment_unlink()
         references_to_remove.sudo().unlink()
 
         # Add reference
@@ -1058,7 +1100,7 @@ class ApprovalInstanceMixin(models.AbstractModel):
             }
             for attachment in attachments_to_add
         ])
-
+        self.attachment_reference_ids.sudo().ensure_copy_attachment()
         return self.attachment_reference_ids
 
     def report_pdf_with_attachment(self, xml_id, attachments=None):
@@ -1070,6 +1112,16 @@ class ApprovalInstanceMixin(models.AbstractModel):
         if attachments:
             return self.attachment_reference_ids.merge_pdf_with_attachments(pdf_content, attachments)
         return self.attachment_reference_ids.merge_pdf_with_attachment(pdf_content)
+
+    def action_report_composer(self):
+        self.ensure_one()
+        attachments = self.env['ir.attachment'].search([
+            ('res_model', '=', self.transaction_model_name),
+            ('res_id', '=', self.transaction_id),
+        ], order='id asc')
+        return self.env['report.composer.wizard'].prepare_action_report_composer(
+            self._name, self.id, attachments
+        )
 
 
 class ApprovalInstance(models.Model):
@@ -1121,7 +1173,7 @@ class ApprovalInstance(models.Model):
                     user_ids = next_approval_task_line.get_users_for_approval(company=company)
                 elif have_method(next_approval_task_line, 'get_users'):
                     user_ids = next_approval_task_line.get_users()
-                    if isinstance(user_ids,models.BaseModel) and user_ids._name == 'res.users':
+                    if isinstance(user_ids, models.BaseModel) and user_ids._name == 'res.users':
                         user_ids = user_ids.get_users_for_approval(company=company)
                 if have_method(next_approval_task_line, 'get_groups'):
                     group_ids = next_approval_task_line.get_groups()

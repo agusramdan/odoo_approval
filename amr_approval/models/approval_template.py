@@ -1257,7 +1257,7 @@ for rec in self:
         # transaction_object = approval_instance.get_transaction_object()
         is_approval_done = kwargs.get('is_approval_done')
         trx_update_value = kwargs.get('transaction_update_value') or {}
-
+        user_execution = kwargs.get('user_execution') or self.env.user
         approval_template.invoke_method(transaction_object, 'after_reject', kw)
         note_reject = kwargs.get('reason') or kwargs.get('reason_reject') or self.env.context.get('__reject_reason')
         trx_update_value.update({
@@ -1266,6 +1266,7 @@ for rec in self:
         })
         approval_instance.write({
             'flag_reject': bool(note_reject),
+            'user_reject': user_execution.id,
             'note_reject': note_reject,
         })
         if is_approval_done:

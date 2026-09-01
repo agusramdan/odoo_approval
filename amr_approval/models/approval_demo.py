@@ -31,3 +31,13 @@ class ApprovalDemo(models.Model):
 
     def action_print(self):
         return self.env.ref('amr_approval.action_report_approval_demo_form').report_action(self)
+
+    def action_report_composer(self):
+        self.ensure_one()
+        attachments = self.env['ir.attachment'].search([
+            ('res_model', '=', self._name),
+            ('res_id', '=', self.id),
+        ], order='id asc')
+        return self.env['report.composer.wizard'].prepare_action_report_composer(
+            self._name, self.id, attachments, report=self.env.ref('amr_approval.action_report_approval_demo_form')
+        )

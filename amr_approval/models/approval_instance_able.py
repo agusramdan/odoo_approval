@@ -69,8 +69,14 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
     access_reset_to_draft_action = fields.Boolean(compute="_compute_access_requester", )
     access_sign_all_pdf_action = fields.Boolean(store=False)
     access_show_sign_pdf_action = fields.Boolean(compute="compute_access_request_approval_action")
+
     flag_reject = fields.Boolean(related='approval_instance_id.flag_reject')
+    user_reject = fields.Many2one(related='approval_instance_id.user_reject')
     note_reject = fields.Text(related='approval_instance_id.note_reject')
+    banner_reject = fields.Text(related='approval_instance_id.banner_reject')
+
+    banner_waiting_approval = fields.Text(related='approval_instance_id.banner_waiting_approval')
+
     flag_reset_to_draft = fields.Boolean(related='approval_instance_id.flag_reset_to_draft')
     note_reset_to_draft = fields.Text(related='approval_instance_id.note_reset_to_draft')
     approval_line_for_document = fields.Many2many(
