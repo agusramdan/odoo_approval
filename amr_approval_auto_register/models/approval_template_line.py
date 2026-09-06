@@ -219,3 +219,12 @@ class ApprovalTaskLineBaseMixin(models.AbstractModel):
                             approval_template=approval_template,
                             approval_template_line=approval_template_line,
                         )
+
+    def unlink(self):
+        unlink_ids = self.ids
+        approval_template = self.get_approval_template()
+        if approval_template:
+            for unlink_id in unlink_ids:
+                self.env['approval.task'].approval_done(transaction_id=unlink_id, transaction_model_name=self._name)
+        result = super().unlink()
+        return result
