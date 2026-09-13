@@ -21,6 +21,8 @@ class ApprovalInstance(models.Model):
     pdf_lock_filename = fields.Char('Lock Filename', related='pdf_document_id.pdf_lock_filename')
     pdf_lock_hash = fields.Char('Lock Hash', readonly=True, related='pdf_document_id.pdf_lock_hash')
     pre_signed_pdf = fields.Binary('Pre Signed PDF', readonly=True, related='pdf_document_id.pre_signed_pdf')
+    pre_signed_qr = fields.Char('Pre Signed QR', readonly=True, related='pdf_document_id.pre_signed_qr')
+
     signed_pdf = fields.Binary('Signed PDF', readonly=True, related='pdf_document_id.signed_pdf')
     signed_pdf_filename = fields.Char(
         'Signed PDF Filename', readonly=True, related='pdf_document_id.signed_pdf_filename'
@@ -37,10 +39,10 @@ class ApprovalInstance(models.Model):
         _logger.info("config_pdf_document %s ", config)
         if isinstance(config, models.Model):
             if config._name == 'pdf.document':
-                self.pdf_document_id = config
+                self.write({'pdf_document_id': config.id})
         elif isinstance(config, dict):
             pdf = self.pdf_document_id.sudo().create_from_approval(**config)
-            self.pdf_document_id = pdf.id
+            self.write({'pdf_document_id': pdf.id})
 
         return self.pdf_document_id
 
@@ -50,18 +52,20 @@ class ApprovalInstance(models.Model):
             return
         if self.pdf_sign_server != 'local':
             return super(ApprovalInstance, self).sign_pdf_document(**kwargs)
-
-        approval_task_line = kwargs.get('approval_task_line')
-        user_execution = kwargs.get('user_execution')
-
-        config = self.approval_document_id.get_config_pdf_sign_document(
-            self, approval_task_line, user_execution, **kwargs
+        _logger.info("kwargs %s", kwargs)
+        approval_instance = kwargs.pop('approval_instance')
+        approval_task_line = kwargs.pop('approval_task_line')
+        user_execution = kwargs.pop('user_execution')
+        config = approval_instance.approval_document_id.get_config_pdf_sign_document(
+            approval_instance, approval_task_line, user_execution, **kwargs
         ) or {}
         if not isinstance(config, dict):
             raise UserError("Invalid response.")
         config.setdefault('auto_sign_ca', True)
         config.setdefault('auto_create_ca_default', True)
+        _logger.info("sign_from_approval start : %s", config)
         self.pdf_document_id.sign_from_approval(**config)
+        _logger.info("sign_from_approval done : %s", config)
 
     def cancel_pdf_document(self, **kwargs):
         if not self:
@@ -69,8 +73,9 @@ class ApprovalInstance(models.Model):
             return
         if self.pdf_sign_server != 'local':
             return super(ApprovalInstance, self).sign_pdf_document(**kwargs)
-        _logger.info("call sign_pdf_document local")
+        _logger.info("call cancel_pdf_document start local")
         self.pdf_document_id.cancel_from_approval()
+        _logger.info("call cancel_pdf_document done local")
 
     def action_show_sign_pdf(self):
         if not self:

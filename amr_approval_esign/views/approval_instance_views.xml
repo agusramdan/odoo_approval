@@ -28,6 +28,8 @@
             <form string="PDF Signature"  edit="false" create="false" delete="false">
                  <group>
                      <field name="pdf_document_id" readonly="1" groups="base.group_no_one"/>
+                     <field name="pre_signed_qr" readonly="1" groups="base.group_no_one" widget="url"/>
+
                      <field name="pdf_filename" readonly="1"/>
                      <field name="pre_signed_pdf" filename="pdf_filename" readonly="1" widget="pdf_viewer"/>
                  </group>
