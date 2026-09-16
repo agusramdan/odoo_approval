@@ -258,7 +258,7 @@ class ApprovalTask(models.Model):
     def check_access_rights_and_rule(self, user_and_delegator):
         rec = self.ensure_one()
         record = rec.sudo().get_transaction_object()
-        if not record:
+        if not record or not record.exists():
             return False
         can_access = False
         for user in user_and_delegator:
@@ -279,7 +279,7 @@ class ApprovalTask(models.Model):
     def check_current_task_access(self, raise_exception=True):
         """Hitung apakah user login punya akses approve/reject."""
         self.ensure_one()
-        if self.env.user in self.get_users_for_approval().ids:
+        if self.env.user.id in self.get_users_for_approval().ids:
             return True
         if raise_exception:
             raise AccessError("You don't have access to this approval task.")
@@ -348,7 +348,7 @@ class ApprovalTask(models.Model):
         return users
 
     def get_transaction_object(self):
-        if not self.transaction_id or not self.transaction_model_name:
+        if not self.transaction_model_name:
             return None
 
         if self.transaction_id:
@@ -364,8 +364,10 @@ class ApprovalTask(models.Model):
             transaction_id = kwargs.get('transaction_id')
             transaction_model_name = kwargs.get('transaction_model_name')
             if transaction_model_name and transaction_id:
-                records = self.search([('transaction_id', '=', transaction_id),
-                                       ('transaction_model_name', '=', transaction_model_name), ])
+                records = self.search([
+                    ('transaction_id', '=', transaction_id),
+                    ('transaction_model_name', '=', transaction_model_name),
+                ])
             else:
                 return True
         return records.sudo().unlink()

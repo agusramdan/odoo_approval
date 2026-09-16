@@ -31,6 +31,8 @@ class UserDelegation(models.Model):
     )
     state = fields.Selection([
         ('draft', 'Draft'),
+        ('waiting_approval', 'Waiting Approval'),
+        ('approved', 'Approved'),
         ('prepared', 'Prepared'),
         ('active', 'Active'),
         ('cancelled', 'Cancelled'),

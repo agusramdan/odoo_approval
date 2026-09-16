@@ -36,11 +36,11 @@ def safe_call_method(obj, method_name, args=None, kwargs=None):
     - args disesuaikan dengan signature
     """
     if not obj and not isinstance(obj, models.BaseModel):
-        _logger.warning(f"Object not eligible process {obj}")
+        _logger.warning(f"Object not eligible process : {obj}")
         return None
 
     if not method_name or not isinstance(method_name, str):
-        _logger.warning(f"Object not eligible process {obj}")
+        _logger.warning(f"Object not eligible process : {obj} , method_name : {method_name}")
         return None
 
     if not hasattr(obj, method_name):
@@ -109,46 +109,6 @@ def ensure_dict(input):
 
 def ensure_list_create(record_list):
     return [ensure_dict(rec) for rec in record_list]
-
-
-def call_retry(_func=None, *, callback_error_method_name=None, ):
-    def decorator(func):
-        @wraps(func)
-        def wrapper(self, *args, **kwargs):
-            _logger.info(f"Function in {func.__qualname__}")
-            self.ensure_one()
-            try:
-                return func(self, *args, **kwargs)
-            except Exception as e:
-                _logger.error(f"Error in {func.__qualname__}: {str(e)}", exc_info=True)
-                error_message = traceback.format_exc()
-                res_method = func.__name__
-                api_call_retry_id = self.env.context.get('__api_call_retry_id')
-                if api_call_retry_id:
-                    api_call_retry = self.env['api.call.retry'].browse(api_call_retry_id)
-                else:
-                    api_call_retry = self.env['api.call.retry']
-
-                api_call_retry.need_retry(
-                    self._name, self.id, res_method=res_method,
-                    error_message=error_message, param_args=args, param_kwargs=kwargs
-                )
-
-                if callback_error_method_name and have_method(self, callback_error_method_name):
-                    return safe_call_method(self, callback_error_method_name, [], {
-                        'args': args,
-                        'res_method': res_method,
-                        'exception': e,
-                        'kwargs': kwargs
-                    })
-                return
-
-        return wrapper
-
-    if _func is None:
-        return decorator
-    else:
-        return decorator(_func)
 
 
 def is_base64_bytes(b):

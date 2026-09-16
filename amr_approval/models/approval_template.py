@@ -1110,7 +1110,10 @@ for rec in self:
             else:
                 _logger.info("Update %s -> %s | %s ", self.state_field, data.get(self.state_field),
                              self.state_reset_to_draft)
-            transaction_object.write(data)
+            _logger.info("set_reset_to_draft %s , %s", transaction_object, data)
+            with transaction_object.env.cr.savepoint():
+                transaction_object.write(data)
+                _logger.info("set_waiting_approval_status write done")
         else:
             raise UserError("Invalid configuration reset_to_draft")
 
@@ -1211,11 +1214,11 @@ for rec in self:
         _logger.info("notes_chatter %s ", notes_chatter)
         notes_chatter and notification.send_message_post(transaction_object, notes_chatter)
 
-        if approval_instance.pdf_sign == 'approve_is_sign_pdf' and not self.env.context.get(
-                '__skip_approve_is_sign_pdf'):
+        if approval_instance.pdf_sign == 'approve_is_sign_pdf' and not self.env.context.get('__skip_approve_is_sign_pdf'):
             kw = dict(kwargs)
             kw['approval_task_line'] = kw.get('approval_task_line_approve') or kw.get('approval_task_line')
             approval_instance.sign_pdf_document(**kw)
+            _logger.info("After sign_pdf_document")
         else:
             _logger.info(
                 "without pdf sign approval %s. __skip_approve_is_sign_pdf %s",
@@ -1312,7 +1315,7 @@ for rec in self:
                 notes_chatter = safe_call_method(
                     transaction_object, "get_rejected_message", kwargs=kw_rejected
                 )
-            else:
+            if not notes_chatter:
                 notes_chatter = approval_template.get_rejected_message(**kw)
 
         approval_task_line_between = kw.get('approval_task_line_between')
@@ -1322,8 +1325,6 @@ for rec in self:
             user_ids = approval_template_line.get_user_execution(approval_task_line_between)
             notification.send_notification_to_users(user_ids, transaction_object.id, **kw_rejected)
 
-        _logger.info("notes_chatter %s ", notes_chatter)
-
         notes_chatter and notification.send_message_post(
             transaction_object, notes_chatter
         )
@@ -1332,7 +1333,10 @@ for rec in self:
     @api.model
     def get_rejected_message(self, **kwargs):
         reason = kwargs.get('reason')
-        return _('Note Reject => %s') % reason
+        if reason:
+            return _("%s has rejected this request.<br>Note : %s") % (self.env.user.name, reason)
+        else:
+            return _("%s has rejected this request") % self.env.user.name
 
     def do_cancel(self, **kw):
         kw['approval_template'] = self.ensure_one()
@@ -1381,7 +1385,7 @@ for rec in self:
                 notes_chatter = safe_call_method(
                     transaction_object, "get_canceled_message", kwargs=kw
                 )
-            else:
+            if not notes_chatter:
                 notes_chatter = self.get_canceled_message(**kw)
         notes_chatter and notification.send_message_post(transaction_object, notes_chatter)
         self.done_approval(**kw)
@@ -1390,9 +1394,9 @@ for rec in self:
     def get_canceled_message(self, **kwargs):
         reason = kwargs.get('reason')
         if reason:
-            return _("%s has canceled this request. \n %s") % (self.env.user.name, reason)
+            return _("%s has canceled this request. <br>Note : %s") % (self.env.user.name, reason)
         else:
-            return _("%s has canceled this request") % (self.env.user.name)
+            return _("%s has canceled this request") % self.env.user.name
 
     def do_reset_to_draft(self, **kw):
         kw['approval_template'] = approval_template = self.ensure_one()
@@ -1436,6 +1440,7 @@ for rec in self:
         return kw
 
     def after_reset_to_draft(self, **kw):
+        _logger.info('after_reset_to_draft')
         transaction_object = self.get_transaction_object(**kw)
         notes_chatter = kw.get('notes_chatter')
         notification = self.notification_reset_to_draft_approver_id
@@ -1466,13 +1471,15 @@ for rec in self:
             if not notes_chatter and notification.notes_chatter:
                 notes_chatter = notification.get_chatter_message(**kw)
 
+        _logger.info('notes_chatter : %s  : notes_chatter_reset_to_draft: %s',notes_chatter,self.notes_chatter_reset_to_draft)
         if not notes_chatter and self.notes_chatter_reset_to_draft:
             if have_method(transaction_object, 'get_reset_to_draft_message'):
                 notes_chatter = safe_call_method(
                     transaction_object, "get_reset_to_draft_message", kwargs=kw
                 )
-            else:
+            if not notes_chatter:
                 notes_chatter = self.get_reset_to_draft_message(**kw)
+
         notes_chatter and notification.send_message_post(transaction_object, notes_chatter)
 
         self.done_approval(**kw)
@@ -1481,9 +1488,9 @@ for rec in self:
     def get_reset_to_draft_message(self, **kwargs):
         reason = kwargs.get('reason')
         if reason:
-            return _("%s has reset to draft this request. \n %s") % (self.env.user.name, reason)
+            return _("%s has reset to draft this request. <br>Note : %s") % (self.env.user.name, reason)
         else:
-            return _("%s has reset to draft this request") % (self.env.user.name)
+            return _("%s has reset to draft this request.") % self.env.user.name
 
     def done_approval(self, **kwargs):
         if not self:

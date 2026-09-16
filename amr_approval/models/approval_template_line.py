@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import traceback
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
@@ -463,8 +464,10 @@ Data ini akan di kirim ke approval.task agar bisa menentukan user mana yang bisa
             # write.pop('transaction_model_name', None)
             # if self.parent_filed:
             #     write.pop(self.parent_filed, None)
-
-            approval_task_line.write(write)
+            _logger.info("set_waiting_approval_status %s , %s", approval_task_line, write)
+            with approval_task_line.env.cr.savepoint():
+                approval_task_line.write(write)
+                _logger.info("set_waiting_approval_status write done")
         else:
             raise UserError("Invalid configuration set_waiting_approval_status field %s , value %s " % (
                 self.state_field, self.state_waiting_approvals))
@@ -482,8 +485,10 @@ Data ini akan di kirim ke approval.task agar bisa menentukan user mana yang bisa
             if self.parent_filed:
                 write.pop(self.parent_filed, None)
             write[self.state_field] = self.state_approved
-            _logger.info("set_approved_status %s , %s", approval_task_line, write)
-            approval_task_line.write(write)
+            _logger.info("set_approved_status write %s , %s", approval_task_line, write)
+            with approval_task_line.env.cr.savepoint():
+                approval_task_line.write(write)
+                _logger.info("set_approved_status write done")
             return kwargs
         else:
             raise UserError("Invalid configuration approval set_approved_status field %s , value %s " % (
@@ -502,8 +507,10 @@ Data ini akan di kirim ke approval.task agar bisa menentukan user mana yang bisa
             if self.parent_filed:
                 write.pop(self.parent_filed, None)
             write[self.state_field] = self.state_rejected
-            _logger.info("set_rejected_status %s , %s", approval_task_line, write)
-            approval_task_line.write(write)
+            _logger.info("set_rejected_status write %s , %s", approval_task_line, write)
+            with approval_task_line.env.cr.savepoint():
+                approval_task_line.write(write)
+                _logger.info("set_rejected_status write done")
             return kwargs
         else:
             raise UserError("Invalid configuration approval field set_rejected_status %s , value %s " % (
@@ -519,7 +526,10 @@ Data ini akan di kirim ke approval.task agar bisa menentukan user mana yang bisa
             if self.parent_filed:
                 write.pop(self.parent_filed, None)
             write[self.state_field] = self.state_canceled
-            approval_task_line.write(write)
+            _logger.info("set_canceled_status write %s , %s", approval_task_line, write)
+            with approval_task_line.env.cr.savepoint():
+                approval_task_line.write(write)
+                _logger.info("set_canceled_status write done")
 
             return kwargs
         else:
@@ -537,9 +547,10 @@ Data ini akan di kirim ke approval.task agar bisa menentukan user mana yang bisa
             'user_approver_id': self.env.user.id,
             'user_approver': self.env.user
         }
+        kw['approval_task_line'] = approval_task_line
 
         def check_doa():
-            users = self.get_users(approval_task_line=approval_task_line, **kw)
+            users = self.get_users(**kw)
             user_delegation = self.env['user.delegation'].get_all_delegations(
                 delegatee_id=self.env.user.id, delegator_id=users.ids, limit=1
             )
@@ -550,6 +561,7 @@ Data ini akan di kirim ke approval.task agar bisa menentukan user mana yang bisa
                 result['user_approver_id'] = user_delegation.delegator_id.id
                 result['user_approver'] = user_delegation.delegator_id
             else:
+                _logger.warning('User not allow to approval: Call stack:\n%s', ''.join(traceback.format_stack()))
                 raise UserError("User not allow to approval.")
 
         if hasattr(approval_task_line, 'access_approval'):
@@ -633,7 +645,7 @@ Data ini akan di kirim ke approval.task agar bisa menentukan user mana yang bisa
             kw['is_approve'] = True
         else:
             kw['approval_task_line_next'] = approval_task_line_next
-
+        kw['approval_task_line_approve'] = approval_task_line_approve
         approval_template.after_approve(**kw)
         if is_approval_done:
             approval_template.done_approval(**kw)

@@ -69,7 +69,7 @@ class ApprovalAttachmentReference(models.Model):
         "ir.attachment",
         string="Attachment",
         required=True,
-        ondelete="restrict",
+        ondelete="cascade",
         index=True,
     )
     name = fields.Char()
@@ -104,8 +104,9 @@ class ApprovalAttachmentReference(models.Model):
     copy_attachment_id = fields.Many2one(
         "ir.attachment",
         string="Copy Attachment",
-        ondelete="restrict",
+        ondelete="cascade",
     )
+
     def ensure_copy_attachment(self):
         for rec in self:
             approval_instance = rec.approval_instance_id
@@ -129,7 +130,7 @@ class ApprovalAttachmentReference(models.Model):
         ),
     ]
     merge_able = fields.Boolean(
-        string="Mergeable",
+        string="Merge Able",
         compute="_compute_merge_able",
         store=True,
         compute_sudo=True
