@@ -12,19 +12,9 @@ _logger = logging.getLogger(__name__)
 
 class NotificationPartner(models.Model):
     _inherit = 'notification.partner'
-
     _description = 'Notification Partner WhatsApp Extension'
 
-    name = fields.Char(related='partner_id.name', readonly=True)
-    send_whatsapp = fields.Boolean(string='Send WhatsApp', default=False)
-    whatsapp_phone = fields.Char(string='WhatsApp Phone')
-    whatsapp_message = fields.Text(string='WhatsApp Message')
-
-    whatsapp_delivery_ids = fields.One2many(
-        comodel_name='notification.whatsapp',
-        inverse_name='notification_id',
-        string='WhatsApp Deliveries',
-    )
+    send_email = fields.Boolean(string='Send WhatsApp', default=False)
 
     @api.model
     def prepare_notification(self, payload, user=None, **kwargs):
@@ -34,7 +24,7 @@ class NotificationPartner(models.Model):
             **kwargs,
         )
         data = payload.get('data') or {}
-        send_whatsapp = payload.get('send_whatsapp', False) or data.get('send_whatsapp', False)
+        send_email = payload.get('send_email', False)
         whatsapp_message = (
             payload.get('body_whatsapp', False)
             or data.get('body_whatsapp', False)
@@ -42,10 +32,10 @@ class NotificationPartner(models.Model):
             or data.get('message', False)
         )
 
-        if send_whatsapp:
-            data_prepare['send_whatsapp'] = True
-        if whatsapp_message:
-            data_prepare['whatsapp_message'] = whatsapp_message
+        # if send_whatsapp:
+        #     data_prepare['send_whatsapp'] = True
+        # if whatsapp_message:
+        #     data_prepare['whatsapp_message'] = whatsapp_message
 
         return data_prepare
 

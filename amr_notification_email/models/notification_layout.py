@@ -3,9 +3,9 @@
 from odoo import fields, models
 
 
-class NotificationWhatsapp(models.Model):
-    _name = 'notification.whatsapp'
-    _description = 'WhatsApp Delivery Log'
+class NotificationLayout(models.Model):
+    _name = 'notification.layout'
+    _description = 'Layout'
 
     notification_id = fields.Many2one(
         comodel_name='notification.partner',
