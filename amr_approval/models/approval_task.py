@@ -93,6 +93,13 @@ class ApprovalTask(models.Model):
     approval_user_ids = fields.Many2many(
         'res.users', compute='_compute_approval_user_ids', compute_sudo=True
     )
+    approval_access_user_ids = fields.Many2many(
+        'res.users', relation='approval_task_approval_access_users_rel',
+        column1='approval_task_id',  # column of table referring to model
+        column2='user_id',  # column of table referring to comodel
+    )
+    source_application = fields.Char()
+    source_remote = fields.Boolean(readonly=True)
     assignment_able = fields.Boolean(
         compute='_compute_assignment_able'
     )
@@ -118,14 +125,10 @@ class ApprovalTask(models.Model):
     reminder_count = fields.Integer(
         'Count Reminder',
     )
-
     user_delegation_id = fields.Many2one(
         'user.delegation',
         compute='_compute_user_delegation'
     )
-
-    # compatible with notification generic requerement
-
     notification_to_user_id = fields.Many2one(
         'res.users', string='Notification to User',
         compute="_compute_notification_to_user_id", compute_sudo=True,
@@ -574,6 +577,8 @@ class ApprovalTask(models.Model):
             create_dict = self.prepare_create(**prepare_dict)
             approval_task = self.sudo().create(create_dict)
 
+        approval_task.update_approval_access_user()
+
         if not kwargs.get('skip_send_notification'):
             approval_task.send_notification(**kwargs)
 
@@ -584,7 +589,22 @@ class ApprovalTask(models.Model):
 
         return approval_task
 
+    def action_approval_aggregator(self):
+        self.update_approval_access_user()
+        self.send_to_approval_aggregator()
+
+    def get_source_url(self):
+        return self.url
+
     def action_approval_transaction(self):
+        url = self.get_source_url()
+        if url:
+            return {
+                'type': 'ir.actions.act_url',
+                'url': url,
+                'target': 'self',
+            }
+
         transaction_object = self.get_transaction_object()
         if transaction_object and have_method(transaction_object, 'action_approval_transaction'):
             win_dict = transaction_object.action_approval_transaction()
@@ -616,10 +636,18 @@ class ApprovalTask(models.Model):
         if not isinstance(users, models.BaseModel):
             users = record.get_users()
         if users:
-            _logger.info("get_users_for_approval company %s",record.company_id)
+            _logger.info("get_users_for_approval company %s", record.company_id)
             return users.get_users_for_approval(company=record.company_id)
         else:
             return users
+
+    def update_approval_access_user(self):
+        for rec in self:
+            users_for_approval = rec.get_users_for_approval()
+            if users_for_approval:
+                rec.approval_access_user_ids = [(6, 0, users_for_approval.ids)]
+            else:
+                rec.approval_access_user_ids = [(5, 0, 0)]
 
     def get_users_for_mobile_approval(self, **kwargs):
         record = self.ensure_one()
@@ -629,29 +657,7 @@ class ApprovalTask(models.Model):
         pass
 
     def send_to_approval_aggregator(self, **kwargs):
-        if 'approval.task.aggregator' in self.env:
-            for approval_task in self:
-                users_for_mobile_approval = approval_task.get_users_for_mobile_approval()
-                if users_for_mobile_approval:
-                    self.env['approval.task.aggregator'].create_or_update(
-                        source_number=approval_task.name or approval_task.transaction_display_name or approval_task.display_name,
-                        source_document=approval_task.document,
-                        source_description=approval_task.description,
-                        source_local=True,
-                        requester_id=approval_task.requester_id.id,
-                        source_url=approval_task.url,
-                        request_type='register_approval',
-                        source_model=approval_task.transaction_model_name,
-                        source_res_id=approval_task.transaction_id,
-                        approval_task_line_model_name=approval_task.approval_model,
-                        approval_task_line_id=approval_task.approval_res_id,
-                        user_ids=users_for_mobile_approval,
-                        request_approval_datetime=approval_task.date,
-                        request_approval_task_datetime=approval_task.request_approval_task_date,
-                        company_id=approval_task.company_id.id,
-                    )
-        else:
-            _logger.info("approval.task.request")
+        pass
 
     def done_to_approval_aggregator(self, **kwargs):
         if 'approval.task.aggregator' in self.env:
