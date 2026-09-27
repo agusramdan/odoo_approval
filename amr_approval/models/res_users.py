@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 
-import traceback
 import io
 import logging
 import base64
 
-# from io import BytesIO
 from PIL import Image, ImageChops
 
 from odoo import _, api, fields, models, tools

@@ -53,7 +53,7 @@ class ApprovalTaskLineMixin(models.AbstractModel):
     approval_user_ids = fields.Many2many(
         'res.users', compute='_compute_approval_user_ids', compute_sudo=True
     )
-    user_delegation_id = fields.Many2one('user.delegations', compute='_compute_user_delegation')
+    user_delegation_id = fields.Many2one('user.delegation', compute='_compute_user_delegation')
 
     def _compute_approval_user_ids(self):
         for rec in self:

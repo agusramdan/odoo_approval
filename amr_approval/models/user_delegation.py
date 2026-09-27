@@ -382,6 +382,8 @@ class UserDelegation(models.Model):
                 if rec.delegatee_id and (not fields or (fields and 'delegatee_id' in fields)):
                     delegator[rec.id]['delegatee_id'] = self.read_user(rec.delegatee_id)
 
+                delegator[rec.id]['document_approvals'] = rec.document_ids.mapping('code')
+
             if len(result) > 0:
                 for data in result:
                     if data['id'] not in delegator:
