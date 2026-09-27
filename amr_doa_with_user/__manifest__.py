@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': "Delegation of Authority (DoA) Activate",
-    'summary': """
-        Delegation of Authority (DoA)
-        """,
+    'summary': "Delegation of Authority (DoA) with user",
     'description': """
         This module activate a feature for Delegation of Authority (DOA).
         It allows users to delegate authority form access.
@@ -15,9 +13,5 @@
     # any module necessary for this one to work correctly
     'depends': ['base', 'mail', 'amr_approval'],
     # always loaded
-    'data': [
-        'views/approval_audit_log_views.xml',
-        'views/approval_task_views.xml',
-        'views/approval_task_line_views.xml',
-    ],
+    'data': [],
 }

@@ -12,7 +12,7 @@ class ResUsers(models.Model):
     @api.model
     def doa_exclude_group_ext_id(self):
         return ['base.group_user', 'base.group_system', 'base.group_erp_manager',
-                'amr_approval.group_doa_internal_user_create']
+                'amr_doa.group_doa_internal_user_create']
 
     @tools.ormcache()
     def doa_exclude_groups(self):

@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': "Delegation of Authority (DoA) Configuration",
-    'summary': """
-        Delegation of Authority (DoA) Configuration
-        """,
+    'summary': "Delegation of Authority (DoA) Configuration",
     'description': """
         This module config a feature for Delegation of Authority (DOA).
         It allows users to delegate authority form access.
@@ -16,15 +14,8 @@
     'depends': ['base', 'mail', 'antareja_base'],
     # always loaded
     'data': [
-        #'data/user_delegate_cron.xml',
-        #'data/user_delegate_sequence.xml',
-
-        #'security/base_groups.xml',
-        #'security/ir.model.access.csv',
-
-        #'views/user_delegation_views.xml',
-        #'views/approval_audit_log_views.xml',
-        #'views/res_config_settings_views.xml',
+        'security/base_groups.xml',
+        'security/ir.model.access.csv',
         'views/menuitem_views.xml',
     ],
 }

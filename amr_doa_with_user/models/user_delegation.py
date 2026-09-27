@@ -86,7 +86,7 @@ class UserDelegation(models.Model):
                     for group in rec.delegator_id.groups_id:
                         self.has_delegate_group.clear_cache(self, rec.delegatee_id.id, group.id)
 
-    def get_all_delegations(self, delegatee_id=None, delegator_id=None, group_id=None, company_id=None, limit=None):
+    def get_all_delegations(self, delegatee_id=None, delegator_id=None, group_id=None, company_id=None, limit=None, document_id=None):
         """
         Ambil delegasi aktif untuk proxy tertentu.
         Jika group_id diberikan, hanya delegator yang termasuk dalam grup tersebut.
@@ -101,26 +101,43 @@ class UserDelegation(models.Model):
         if company_id:
             domain.extend([
                 ('delegator_id.company_ids', '=', int(company_id)),
-                ('delegatee_id.company_ids', '=', int(company_id))
+                ('delegatee_id.company_ids', '=', int(company_id)),
+                ('company_id', 'in', [False, int(company_id)]),
             ])
 
         if delegatee_id:
-            if isinstance(delegatee_id, list):
+            if isinstance(delegatee_id, models.Model):
+                domain.append(('delegatee_id', 'in', delegatee_id.ids))
+            elif isinstance(delegatee_id, list):
                 domain.append(('delegatee_id', 'in', delegatee_id))
             else:
                 domain.append(('delegatee_id', '=', delegatee_id))
 
         if delegator_id:
-            if isinstance(delegator_id, list):
+            if isinstance(delegator_id, models.Model):
+                domain.append(('delegator_id', 'in', delegator_id.ids))
+            elif isinstance(delegator_id, list):
                 domain.append(('delegator_id', 'in', delegator_id))
             else:
                 domain.append(('delegator_id', '=', delegator_id))
 
         if group_id:
-            if isinstance(group_id, list):
+            if isinstance(group_id, models.Model):
+                domain.append(('delegator_id.group_id', 'in', group_id.ids))
+            elif isinstance(group_id, list):
                 domain.append(('delegator_id.group_id', 'in', group_id))
             else:
                 domain.append(('delegator_id.group_id', '=', group_id))
+
+        if document_id:
+            domain.append('|')
+            domain.append(('document_option', '=', 'all'))
+            if isinstance(document_id, models.Model):
+                domain.append(('document_ids', 'in', document_id.ids))
+            elif isinstance(group_id, list):
+                domain.append(('document_ids', 'in', document_id))
+            else:
+                domain.append(('document_ids', '=', document_id))
 
         return self.sudo().search(domain, limit=limit, order='start_date desc,end_date')
 

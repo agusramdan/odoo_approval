@@ -1,13 +1,26 @@
 <odoo>
     <menuitem id="menu_doa_root" name="Delegation of Authority" sequence="10"/>
-    <!-- Menu -->
 
-    <menuitem id="menu_user_delegation" name="User Delegation" parent="menu_doa_root"/>
-    <menuitem id="menu_user_delegation_rules" name="User Delegation Rules" parent="menu_user_delegation"
+    <!-- Menu -->
+    <menuitem id="menu_user_delegation" name="User Delegation"
+              parent="menu_doa_root"
+    />
+    <menuitem id="menu_user_delegation_rules" name="User Delegation Rules"
+              parent="menu_user_delegation"
               action="antareja_base.action_user_delegation"
     />
-    <menuitem id="configuration_menu" name="Configuration" parent="menu_doa_root" sequence="99"
+    <menuitem id="configuration_menu" name="Configuration" sequence="99"
+              parent="menu_doa_root"
               groups="base.group_erp_manager"
     />
 
+    <!-- technical -->
+    <menuitem id="technical_menu_user_delegation" name="User Delegation"
+              parent="antareja_base.base_parent_menu"
+    />
+    <menuitem id="technical_menu_user_delegation_rules" name="User Delegation Rules"
+              parent="technical_menu_user_delegation"
+              action="antareja_base.action_user_delegation"
+              groups="base.group_erp_manager"
+    />
 </odoo>

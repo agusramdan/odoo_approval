@@ -2,7 +2,7 @@
     <record id="view_approval_task_tree" model="ir.ui.view">
         <field name="name">approval.task.line.tree</field>
         <field name="model">approval.task.line</field>
-        <field name="inherit_id" ref="amr_base.view_approval_task_line_tree"/>
+        <field name="inherit_id" ref="amr_approval.view_approval_task_line_tree"/>
         <field name="arch" type="xml">
             <field name="approval_instance_id" position="after">
                 <field name="user_delegation_id" optional="hide" groups="base.group_no_one" />
