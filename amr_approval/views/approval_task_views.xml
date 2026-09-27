@@ -39,13 +39,19 @@
                 <field name="approval_model" string="Model" optional="hide" groups="base.group_no_one"/>
                 <field name="approval_instance_id" optional="hide" groups="base.group_no_one"/>
                 <field name="approval_document_id" optional="hide" groups="base.group_no_one"/>
-                <field name="notification_approval_id" string="Notification" optional="hide" groups="base.group_no_one"/>
-                <field name="notification_reminder_id" string="Reminder" optional="hide" groups="base.group_no_one"/>
+<!--                <field name="notification_approval_id" string="Notification" optional="hide" groups="base.group_no_one"/>-->
+<!--                <field name="notification_reminder_id" string="Reminder" optional="hide" groups="base.group_no_one"/>-->
                 <field name="aging" optional="hide"/>
                 <field name="aging_display" optional="hide"/>
                 <field name="reminder_last_datetime" optional="hide" groups="base.group_no_one"/>
                 <field name="reminder_next_datetime" optional="hide" groups="base.group_no_one"/>
+
+                <field name="user_delegation_ids" widget="many2many_tags" optional="hide" groups="base.group_no_one"/>
+                <field name="user_delegator_ids" widget="many2many_tags" optional="hide" groups="base.group_no_one"/>
+                <field name="user_delegatee_ids" widget="many2many_tags" optional="hide" groups="base.group_no_one"/>
+
                 <field name="approval_user_ids" string="Approvers" widget="many2many_tags" optional="hide" groups="base.group_no_one"/>
+                <field name="approval_access_user_ids" string="Approval Access" widget="many2many_tags" optional="hide" groups="base.group_no_one"/>
                 <button name="action_assign" string="Assignment User" type="object" class="oe_highlight"
                         icon="fa-solid fa-user-plus text-success" groups="base.group_system" help="Assign Responsible User"/>
                 <button name="action_approval_transaction" string="Show Detail" type="object" class="oe_highlight"/>

@@ -5,13 +5,14 @@ from . import report_attachment
 
 # Notification
 from . import notification_template
+from . import chatter_template
+from . import actions_server
 
 # Responsible model
 from . import approval_responsible
 
 # DOA
 from . import user_delegation
-
 
 # Approval
 from . import approval_mixin
@@ -23,6 +24,7 @@ from . import approval_task
 from . import approval_document
 from . import approval_template
 from . import approval_template_line
+from . import approval_template_notification
 from . import approval_instance
 from . import approval_task_line
 from . import approval_instance_able

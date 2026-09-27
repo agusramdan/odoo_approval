@@ -552,7 +552,7 @@ Data ini akan di kirim ke approval.task agar bisa menentukan user mana yang bisa
         def check_doa():
             users = self.get_users(**kw)
             user_delegation = self.env['user.delegation'].get_all_delegations(
-                delegatee_id=self.env.user.id, delegator_id=users.ids, limit=1
+                delegatee_id=self.env.user, delegator_id=users, limit=1
             )
             if user_delegation:
                 result['execution_method'] = user_delegation.get_execution_method()
@@ -717,6 +717,15 @@ Data ini akan di kirim ke approval.task agar bisa menentukan user mana yang bisa
 
         return approve_task_line_between
 
+    def get_previous_approval_task_line(self, approval_task_line_reject, **kwargs):
+        previous = approval_task_line_reject.browse()
+        approval_task_lines = self.get_all_approved_task_line(**kwargs)
+        for task in approval_task_lines:
+            if approval_task_line_reject.id == task.id:
+                break
+            previous = task
+        return previous
+
     @api.model
     def plan_to_reject(self, approval_task_line_reject=None, **kwargs):
         """
@@ -769,7 +778,8 @@ Data ini akan di kirim ke approval.task agar bisa menentukan user mana yang bisa
             )
         elif reject_to_method == 'legacy':
             approval_task_line_next, approval_task_line_between = approval_task_line_reject.reject_method_legacy(
-                **kwargs)
+                **kwargs
+            )
         else:
             approval_task_line_next = kwargs.get('approval_task_line_next')
             approval_task_line_between = kwargs.get(

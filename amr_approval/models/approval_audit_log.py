@@ -29,7 +29,7 @@ class ApprovalAuditLog(models.Model):
     group_name = fields.Char()
     job_position = fields.Char()
     user_delegation_id = fields.Many2one('user.delegation', string="Delegate Rule")
-
+    delegator_user_id = fields.Many2one('res.users', string="On Behalf Of")
     delegatee_user_id = fields.Many2one('res.users', string="Acting User")
     delegatee_job_position = fields.Char()
 

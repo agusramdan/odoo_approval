@@ -283,6 +283,15 @@
                                     />
                                 </group>
                             </group>
+                            <field name="notification_ids">
+                                <tree editable="bottom">
+                                    <field name="approval_template_id" invisible="1"/>
+                                    <field name="model" invisible="1"/>
+                                    <field name="approval_task_line_model" invisible="1"/>
+                                    <field name="notification_type"/>
+                                    <field name="action_id" domain="[('model_id.model','in',[model, approval_task_line_model, 'approval.task','approval.instance']),('notification_type','in',[False,notification_type]),]"/>
+                                </tree>
+                            </field>
                         </page>
                     </notebook>
                 </sheet>

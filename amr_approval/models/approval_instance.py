@@ -1,19 +1,12 @@
 # -*- coding: utf-8 -*-
 
-import io
 import logging
-import base64
-
-from io import BytesIO
-from PyPDF2 import PdfFileReader, PdfFileWriter
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, AccessError
 from odoo.tools import datetime
 
 from ..tools.utils import have_method, safe_call_method
-
-from PIL import Image, ImageChops
 
 _logger = logging.getLogger(__name__)
 
@@ -58,7 +51,7 @@ class ApprovalInstanceMixin(models.AbstractModel):
         'approval.attachment.reference', 'approval_instance_id', string='Approval Attachment References', readonly=True
     )
     flag_reject = fields.Boolean()
-    user_reject = fields.Many2one('res.users',readonly=True, ondelete='set null',)
+    user_reject = fields.Many2one('res.users', readonly=True, ondelete='set null', )
     note_reject = fields.Text()
     # reason = _("Rejected by %s, Reason: %s") % (self.env.user.name, self.name) _compute_banner_reject
     banner_reject = fields.Text(compute='_compute_banner_reject')
@@ -75,9 +68,9 @@ class ApprovalInstanceMixin(models.AbstractModel):
     transaction_model_name = fields.Char(related='model_id.model', store=True)
     transaction_status = fields.Char()
     access_approval = fields.Boolean(
-        string="Can Approve",
-        compute="_compute_access_approval",
-        store=False,
+        string="Can Approve", related='approval_task_id.user_have_access_to_approval'
+        # compute="_compute_access_approval",
+        # store=False,
     )
     access_requester = fields.Boolean(
         string="Requester",
@@ -123,14 +116,7 @@ class ApprovalInstanceMixin(models.AbstractModel):
     def get_banner_waiting_approval(self):
         if not self:
             return ""
-        banner_waiting_approval = ""
-        approval_user_ids = self.approval_task_id.approval_user_ids
-        if approval_user_ids:
-            approver_user = " / ".join([user.name for user in approval_user_ids])
-            approver_name = "Waiting for Approval ( " + approver_user + " )"
-            banner_waiting_approval = str(approver_name)
-
-        return banner_waiting_approval
+        return self.approval_task_id.get_banner_waiting_approval()
 
     # approval_task_id = fields.Many2many(
     #     'approval.task',
@@ -209,9 +195,13 @@ class ApprovalInstanceMixin(models.AbstractModel):
 
     @api.model
     def ensure_disable_auto_register(self, transaction_object):
-        if transaction_object and not transaction_object.env.context.get('__skip_approval_transaction_status'):
+        if (
+                transaction_object and
+                not transaction_object.env.context.get('__skip_auto_register_approval_task_line_status')
+        ):
             transaction_object = transaction_object.with_context(
-                __skip_approval_transaction_status=True
+                __skip_approval_transaction_status=True,
+                __skip_auto_register_approval_task_line_status=True
             )
         return transaction_object
 
@@ -575,7 +565,7 @@ class ApprovalInstanceMixin(models.AbstractModel):
         transaction_object = kwargs.get('transaction_object') or approval_instance.get_transaction_object()
         kwargs['transaction_object'] = transaction_object = self.ensure_disable_auto_register(transaction_object)
         approval_task_line = kwargs.get('approval_task_line') or approval_instance.get_next_approval_task_line()
-        approval_instance.flag_reject=False
+        approval_instance.flag_reject = False
         if transaction_object and not transaction_object.env.context.get('__skip_approval_transaction_status'):
             transaction_object = kwargs['transaction_object'] = transaction_object.with_context(
                 __skip_approval_transaction_status=True
@@ -1122,6 +1112,42 @@ class ApprovalInstanceMixin(models.AbstractModel):
         return self.env['report.composer.wizard'].prepare_action_report_composer(
             self._name, self.id, attachments
         )
+
+    def send_notification_approval(self, **kwargs):
+        self.ensure_one()
+        # notification_log = None
+        try:
+            approval_instance = kwargs.get('approval_instance')
+            if not approval_instance:
+                approval_instance = self
+                kwargs = approval_instance._prepare_action(**kwargs)
+            approval_template = kwargs.get('approval_template') or approval_instance.approval_template_id
+            approval_task = kwargs.get('approval_task') or approval_instance.approval_task_id
+            notification_to_users = approval_task.get_users_for_notification(**kwargs)
+            approval_template.send_notification_approval(notification_to_users, **kwargs)
+        except Exception:
+            _logger.exception("skip error")
+        finally:
+            _logger.info("Send Notification done")
+        # return notification_log
+
+    def send_notification_reminder(self, **kwargs):
+        self.ensure_one()
+        # notification_log = None
+        try:
+            approval_instance = kwargs.get('approval_instance')
+            if not approval_instance:
+                approval_instance = self
+                kwargs = approval_instance._prepare_action(**kwargs)
+            approval_template = kwargs.get('approval_template') or approval_instance.approval_template_id
+            approval_task = kwargs.get('approval_task') or approval_instance.approval_task_id
+            notification_to_users = approval_task.get_users_for_notification(**kwargs)
+            approval_template.send_notification_reminder(notification_to_users, **kwargs)
+        except Exception:
+            _logger.exception("skip error")
+        finally:
+            _logger.info("Send remainder Notification done")
+        # return notification_log
 
 
 class ApprovalInstance(models.Model):

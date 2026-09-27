@@ -181,7 +181,6 @@ class ApprovalMatrixRuleLine(models.Model):
         ('to_previous', "To Previous"),
         ('to_task_line', "To Task Line"),
     ], default='to_requestor')
-
     reject_to_line_id = fields.Many2one(
         'approval.matrix.rule.line',
         "Reject To Line",

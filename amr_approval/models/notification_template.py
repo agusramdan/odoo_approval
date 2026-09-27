@@ -5,7 +5,7 @@ import logging
 import traceback
 
 from odoo import api, fields, models
-from ..tools.utils import safe_call_method, have_method, remove_odoo_objects,normalize_binary
+from ..tools.utils import safe_call_method, have_method, remove_odoo_objects, normalize_binary
 from odoo.exceptions import ValidationError
 from odoo.tools.safe_eval import safe_eval, test_python_expr
 from odoo.tools.misc import clean_context
@@ -134,45 +134,50 @@ class NotificationTemplate(models.Model):
         return record.id if record else None
 
     def ensure_record(self, **kwargs):
-        if not self:
+        if self:
+            self.ensure_one()
+            notification_model = self.model
+        else:
+            notification_model = kwargs.get('notification_model')
+        if not notification_model:
             return None
-        self.ensure_one()
-        _logger.info('Using model %s.', self.model )
-        if self.model == 'approval.task':
+
+        _logger.info('Using model %s.', notification_model)
+        if notification_model == 'approval.task':
             approval_task = kwargs.get('approval_task')
             if isinstance(approval_task, models.Model):
                 _logger.info('approval_task id %s , %s ', approval_task.transaction_model_name, approval_task)
                 return approval_task
 
-        if self.model == 'approval.instance':
+        if notification_model == 'approval.instance':
             approval_instance = kwargs.get('approval_instance')
             if isinstance(approval_instance, models.Model):
-                _logger.info('Instance id %s , %s ',approval_instance.transaction_model_name,approval_instance)
+                _logger.info('Instance id %s , %s ', approval_instance.transaction_model_name, approval_instance)
                 return approval_instance
 
         # check transaction_object
         transaction_object = kwargs.get('transaction_object')
         if transaction_object and isinstance(transaction_object, models.Model):
-            if transaction_object._name == self.model:
-                _logger.info('transaction_object id %s , %s ', self.model, transaction_object)
+            if transaction_object._name == notification_model:
+                _logger.info('transaction_object id %s , %s ', notification_model, transaction_object)
                 return transaction_object
         _logger.warning("Not transaction_object %s", transaction_object)
 
         # check approval_task_line
         approval_task_line = kwargs.get('approval_task_line')
         if approval_task_line and isinstance(approval_task_line, models.Model):
-            if approval_task_line._name == self.model:
-                _logger.info('approval_task_line id %s , %s ', self.model, transaction_object)
+            if approval_task_line._name == notification_model:
+                _logger.info('approval_task_line id %s , %s ', notification_model, transaction_object)
                 return approval_task_line
         _logger.warning("Not approval_task_line %s", approval_task_line)
 
         transaction_id = kwargs.get("transaction_id")
         transaction_model_name = kwargs.get("transaction_model_name")
-        if transaction_id and transaction_model_name and transaction_model_name == self.model:
+        if transaction_id and transaction_model_name and transaction_model_name == notification_model:
             try:
-                return self.env[self.model].browse(transaction_id).exists()
+                return self.env[notification_model].browse(transaction_id).exists()
             except Exception:
-                _logger.warning("data remove %s , %s.", self.model, transaction_id)
+                _logger.warning("data remove %s , %s.", notification_model, transaction_id)
         return None
 
     def send_notification_to_users(self, users, res_id=None, **kwargs):
@@ -186,7 +191,7 @@ class NotificationTemplate(models.Model):
         old_res_id = res_id
         res_id = self.ensure_res_id(**kwargs) or old_res_id
         if old_res_id != res_id:
-            _logger.info('Change old_res_id %s -> %s',old_res_id, res_id)
+            _logger.info('Change old_res_id %s -> %s', old_res_id, res_id)
         if not res_id:
             _logger.info("no res_id %s", res_id)
             return
@@ -235,7 +240,7 @@ class NotificationTemplate(models.Model):
         notif_log = notif_log or {}
         payload = self.get_notification_payload(notification_to_user, res_id, **kwargs)
         payload_error = payload.pop('payload_error', None)
-        payload= remove_odoo_objects(payload)
+        payload = remove_odoo_objects(payload)
         notif_log['payload'] = json.dumps(payload, indent=4)
         notif_log['payload_error'] = payload_error
         notif_log = self.send_notification_payload(notification_to_user, payload, notif_log, **kwargs) or notif_log
@@ -310,7 +315,7 @@ class NotificationTemplate(models.Model):
                 'author_id': self.env.user.partner_id.id,
             }
             message = self.env['mail.message'].new(message_data)
-            layout_data={
+            layout_data = {
                 'message': message,
                 'company': company,
                 'document': document,
@@ -319,8 +324,8 @@ class NotificationTemplate(models.Model):
             values['body_html'] = body_html
 
         data.update(
-            body_email = values.get('body_html'),
-            subject =  values.get("subject"),
+            body_email=values.get('body_html'),
+            subject=values.get("subject"),
         )
         return data
 
@@ -415,13 +420,13 @@ class NotificationTemplate(models.Model):
                 _logger.exception("field %s", field)
                 continue
 
-        approval_task_line = kwargs.get('approval_task_line')
+        approval_task_line = kwargs.get('approval_task_line') or ctx.get('approval_task_line')
         if approval_task_line and isinstance(approval_task_line, models.BaseModel):
             request['approval_task_line'] = approval_task_line
             request['source_approval_model'] = approval_task_line._name
             request['source_approval_res_id'] = approval_task_line.id
 
-        transaction_object = kwargs.get('transaction_object')
+        transaction_object = kwargs.get('transaction_object') or ctx.get('transaction_object')
         if transaction_object and isinstance(transaction_object, models.BaseModel):
             request['transaction_object'] = transaction_object
             request['source_model'] = transaction_object._name
@@ -491,99 +496,6 @@ class NotificationTemplate(models.Model):
 
     @api.model
     def send_notification_email(self, notification_to_user, payload, notif_log, **kwargs):
-        # payload is firebase format notification
-        # if not self.send_email:
-        #     return notif_log
-        # move to prepare_data_email_eval_context
-        # res_id = kwargs.get('res_id') or payload.get('res_id')
-        # if not res_id:
-        #     _logger.warning("res_id not set %s", res_id)
-        #     return notif_log
-        # if res_id:
-        #     record = self.env[self.model].sudo().browse(res_id)
-        #     if not record:
-        #         _logger.warning("res_id not found %s", res_id)
-        #         return notif_log
-        # else:
-        #     _logger.warning("res_id not set %s", res_id)
-        #     return notif_log
-        # values = {}
-        #
-        # company = getattr(record, 'company_id') or self.get_company(**kwargs) or self.env.company
-        # kwargs.setdefault('company', company)
-        # layout_xmlid = self.sudo().get_approval_email_layout_xmlid(**kwargs)
-        # enhance_layout = bool(layout_xmlid)
-        # if self.template_email:
-        #     try:
-        #         ctx = dict(clean_context(self.env.context))
-        #         ctx['notification_to_user'] = notification_to_user
-        #         _logger.info("after ctx %s ", ctx)
-        #         if self.sudo_generate_email:
-        #             # generate email perlu sudo.
-        #             # tanpa itu akan terjadi error access data.
-        #             # karena beberapa data (seperti user,company tidak bisa diakses)
-        #             template = self.template_email.sudo().with_context(ctx)
-        #         else:
-        #             template = self.template_email.with_context(ctx)
-        #         values = template.generate_email([res_id], self.get_email_fields())[res_id]
-        #         enhance_layout = True
-        #     except Exception:
-        #         stack_trace = traceback.format_exc()
-        #         notif_log.update(
-        #             mail_id=0,
-        #             mail_model=False,
-        #             mail_error=stack_trace
-        #         )
-        #         _logger.exception("process %s , %s", self.model, res_id)
-
-        # if not values:
-        #     body = payload.get('body', None)
-        #     body_html = payload.get('body_email', None) or payload.get('body_html', None)
-        #     enhance_layout = not payload.get('body_email_generate_with_layout', None)
-        #     if not body_html and body:
-        #         body_html = plaintext2html(body)
-        #     if not body_html:
-        #         notif_log.update(
-        #             mail_id=0,
-        #             mail_model=False,
-        #             mail_error="No body_html can generate. Skip send email"
-        #         )
-        #     values = {
-        #         'subject': payload.get('title', None),
-        #         'body_html': body_html,
-        #         'body': body,
-        #         'auto_delete': self.auto_delete,
-        #     }
-
-        # if enhance_layout and values.get('body_html') and layout_xmlid:
-        #     layout_data = dict(payload.get('layout') or {})
-        #     record_name = values.get('record_name')
-        #     if have_method(record, 'get_internal_document'):
-        #         document = record.get_internal_document()
-        #     else:
-        #         document = record._description
-        #     if not record_name:
-        #         if have_method(record, 'get_internal_number'):
-        #             record_name = record.get_internal_document()
-        #         else:
-        #             record_name = values.get('ref') or record.display_name
-        #     message_data = {
-        #         'body': values.get('body_html'),
-        #         'subject': values.get("subject"),
-        #         'record_name': record_name,
-        #         'model': self.model,
-        #         'res_id': res_id,
-        #         'author_id': self.env.user.partner_id.id,
-        #     }
-        #     message = self.env['mail.message'].new(message_data)
-        #     layout_data.update({
-        #         'message': message,
-        #         'company': company,
-        #         'document': document,
-        #     })
-        #     body_html = self.sudo().render_qweb_template(layout_xmlid, layout_data)
-        #     values['body_html'] = body_html
-
         values = {
             'subject': payload.get("subject") or payload.get('title', None),
             'body_html': payload.get('body_email') or payload.get('body_html'),
@@ -633,26 +545,6 @@ class NotificationTemplate(models.Model):
 
     @api.model
     def send_notification_mobile(self, notification_to_user, payload, notif_log, **kwargs):
-        # if not self.send_mobile:
-        #     return notif_log
-        # if 'mobile.notification.client' in self.env:
-        #     try:
-        #         with self.env.cr.savepoint():
-        #             mobile_notification_client = self.env['mobile.notification.client']
-        #             notif = mobile_notification_client.create_payload(to_user_id=notification_to_user.id, **payload)
-        #             notif.process()
-        #             if notif and notif_log is not None:
-        #                 notif_log['mobile_id'] = notif.id
-        #                 notif_log['mobile_model'] = notif._name
-        #             notif.dispatch_send()
-        #     except Exception as e:
-        #         stack_trace = traceback.format_exc()
-        #         notif_log.update(
-        #             mobile_id=0,
-        #             mobile_model=False,
-        #             mobile_error=stack_trace
-        #         )
-        # else:
         _logger.warning("Without install mobile notification client addons please.")
         return notif_log
 
@@ -717,3 +609,10 @@ class NotificationTemplate(models.Model):
 
         # 4. Default sesuai versi
         return 'mail.mail_notification_light'
+
+    def run_action_notif_approval(self, eval_context):
+        self.ensure_one()
+        notification_to_users = eval_context.pop('notification_to_users')
+        eval_context['res_id'] = eval_context.get('active_id') or eval_context.get('res_id')
+        self.send_notification_to_users(notification_to_users,  **eval_context)
+        return False

@@ -1,0 +1,110 @@
+<odoo>
+    <data>
+        <record id="chatter_template_filter" model="ir.ui.view">
+            <field name="name">chatter.template.search</field>
+            <field name="model">chatter.template</field>
+            <field name="arch" type="xml">
+                <search string="External Data">
+                    <field name="name" />
+                    <field name="model" />
+                    <field name="chatter_type"/>
+                    <separator />
+                    <filter string="Archived" name="inactive" domain="[('active', '=', False)]" />
+                    <group expand="0" string="Group By">
+                        <filter name="group_model" string="Model" domain="[]" context="{'group_by': 'model'}" />
+                        <filter name="group_chatter_type" string="Type" domain="[]" context="{'group_by': 'chatter_type'}" />
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="chatter_template_form" model="ir.ui.view">
+            <field name="name">chatter.template.form</field>
+            <field name="model">chatter.template</field>
+            <field name="priority" eval="99" />
+            <field name="arch" type="xml">
+                <form string="sync">
+                    <header>
+                        <field name="active" invisible="1" />
+                        <field name="model" invisible="1"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name" />
+                                <field name="send_chat" />
+                                <field name="send_email" />
+                                <field name="send_firebase" />
+                                <field name="send_whatsapp" />
+                            </group>
+                            <group>
+                                <field name="model_id" />
+                                <field name="chatter_type"/>
+                                <field name="approval_email_layout_xmlid"/>
+                                <field name="template_email" domain="[('model_id','=',model_id)]" string="Email"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Body">
+                                <group>
+                                    <field name="body" widget="ace" options="{'mode': 'xml'}"/>
+                                </group>
+                            </page>
+                            <page string="Python Code" name="code" autofocus="autofocus" >
+                                <field name="code" widget="ace" options="{'mode': 'python'}"
+                                       placeholder="Enter Python code here. Help about Python expression is available in the help tab of this document."
+                                />
+                            </page>
+
+                            <page string="Help" name="help_info" autofocus="autofocus" >
+                                <div style="margin-top: 4px;">
+                                    <h3>Help with Python expressions</h3>
+                                    <p>Various fields may use Python code or Python expressions. The following variables can be used:</p>
+                                    <ul>
+                                        <li><code>env</code>: Odoo Environment on which the action is triggered</li>
+                                        <li><code>transaction_object</code>: TODO </li>
+                                        <li><code>time</code>, <code>datetime</code>, <code>dateutil</code>, <code>timezone</code>: useful Python libraries</li>
+                                        <li><code>log(message, level='info')</code>:logging function to record debug information in <code>ir.logging</code> table</li>
+                                        <li><code>UserError</code>: Warning Exception to use with <code>raise</code></li>
+                                        <li>To return an body: <code> = {...}</code></li>
+                                        <li>Bila ingin custom approval line bisa memasukan data ke response['approval_line']</li>
+                                    </ul>
+                                    <div >
+                                        <p>Example of Python code</p>
+<code style="white-space: pre-wrap">
+
+</code>
+                                    </div>
+                                </div>
+                            </page>
+
+                        </notebook>
+                    </sheet>
+                    <footer/>
+                </form>
+            </field>
+        </record>
+
+        <record id="chatter_template_tree" model="ir.ui.view">
+            <field name="name">chatter.template.tree</field>
+            <field name="model">chatter.template</field>
+            <field name="priority" eval="99" />
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="active" invisible="1" />
+                    <field name="name" />
+                    <field name="model_id" />
+                    <field name="chatter_type"/>
+                </tree>
+            </field>
+        </record>
+
+        <record model="ir.actions.act_window" id="chatter_template_action">
+            <field name="name">Notification Template</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">chatter.template</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[]</field>
+        </record>
+    </data>
+</odoo>

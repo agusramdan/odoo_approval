@@ -58,10 +58,6 @@
                                 <field name="body_html" widget="ace" options="{'mode': 'xml'}"/>
                             </page>
 
-                            <page string="Chatter">
-                                <field name="body_chatter" widget="ace" options="{'mode': 'xml'}"/>
-                            </page>
-
                             <page string="Chat">
                                 <field name="body_chat" widget="ace" options="{'mode': 'xml'}"/>
                             </page>

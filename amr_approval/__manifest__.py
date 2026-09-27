@@ -12,7 +12,7 @@
     'author': "Agus Muhammad Ramdan",
     'website': "http://agus.ramdan.tech",
     'category': 'Base',
-    'version': '13.0.1.3.2',
+    'version': '13.0.1.3.3',
     'depends': ['base', 'base_setup', 'mail'],
     'data': [
         'security/base_groups.xml',
@@ -42,6 +42,7 @@
         'views/user_delegation_views.xml',
 
         # 'views/res_users_views.xml',
+        'views/ir_actions_views.xml',
         'views/res_company_views.xml',
         'views/res_config_settings_views.xml',
 

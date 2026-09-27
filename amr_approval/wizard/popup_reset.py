@@ -32,8 +32,8 @@ class PopupRejectMessageWizard(models.TransientModel):
 
         return approval_instance.with_context(
             dict(context, default_notes=self.name, __reset_to_draft_reason=self.name)
-        ).do_approve(
+        ).do_reset_to_draft(
             reason=self.name,
             notes_chatter=self.get_note_chatter(),
-            popup_approve=self
+            popup_reset_to_draft=self
         )

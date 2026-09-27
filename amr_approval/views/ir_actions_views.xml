@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo><data>
+
+    <record id="ir_actions_server_view_form"  model="ir.ui.view">
+        <field name="name">ir.actions.server.view.form.inherit.approval</field>
+        <field name="model">ir.actions.server</field>
+        <field name="inherit_id" ref="base.view_server_action_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='link_field_id']" position="after">
+                <field name="notification_template_id"
+                    attrs="{'invisible': [('state', '!=', 'notif_approval')],
+                            'required': [('state', '=', 'notif_approval')]}"
+                />
+                <field name="notification_type" readonly="1"
+                    attrs="{'invisible': [('state', '!=', 'notif_approval')],}"
+                />
+                <field name="chatter_template_id"
+                    attrs="{'invisible': [('state', '!=', 'chatter')],
+                            'required': [('state', '=', 'chatter')]}"
+                />
+                <field name="chatter_type" readonly="1"
+                    attrs="{'invisible': [('state', '!=', 'chatter')],}"
+                />
+            </xpath>
+        </field>
+    </record>
+
+</data></odoo>

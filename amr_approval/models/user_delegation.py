@@ -46,6 +46,7 @@ class UserDelegation(models.Model):
     document_option = fields.Selection(
         [('all', 'All Documents'),
          ('selected', 'Selected Documents')],
+        required=True,
         default='all'
     )
     document_ids = fields.Many2many(
@@ -267,7 +268,7 @@ class UserDelegation(models.Model):
     #                 for group in rec.delegator_id.groups_id:
     #                     self.has_delegate_group.clear_cache(self, rec.delegatee_id.id, group.id)
     #
-    def get_all_delegations(self, delegatee_id=None, delegator_id=None, group_id=None, company_id=None, limit=None):
+    def get_all_delegations(self, delegatee_id=None, delegator_id=None, group_id=None, company_id=None, limit=None, document_id=None):
         return self.browse()
     #     """
     #     Ambil delegasi aktif untuk proxy tertentu.

@@ -245,7 +245,7 @@ class ApprovalTemplateMixin(models.AbstractModel):
     invoke_before_approve = fields.Char()
     invoke_after_approve = fields.Char()
     notes_chatter_approved = fields.Boolean("Note Chatter Approve")
-
+    notes_chatter_approved_action_id = fields.Many2one('ir.actions.server')
     available_action_reject = fields.Boolean()
     invoke_validate_reject = fields.Char()
     reject_action_type = fields.Selection([
@@ -259,6 +259,7 @@ class ApprovalTemplateMixin(models.AbstractModel):
     invoke_before_reject = fields.Char()
     invoke_after_reject = fields.Char()
     notes_chatter_rejected = fields.Boolean("Note Chatter Rejected")
+    notes_chatter_rejected_action_id = fields.Many2one('ir.actions.server')
 
     available_action_cancel = fields.Boolean()
     invoke_validate_cancel = fields.Char()
@@ -273,6 +274,7 @@ class ApprovalTemplateMixin(models.AbstractModel):
     invoke_before_cancel = fields.Char()
     invoke_after_cancel = fields.Char()
     notes_chatter_cancel = fields.Boolean("Note Chatter Cancel")
+    notes_chatter_cancel_action_id = fields.Many2one('ir.actions.server')
 
     available_action_reset_to_draft = fields.Boolean()
     invoke_validate_reset_to_draft = fields.Char()
@@ -287,11 +289,15 @@ class ApprovalTemplateMixin(models.AbstractModel):
     invoke_before_reset_to_draft = fields.Char()
     invoke_after_reset_to_draft = fields.Char()
     notes_chatter_reset_to_draft = fields.Boolean("Note Chatter To Draft")
+    notes_chatter_reset_to_draft_action_id = fields.Many2one('ir.actions.server')
 
     reminder_interval_number = fields.Integer(default=1, help="Repeat every x.")
     reminder_interval_type = fields.Selection(
         [('minutes', 'Minutes'), ('hours', 'Hours'), ('days', 'Days'), ('weeks', 'Weeks'), ('months', 'Months')],
         string='Interval Unit', default='weeks'
+    )
+    notification_ids = fields.One2many(
+        'approval.template.notification', 'approval_template_id', 'Notification Templates'
     )
     notification_reminder_id = fields.Many2one(
         'notification.template',
@@ -1027,13 +1033,6 @@ for rec in self:
             return approval_template_line.get_next_approval_task_line(approval_task_line=None, **kwargs)
 
         return None
-        # domain = approval_template_line.get_domain_waiting_status(approval_task_line, **kwargs)
-        # if not isinstance(approval_task_line, models.BaseModel):
-        #     if approval_template_line:
-        #         approval_task_line = self.env[approval_template_line.model]
-        #     else:
-        #         return None
-        # return approval_task_line.search(domain, limit=1)
 
     def get_last_approval_task_line(self, **kwargs):
         approval_template_line = self.get_approval_template_line(**kwargs)
@@ -1140,14 +1139,14 @@ for rec in self:
 
     def before_approve(self, **kw):
         approval_template = self.ensure_one()
-        transaction_object = approval_template.get_transaction_object(**kw)
+        transaction_object = kw.get('transaction_object') or approval_template.get_transaction_object(**kw)
         approval_template.invoke_method(transaction_object, 'after_approve', kw)
         return kw
 
     def after_approve(self, **kwargs):
         approval_template = self.ensure_one()
-        approval_instance = approval_template.get_approval_instance(**kwargs)
-        transaction_object = approval_template.get_transaction_object(**kwargs)
+        approval_instance = kwargs.get('approval_instance') or approval_template.get_approval_instance(**kwargs)
+        transaction_object = kwargs.get('transaction_object') or approval_template.get_transaction_object(**kwargs)
         kw = dict(kwargs)
         kw['skip_send_notification'] = True
         kw['approval_instance'] = approval_instance
@@ -1155,6 +1154,7 @@ for rec in self:
         is_approval_done = kwargs.get('is_approval_done')
         trx_update_value = kwargs.get('transaction_update_value') or {}
         approval_template.invoke_method(transaction_object, 'after_approve', kw)
+        _logger.info("after approve .")
         trx_update_value.update({
             'flag_reject': False,
             'note_reject': False,
@@ -1196,14 +1196,15 @@ for rec in self:
             transaction_model_name=approval_instance.transaction_model_name,
         )
 
+        self.send_notification_approved(self.get_user_requestor(transaction_object), **kw_approved)
+        # notes chatter
         notes_chatter = kwargs.get('notes_chatter')
-        notification = self.notification_approved_id
-        if notification:
-            requestor = self.get_user_requestor(transaction_object)
-            notification.send_notification_to_users(requestor, transaction_object.id, **kw_approved)
-            if not notes_chatter:
-                notes_chatter = notification.get_chatter_message(**kw_approved)
-
+        # notification = self.notification_approved_id
+        # if notification:
+        #     requestor = self.get_user_requestor(transaction_object)
+        #     notification.send_notification_to_users(requestor, transaction_object.id, **kw_approved)
+        #     if not notes_chatter:
+        #         notes_chatter = notification.get_chatter_message(**kw_approved)
         if not notes_chatter and self.notes_chatter_approved:
             if have_method(transaction_object, 'get_approved_message'):
                 notes_chatter = safe_call_method(
@@ -1212,9 +1213,13 @@ for rec in self:
             else:
                 notes_chatter = self.get_approved_message(**kw)
         _logger.info("notes_chatter %s ", notes_chatter)
-        notes_chatter and notification.send_message_post(transaction_object, notes_chatter)
-
-        if approval_instance.pdf_sign == 'approve_is_sign_pdf' and not self.env.context.get('__skip_approve_is_sign_pdf'):
+        # notes_chatter and notification.send_message_post(transaction_object, notes_chatter)
+        kw_approved['notes_chatter'] = notes_chatter
+        self.note_chatter_action(self.notes_chatter_approved_action_id, **kw_approved)
+        if (
+                approval_instance.pdf_sign == 'approve_is_sign_pdf' and
+                not self.env.context.get('__skip_approve_is_sign_pdf')
+        ):
             kw = dict(kwargs)
             kw['approval_task_line'] = kw.get('approval_task_line_approve') or kw.get('approval_task_line')
             approval_instance.sign_pdf_document(**kw)
@@ -1241,7 +1246,7 @@ for rec in self:
 
     def before_reject(self, **kw):
         approval_template = self.ensure_one()
-        transaction_object = approval_template.get_transaction_object(**kw)
+        transaction_object = kw.get('transaction_object') or approval_template.get_transaction_object(**kw)
         approval_template.invoke_method(transaction_object, 'before_reject', kw)
         return kw
 
@@ -1250,8 +1255,8 @@ for rec in self:
             _logger.warning("No Instance for After Reject")
             return self
         approval_template = self.ensure_one()
-        approval_instance = approval_template.get_approval_instance(**kwargs)
-        transaction_object = approval_template.get_transaction_object(**kwargs)
+        approval_instance = kwargs.get('approval_instance') or approval_template.get_approval_instance(**kwargs)
+        transaction_object = kwargs.get('transaction_object') or approval_template.get_transaction_object(**kwargs)
         kw = dict(kwargs)
         kw['skip_send_notification'] = True
         kw['approval_instance'] = approval_instance
@@ -1263,6 +1268,7 @@ for rec in self:
         user_execution = kwargs.get('user_execution') or self.env.user
         approval_template.invoke_method(transaction_object, 'after_reject', kw)
         note_reject = kwargs.get('reason') or kwargs.get('reason_reject') or self.env.context.get('__reject_reason')
+        _logger.info("after reject %s .", note_reject)
         trx_update_value.update({
             'flag_reject': bool(note_reject),
             'note_reject': note_reject,
@@ -1281,8 +1287,8 @@ for rec in self:
             # if state_rejected and state_field not in trx_update_value:
             #     trx_update_value[state_field] = state_rejected
         elif trx_update_value:
+            _logger.info("trx_update_value state %s", trx_update_value)
             transaction_object.write(trx_update_value)
-            _logger.info("No update state %s", trx_update_value)
 
         if is_approval_done or not approval_template.is_status_waiting_approval(transaction_object):
             kw['is_approval_done'] = True
@@ -1293,7 +1299,8 @@ for rec in self:
             kw['skip_send_notification'] = False
             kw['request_approval_task_date'] = fields.Datetime.now()
             kw['approval_task_line'] = kw.get(
-                'approval_task_line_next') or approval_template.get_next_approval_task_line()
+                'approval_task_line_next'
+            ) or approval_template.get_next_approval_task_line()
             approval_instance.register_approval_task_line(**kw)
 
         kw_rejected = dict(kwargs)
@@ -1304,12 +1311,16 @@ for rec in self:
             transaction_model_name=approval_instance.transaction_model_name,
         )
         notes_chatter = kwargs.get('notes_chatter')
-        notification = approval_template.notification_rejection_id
-        if notification:
-            requestor = approval_template.get_user_requestor(transaction_object)
-            notification.send_notification_to_users(requestor, transaction_object.id, **kw_rejected)
-            if not notes_chatter and notification.notes_chatter:
-                notes_chatter = notification.get_chatter_message(**kw_rejected)
+        approval_template.send_notification_rejection(
+            approval_template.get_user_requestor(transaction_object),
+            **kw_rejected
+        )
+        # notification = approval_template.notification_rejection_id
+        # if notification:
+        #     requestor = approval_template.get_user_requestor(transaction_object)
+        #     notification.send_notification_to_users(requestor, transaction_object.id, **kw_rejected)
+        #     if not notes_chatter and notification.notes_chatter:
+        #         notes_chatter = notification.get_chatter_message(**kw_rejected)
         if not notes_chatter and approval_template.notes_chatter_approved:
             if have_method(transaction_object, 'get_rejected_message'):
                 notes_chatter = safe_call_method(
@@ -1319,15 +1330,21 @@ for rec in self:
                 notes_chatter = approval_template.get_rejected_message(**kw)
 
         approval_task_line_between = kw.get('approval_task_line_between')
-        notification = approval_template.notification_rejection_to_approver_id
-        if notification and approval_task_line_between:
+        if approval_task_line_between:
             approval_template_line = approval_template.get_approval_template_line(**kwargs)
             user_ids = approval_template_line.get_user_execution(approval_task_line_between)
-            notification.send_notification_to_users(user_ids, transaction_object.id, **kw_rejected)
+            approval_template.send_notification_rejection_to_approver(user_ids, transaction_object.id, **kw_rejected)
+        # notification = approval_template.notification_rejection_to_approver_id
+        # if notification and approval_task_line_between:
+        #     approval_template_line = approval_template.get_approval_template_line(**kwargs)
+        #     user_ids = approval_template_line.get_user_execution(approval_task_line_between)
+        #     notification.send_notification_to_users(user_ids, transaction_object.id, **kw_rejected)
 
-        notes_chatter and notification.send_message_post(
-            transaction_object, notes_chatter
-        )
+        # notes_chatter and notification.send_message_post(
+        #     transaction_object, notes_chatter
+        # )
+        kw_rejected['notes_chatter'] = notes_chatter
+        approval_template.note_chatter_action(approval_template.notes_chatter_rejected_action_id, **kw_rejected)
         return kw
 
     @api.model
@@ -1365,21 +1382,31 @@ for rec in self:
 
     def after_cancel(self, **kw):
         transaction_object = self.get_transaction_object(**kw)
+        approval_template_line = self.get_approval_template_line(**kw)
+        kwr = dict(kw)
+        approval_task_line = kw.get('approval_task_line')
+        approval_task_line_approved = kw.get('approval_task_line_approved')
+        # ambil user yang waiting approval
+        users_waiting_approval = approval_task_line.get_users(**kw) or self.env['res.users'].browse()
+        kwr['approval_task_line'] = approval_task_line_approved
+        users_approved = approval_template_line.get_user_execution(**kwr) or self.env['res.users'].browse()
+        users_ids = users_approved | users_waiting_approval
+        self.send_notification_cancel_approval(users_ids, **kwr)
         notes_chatter = kw.get('notes_chatter')
-        notification = self.notification_cancel_approver_id
-        if notification:
-            approval_template_line = self.get_approval_template_line(**kw)
-            kwr = dict(kw)
-            approval_task_line = kw.get('approval_task_line')
-            approval_task_line_approved = kw.get('approval_task_line_approved')
-            # ambil user yang waiting approval
-            users_waiting_approval = approval_task_line.get_users(**kw) or self.env['res.users'].browse()
-            kwr['approval_task_line'] = approval_task_line_approved
-            users_approved = approval_template_line.get_user_execution(**kwr) or self.env['res.users'].browse()
-            users_ids = users_approved | users_waiting_approval
-            notification.send_notification_to_users(users_ids, transaction_object.id, **kw)
-            if not notes_chatter and notification.notes_chatter:
-                notes_chatter = notification.get_chatter_message(**kw)
+        # notification = self.notification_cancel_approver_id
+        # if notification:
+        #     approval_template_line = self.get_approval_template_line(**kw)
+        #     kwr = dict(kw)
+        #     approval_task_line = kw.get('approval_task_line')
+        #     approval_task_line_approved = kw.get('approval_task_line_approved')
+        #     # ambil user yang waiting approval
+        #     users_waiting_approval = approval_task_line.get_users(**kw) or self.env['res.users'].browse()
+        #     kwr['approval_task_line'] = approval_task_line_approved
+        #     users_approved = approval_template_line.get_user_execution(**kwr) or self.env['res.users'].browse()
+        #     users_ids = users_approved | users_waiting_approval
+        #     notification.send_notification_to_users(users_ids, transaction_object.id, **kw)
+        #     if not notes_chatter and notification.notes_chatter:
+        #         notes_chatter = notification.get_chatter_message(**kw)
         if not notes_chatter and self.notes_chatter_approved:
             if have_method(transaction_object, 'get_canceled_message'):
                 notes_chatter = safe_call_method(
@@ -1387,7 +1414,9 @@ for rec in self:
                 )
             if not notes_chatter:
                 notes_chatter = self.get_canceled_message(**kw)
-        notes_chatter and notification.send_message_post(transaction_object, notes_chatter)
+        # notes_chatter and notification.send_message_post(transaction_object, notes_chatter)
+        kwr['notes_chatter'] = notes_chatter
+        self.note_chatter_action(self.notes_chatter_cancel_action_id, **kwr)
         self.done_approval(**kw)
         return kw
 
@@ -1442,36 +1471,59 @@ for rec in self:
     def after_reset_to_draft(self, **kw):
         _logger.info('after_reset_to_draft')
         transaction_object = self.get_transaction_object(**kw)
-        notes_chatter = kw.get('notes_chatter')
-        notification = self.notification_reset_to_draft_approver_id
         approval_template_line = self.get_approval_template_line(**kw)
-        if notification:
-            kwr = dict(kw)
-            kwr['approval_task_line'] = kw.get('approval_task_line_approved') or kw.get('approval_task_line')
-            users_ids = approval_template_line.get_user_execution(**kwr)
-            _logger.info(
-                'add self.notification_reset_to_draft_target  %s, get_user_execution %s',
-                self.notification_reset_to_draft_target, users_ids
-            )
-            if self.notification_reset_to_draft_target != 'approved':
-                if self.notification_reset_to_draft_target == 'all':
-                    approval_task_lines = kw.get('approval_task_line_waiting_approvals') or []
-                else:
-                    approval_task_lines = kw.get('approval_task_line') or []
-                _logger.info('add approval_task_lines %s', approval_task_lines)
-                for approval_task_line in approval_task_lines:
-                    kwr = dict(kw)
-                    kwr['approval_task_line'] = approval_task_line
-                    users = approval_template_line.get_users(**kwr)
-                    _logger.info('add users %s', users)
-                    users_ids |= users
 
-            notification.send_notification_to_users(users_ids,transaction_object.id, **kwr)
+        kwr = dict(kw)
+        kwr['approval_task_line'] = kw.get('approval_task_line_approved') or kw.get('approval_task_line')
+        users_ids = approval_template_line.get_user_execution(**kwr)
+        _logger.info(
+            'add self.notification_reset_to_draft_target  %s, get_user_execution %s',
+            self.notification_reset_to_draft_target, users_ids
+        )
+        if self.notification_reset_to_draft_target != 'approved':
+            if self.notification_reset_to_draft_target == 'all':
+                approval_task_lines = kw.get('approval_task_line_waiting_approvals') or []
+            else:
+                approval_task_lines = kw.get('approval_task_line') or []
+            _logger.info('add approval_task_lines %s', approval_task_lines)
+            for approval_task_line in approval_task_lines:
+                kwr = dict(kw)
+                kwr['approval_task_line'] = approval_task_line
+                users = approval_template_line.get_users(**kwr)
+                _logger.info('add users %s', users)
+                users_ids |= users
+        self.send_notification_reset_to_draft_approver(users_ids, **kwr)
+        notes_chatter = kw.get('notes_chatter')
+        # notification = self.notification_reset_to_draft_approver_id
+        # if notification:
+        #     kwr = dict(kw)
+        #     kwr['approval_task_line'] = kw.get('approval_task_line_approved') or kw.get('approval_task_line')
+        #     users_ids = approval_template_line.get_user_execution(**kwr)
+        #     _logger.info(
+        #         'add self.notification_reset_to_draft_target  %s, get_user_execution %s',
+        #         self.notification_reset_to_draft_target, users_ids
+        #     )
+        #     if self.notification_reset_to_draft_target != 'approved':
+        #         if self.notification_reset_to_draft_target == 'all':
+        #             approval_task_lines = kw.get('approval_task_line_waiting_approvals') or []
+        #         else:
+        #             approval_task_lines = kw.get('approval_task_line') or []
+        #         _logger.info('add approval_task_lines %s', approval_task_lines)
+        #         for approval_task_line in approval_task_lines:
+        #             kwr = dict(kw)
+        #             kwr['approval_task_line'] = approval_task_line
+        #             users = approval_template_line.get_users(**kwr)
+        #             _logger.info('add users %s', users)
+        #             users_ids |= users
+        #
+        #     notification.send_notification_to_users(users_ids, transaction_object.id, **kwr)
+            # if not notes_chatter and notification.notes_chatter:
+            #     notes_chatter = notification.get_chatter_message(**kw)
 
-            if not notes_chatter and notification.notes_chatter:
-                notes_chatter = notification.get_chatter_message(**kw)
-
-        _logger.info('notes_chatter : %s  : notes_chatter_reset_to_draft: %s',notes_chatter,self.notes_chatter_reset_to_draft)
+        _logger.info('notes_chatter : %s  : notes_chatter_reset_to_draft: %s',
+                     notes_chatter,
+                     self.notes_chatter_reset_to_draft
+                     )
         if not notes_chatter and self.notes_chatter_reset_to_draft:
             if have_method(transaction_object, 'get_reset_to_draft_message'):
                 notes_chatter = safe_call_method(
@@ -1480,8 +1532,9 @@ for rec in self:
             if not notes_chatter:
                 notes_chatter = self.get_reset_to_draft_message(**kw)
 
-        notes_chatter and notification.send_message_post(transaction_object, notes_chatter)
-
+        # notes_chatter and notification.send_message_post(transaction_object, notes_chatter)
+        kwr['notes_chatter'] = notes_chatter
+        self.note_chatter_action(self.notes_chatter_reset_to_draft_action_id, **kwr)
         self.done_approval(**kw)
         return kw
 
@@ -1595,6 +1648,46 @@ for rec in self:
             result.append(safe_vals)
 
         return result
+
+    def send_notification_reminder(self, notification_to_users, **kwargs):
+        self.notification_reminder_id.send_notification_to_users(notification_to_users, **kwargs)
+        self.notification_ids.send_notification('reminder_approval', notification_to_users, **kwargs)
+
+    def send_notification_approval(self, notification_to_users, **kwargs):
+        self.notification_approval_id.send_notification_to_users(notification_to_users, **kwargs)
+        self.notification_ids.send_notification('request_approval', notification_to_users, **kwargs)
+
+    def send_notification_cancel_approval(self, notification_to_users, **kwargs):
+        self.notification_cancel_approver_id.send_notification_to_users(notification_to_users, **kwargs)
+        self.notification_ids.send_notification('cancel', notification_to_users, **kwargs)
+
+    def send_notification_reset_to_draft_approver(self, notification_to_users, **kwargs):
+        self.notification_reset_to_draft_approver_id.send_notification_to_users(notification_to_users, **kwargs)
+        self.notification_ids.send_notification('reset', notification_to_users, **kwargs)
+
+    def send_notification_approved(self, notification_to_users, **kwargs):
+        self.notification_approved_id.send_notification_to_users(notification_to_users, **kwargs)
+        self.notification_ids.send_notification('approve', notification_to_users, **kwargs)
+
+    def send_notification_rejection(self, notification_to_users, **kwargs):
+        self.notification_rejection_id.send_notification_to_users(notification_to_users, **kwargs)
+        self.notification_ids.send_notification('reject', notification_to_users, **kwargs)
+        self.notification_ids.send_notification('rejection_requester', notification_to_users, **kwargs)
+
+    def send_notification_rejection_to_approver(self, notification_to_users, **kwargs):
+        self.notification_rejection_to_approver_id.send_notification_to_users(notification_to_users, **kwargs)
+        self.notification_ids.send_notification('rejection_approver', notification_to_users, **kwargs)
+
+    def send_notification_final_approved(self, notification_to_users, **kwargs):
+        self.notification_final_approved_id.send_notification_to_users(notification_to_users, **kwargs)
+        self.notification_ids.send_notification('final_approve', notification_to_users, **kwargs)
+
+    @api.model
+    def note_chatter_action(self, note_chatter_action, **kwargs):
+        if note_chatter_action:
+            note_chatter_action.with_context(**kwargs).run()
+        else:
+            self.env['chatter.template'].run_action_chatter(kwargs)
 
 
 class ApprovalTemplate(models.Model):
