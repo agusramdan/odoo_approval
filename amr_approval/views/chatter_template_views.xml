@@ -4,7 +4,7 @@
             <field name="name">chatter.template.search</field>
             <field name="model">chatter.template</field>
             <field name="arch" type="xml">
-                <search string="External Data">
+                <search string="Chatter Template">
                     <field name="name" />
                     <field name="model" />
                     <field name="chatter_type"/>
@@ -100,7 +100,7 @@
         </record>
 
         <record model="ir.actions.act_window" id="chatter_template_action">
-            <field name="name">Notification Template</field>
+            <field name="name">Chatter Template</field>
             <field name="type">ir.actions.act_window</field>
             <field name="res_model">chatter.template</field>
             <field name="view_mode">tree,form</field>

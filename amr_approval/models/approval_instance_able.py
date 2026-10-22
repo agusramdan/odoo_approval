@@ -104,16 +104,17 @@ class ApprovalInstanceAbleMixin(models.AbstractModel):
     )
     alert_waiting_approval = fields.Char(compute='_compute_alert_waiting_approval')
 
-    @api.depends('approval_task_id')
+    @api.depends('approval_task_id', 'banner_waiting_approval')
     def _compute_alert_waiting_approval(self):
         for rec in self:
-            approval_user_ids = rec.approval_task_id.approval_user_ids
-            if approval_user_ids:
-                approver_user = " / ".join([user.name for user in approval_user_ids])
-                approver_name = "Approver ( " + approver_user + " )"
-                rec.alert_waiting_approval = str(approver_name)
-            else:
-                rec.alert_waiting_approval = ""
+            rec.alert_waiting_approval = rec.banner_waiting_approval
+            # approval_user_ids = rec.approval_task_id.approval_user_ids
+            # if approval_user_ids:
+            #     approver_user = " / ".join([user.name for user in approval_user_ids])
+            #     approver_name = "Approver ( " + approver_user + " )"
+            #     rec.alert_waiting_approval = str(approver_name)
+            # else:
+            #     rec.alert_waiting_approval = ""
 
     @api.depends_context('notification_to_user')
     def _compute_notification_to_user_id(self):

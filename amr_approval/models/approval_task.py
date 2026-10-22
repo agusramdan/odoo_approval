@@ -39,9 +39,11 @@ class ApprovalTask(models.Model):
         compute="_compute_aging_display",
         string="Aging"
     )
+
     aging_display = fields.Char(
         compute="_compute_aging_display"
     )
+
     transaction_id = fields.Integer(
         'Transaction ID'
     )
