@@ -10,7 +10,7 @@ from ..tools.utils import have_method, safe_call_method
 _logger = logging.getLogger(__name__)
 
 
-class ApprovalTemplateLineMixin(models.Model):
+class ApprovalTemplateNotification(models.Model):
     _name = 'approval.template.notification'
 
     # when parent mode specific parent model mandatory

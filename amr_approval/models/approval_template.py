@@ -1694,7 +1694,7 @@ class ApprovalTemplate(models.Model):
     _name = 'approval.template'
     _inherit = ['approval.template.mixin']
     _description = """
-    Template configuration from instance template easy register/unregister approval.task
+    Approval Template : Configuration from instance template easy register/unregister approval.task
     """
 
     _sql_constraints = [

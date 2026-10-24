@@ -158,9 +158,7 @@ class ApprovalMatrixRuleLine(models.Model):
     _name = "approval.matrix.rule.line"
     _inherit = ['rule.condition.mixin', 'approval.responsible.line.mixin']
     _order = "sequence,id"
-    _description = """
-    Mixin : Approval Task Model
-    """
+
     approval_matrix_rule_id = fields.Many2one(
         'approval.matrix.rule',
         "Approval Matrix Rule",

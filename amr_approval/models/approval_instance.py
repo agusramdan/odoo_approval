@@ -1152,6 +1152,7 @@ class ApprovalInstanceMixin(models.AbstractModel):
 
 class ApprovalInstance(models.Model):
     _name = 'approval.instance'
+    _description = "Approval Instance"
     _inherit = 'approval.instance.mixin'
 
     approval_document_id = fields.Many2one('approval.document', compute='_compute_approval_document_id')

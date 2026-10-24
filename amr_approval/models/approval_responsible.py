@@ -129,7 +129,7 @@ class ApprovalResponsibleLineMixin(models.AbstractModel):
 
 class ApprovalResponsible(models.Model):
     _name = 'approval.responsible'
-    _description = "responsible user for approval"
+    _description = "Responsible User for Approval"
     _rec_name = 'model_id'
     _sql_constraints = [
         ('model_id_unique', 'unique(model_id)', 'Model must be uniq!')
